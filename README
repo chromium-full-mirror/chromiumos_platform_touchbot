@@ -1,0 +1,62 @@
+This is the Google touchbot controller module in python.
+
+The name was chosen by Toshiba Machine Co., LTD. and is based on the
+controller name.  The full official designation of robots with this
+controller is:
+
+	ROIBOT
+	BA series
+	Controller
+	MODEL: CA10-M00
+	Toshiba Machine Co, Ltd.
+
+Similar robot controllers:
+
+	BA Series:	CA10-M00
+			CA10-M01
+			CA10-M10
+			CA10-M40
+	BA II Series:	CA10-M00B
+			CA10-M01B
+			CA20-M10
+			CA20-M40
+
+This module should have utility for all users of robots with these
+controller type, although the specific submodules, other than 'error',
+will likely not be applicable to robots other than the Google touchbot.
+
+The directory structure is laid out as follows:
+
+	README		This file
+
+	documentation/	More detailed documentation not covered by pydoc.
+
+	examples/	Some examples of robot motion control programs
+			achievable with the control module.  These all
+			have helper scripts screated at build time which
+			will automatically set the PYTHONPATH to include
+			the 'roibot/' directory, as long as the argv[0]
+			matches the actual invocation path (don't mess
+			around with your execve/posix_spawn arguments,
+			in other words)
+
+	roibot/		The control module itself.
+
+	test/		Test support for calidation of the control
+			module itself.  This does not contain the
+			actual touchpad tests.
+
+Use this module by putting the "roibot" directory into your PYTHONPATH
+to make it available.
+
+	import sys
+	import roibot
+
+	robot = roibot.ROIbot(sys.argv[1])
+	print roibot.error.statusReport(robot)
+	...
+
+See examples, pydoc on the module, and documentation subdirectory for
+more information.
+
+End Of Document.
