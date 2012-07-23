@@ -1,0 +1,45 @@
+This module consists of a general "roibot" robot controller interface
+module in python, along with sub-modules for the following:
+
+	__init__.py	Standard python module glue to allow functional
+			separation of the code into different files.
+
+	roibot.py	The module itself, which is exposed directly
+			at the top level of the namespace, i.e. its
+			elements are referenced as 'roibot' rather than
+			as 'roibot.roibot', which would have been a
+			lot of annoying typing, and avoided placing
+			the basic functionality in the __init__.py
+			file.  This is done for both style guildeline
+			reasons, and to permit additional similar
+			controllers with differing control syntax or
+			functionality to be substituted in the future.
+
+	error.py	The error translation module which is capable
+			of decoding all error and sub-error states
+			reported by the robot controller.  If the
+			robot controller changes, this may need to
+			change.  Its elements are referenced as
+			'roibot.error'.
+
+	motion.py	A high level motion control package, intended
+			to be able to function in place of a serial
+			"Teaching Pendant" device.  This programatically
+			exposes the raw command functionality normally
+			exposed via the teaching pendant device.  Like
+			the pendant, you are not able to control more
+			than a single axis of motion at a time.
+
+			It can be used to directly control robot motion,
+			albeit with some jitter in the absolute position.
+			This jitter arises due to the timing for the
+			polling interval for position reporting and the
+			subsequent ability to send a motion stop command
+			to the robot.  If you need more precise positioning,
+			you will want to use a stored program instead,
+			although you will have to achieve the positions
+			you store through the use of pendant commands in
+			any case, but stored positions will end up as
+			more reproducible when in motion.
+
+End Of Document.

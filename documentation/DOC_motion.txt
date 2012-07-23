@@ -1,0 +1,53 @@
+On top of the basic control modules internal functions are layered some
+additional modules to use the Teaching Pendant commands for motion control
+operations directly under control of an external host computer running a
+control program writen in python.  Note that this mode of operation does
+not permit simultaneous motion on more than one axis.
+
+Rationale: The controller command set only supports "return to origin",
+"start moving on an axis", "tell me where you are", and "stop moving",
+which prevents more complex positioning, such as "move to {x,y,z}".  The
+motion controls build more complex instructions on top of the controller
+command set.
+
+This has the additional benefit of being able to teach the robot via more
+complex host control.
+
+The motion controls are somewhat limited, currently, and fall into the
+following organizational sections:
+
+	Utilities	These functions are generally not intended for
+			use externally, and are internal to the motion
+			module itself.
+
+	Implementation	These functions are similar to utility functions,
+			are considered to be potentially useful to code
+			layered on top of the motion commands.
+
+	Timeout waits	These functions wait for a particular robot state
+			with a timeout.  They typically poll the status
+			from the controller until the stats meets a
+			particular completion criteria.  An example
+			might be to wait for a servo to reach some
+			location on an axis before turning it off.
+
+	Explicit	These are explicit functions to perform actions,
+			such as positioning to absolute coordinates.  The
+			commands typically do not have an aggregate
+			timeout.
+
+Example of explicit motion command usage:
+
+    # move at high speed to X=+0200.00
+    roibot.motion.moveOneAxis(robot, "+0200.00", "SP", "SP", "SP")
+    # back up to X=+0150.00
+    roibot.motion.moveOneAxis(robot, "+0150.00", "SP", "SP", "SP")
+    # continue at high speed to X=+243.46
+    roibot.motion.moveOneAxis(robot, "+0243.46", "SP", "SP", "SP")
+    # continue at high speed to Y=+0050.00
+    roibot.motion.moveOneAxis(robot, "SP", "+0050.00", "SP", "SP")
+
+Please see 'pydoc roibot.motion.moveOneAxis' for more detailed information
+about the calling conventions.
+
+End Of Document.

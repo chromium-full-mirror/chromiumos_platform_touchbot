@@ -1,0 +1,23 @@
+This is the dpty utility.  It is used to validate the functionality of
+the "roibot" python module, in particular, individual controller
+component commands for the module.
+
+Benefits:
+
+o	You can outline code without needing to have the robot on hand,
+	and refine it later on the actual device.
+
+o	If the robot has parts missing, you can still code.
+
+o	If the robot keeps tripping the GFI for a 20A circuit because it
+	really needs 30A, you can still code.
+
+o	You can mostly work at your desk, rather than in the cold, cold
+	lab while a bunch of construction people run around.
+
+TODO:	Support scripted rather than interactive input; to achieve this
+	for discrete script snippits, it will be necessary to connect
+	and reconnect on the master side; this is probably most easily
+	accomplished via a socket.
+
+End of document.

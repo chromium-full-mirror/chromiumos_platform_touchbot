@@ -1,0 +1,29 @@
+This code was written with a single reference robot for testing.  Some
+of the commands were tested using faked responses using the loopback test
+facility built on top of ptys (see the "test/" subdirectory of the root
+directory):
+
+Testing took place on this controller:
+
+	BA Series:	CA10-M00
+
+The folllowing controllers are intended to be supported:
+
+	BA Series:	CA10-M00
+			CA10-M01
+			CA10-M10
+			CA10-M40
+	BA II Series:	CA10-M00B
+			CA10-M01B
+			CA20-M10
+
+These additional controllers /may/ also function, but be missing any
+additional controller-specific commands:
+
+	BA Series:	CA10-M01-CC
+	BA II Series:	CA10-M00B-CC
+			CA20-M00
+			CA20-M01
+	BA II Series:	CA20-M40
+
+End of document.

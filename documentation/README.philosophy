@@ -1,0 +1,160 @@
+		********************************************
+		Philosopy of the roibot robot control module
+		********************************************
+
+============
+Introduction
+============
+
+The basic philosophy is to expose the raw control module interface as
+directly as possible, and then layer additional functionality on top of
+that.  This is done comprehensively, despite some of the commands made
+available being of limited real-life utility.
+
+This layered approach means that we want to directly expose the controller
+layer itself, as an intentional design decision.  Thus, instead of:
+
+	robot = roibot.controller.ROIbot(sys.argv[1])
+	line = robot.controller.sendCommand("SYSP")
+
+you use:
+
+	robot = roibot.ROIbot(sys.argv[1])
+	line = robot.sendCommand("SYSP")
+
+This was done as an intential design decision to facilitate direct use
+of controller commands, and hopefully represents the only intentional
+deviation from Google style guidelines, but matches many similar third
+party and Google library modules with similar namespace control goals.
+By doing this, we expose all discrete functional areas within the top
+level "roibot" namespace.
+
+
+=================
+Design Principles
+=================
+
+There are several high level design principles in play:
+
+	Minimal base layering
+
+	+ Functional area modules as replaceable components
+
+	+ Contractual layering
+
+	= Code reuse
+
+
+The following subsections cover each of these in detail:
+
+==
+== Minimal base layering
+==
+
+This refers to the principle of not providing abstract representation of
+the bottomost layers.  In this case, the controller portion of the roibot
+module is intended to match as closely as possible the documented command
+set in:
+
+	Toshiba Machine
+	COMPO ARM
+	RS232C Communication Specifications
+	Controller models:
+
+		BA Series:	CA10-M00
+				CA10-M01-CC
+		BA II Series:	CA10-M00B
+				CA10-M01B-CC
+				CA20-M00
+				CA20-M01
+
+Encapsulation of functionality in additional components also attempts to
+follow this principle; in particular, consider the following component
+stack [NB: some elements in this example are currently hypothetical]:
+
+	,------------,
+	| Test Suite |		Drives unit tests
+	.------------,
+	| Unit Test  |		A set of tasks
+	.------------,
+	| Tasks      |		One or more gestures and motions
+	.------------,
+	| Gesture    |		One or more motions
+	.------------,
+	| Motion     |		One or more controller commands
+	.------------,
+	| Controller |		One command/response set
+	`------------'
+
+Each layer does the work it is intended to perform, and only that work.
+
+
+==
+== Functional area modules as replaceable components
+==
+
+This implies strong contracts, particularly at the motion/controller
+boundary.
+
+Strong contracts permit other similar controllers to be substituted with
+little effort; examples might include:
+
+	BA Series:	CA10-M01
+			CA10-M10
+			CA10-M40
+	BA II Series:	CA10-M01B
+			CA20-M10
+			CA20-M40
+
+So for example, it should be possible to substitute a CC-Link enabled
+controller module for the serial controller.
+
+Reference: http://en.wikipedia.org/wiki/CC-Link_Industrial_Networks
+
+
+==
+== Contractual layering
+==
+
+For sufficiently different command sets, it would likely be necessary to
+renegotiate the contract, and provide a different motion module as well.
+
+This allows both knowledge reuse (individual, documentation), and the
+software emulation of devices based directly on communications with the
+controller, which this python module can replace.
+
+Consider a Teaching Pendant device eumation:
+
+	TPH-2A		16 characters x 2 lines
+			Emergency stop button
+
+	TPH-4B		20 characters x 4 lines
+			Emergency stop button
+
+One could similarly imagine to following stack:
+
+	.-------------------,
+	| Pendant Emulation |	Control logic for view
+	.-------------------,
+	| GUI               |	View onto model
+	.-------------------,
+	| Pendant Model     |	One or more controller commands
+	.-------------------,
+	| Controller        |	One command/response set
+	`-------------------'
+
+Since the Teaching Pendant contract with the controller is known, any
+emulation could use the same emulator upper layers.
+
+
+==
+== Code reuse
+==
+
+The previous three principles lead to easy code reuse.  Because each
+layer is severable, we get code reuse for practically free.  It's easy
+to consider replacing the controller by merely rewriting the implementation
+details as necessary, or of extending it by encapsulation, should new
+controller commands become available.
+
+End of document.

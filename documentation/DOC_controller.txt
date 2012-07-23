@@ -1,0 +1,86 @@
+                            ******************
+                            The control module
+                            ******************
+
+The organization of commands in the control component closely follows the
+command organization for the robot controller, and is only non-identical
+in the cases where it was not reasonable to implement variant command
+syntax into the python functions while retaining the ability to error
+check correctly.
+
+The functions mimic organizational sections of the control command space:
+
+	Mode		Commands other than host mode control or status
+			requests require the robot to be in host mode.
+			Most likely status requests are here because this
+			was the closest matching bucket.
+
+	Parameter	Read and write parameters.  Because there is a
+			limit on EEPROM write cycles, there is a pseudo
+			mode called writeEEPROM included.
+
+	Text editing	Reading and writing of EEPROM and memory card
+			contents.  Also protected by the writeEEPROM.
+
+	Memory card	Special treatment due to the memory card support
+			being an optional hardware configuration.
+
+	Execution	Operations immediately carried out by the robot;
+			most, but not all, require host mode.  For the
+			execWriteOverride() ONLY, writeEEPROM is needed.
+
+			Caution: Use of bogus commands in this section
+			may damage the robot.
+
+	Monitor		Deal with port I/O and some status feedback.
+
+Each of the functions is accessed via a lower case prefix of the area of
+which they are a member; here is an example of one from each area:
+
+	Mode		modeRequestSystemParameter()
+
+	Parameter	parameterRead(parameter)
+
+	Text editing	textInitializeMemory(0)
+
+	Memory card	textWriteMemoryCard()
+
+	Execution	execReturnToOrigin()
+
+	Monitor		monRequestInputData(station, screen)
+
+In addition to accounting for variant syntax, several pseudo-commands are
+introduced to deal with thing like limited EEPROM write cycles:
+
+	enableWriteEEPROM()	Disable soft write protect
+	disableWriteEEPROM()	Enable soft write protect
+
+(write protect mode is on by default to avoid damaging the EEPROM contents
+due to uncleared serial line noise on initial connection, due to sloppy
+coding by the caller, and so on).
+
+An ad-hoc testing mode is expected to be added at some point to preclude
+communications timeouts in more complex layers on top of the controller
+layer; right now that can be handed by setting the global read timeout
+based on its inheritance from the "serial" module.
+
+Another pseudo command that can be useful:
+
+	sendCommand(...)	Send a raw command to the robot and
+				report the status code
+
+The other pseudo-commands are generally related to implementation for
+
+Example of sending the raw "SYSP" command:
+
+	robot = roibot.ROIbot(sys.argv[1])
+	result = robot.sendCommand("SYSP")
+	print result
+
+Note that the above reference does not have an interior "controller."
+clause, either in the instnatiation of the 'robot' object, or in the
+subsequent call through to the sendCommand() function.  For why the
+extra typing isn't required, see the "README.philosophy" file in this
+directory.
+
+End Of Document.

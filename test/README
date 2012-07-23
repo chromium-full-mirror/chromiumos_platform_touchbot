@@ -1,0 +1,10 @@
+This is the test directory for the 'roibot' python module.
+
+Contents:
+
+	dpty		The dpty program, used for testing
+
+
+TODO:	Eventually it will also contain automated regression tests
+
+End of document.
