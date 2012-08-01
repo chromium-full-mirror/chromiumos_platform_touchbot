@@ -27,11 +27,15 @@ class ROIbotTimeoutException(ROIbotException):
     """Timeout exception."""
 
 class ROIbotModeException(ROIbotException):
-    """"Operation not permitted in this mode"""
+    """"Operation not permitted in this mode."""
+
+class ROIbotUnrecoverableErrorException(ROIbotException):
+    """"Software could not clear an error."""
 
 readTimeoutError = ROIbotTimeoutException("Read timeout")
 hostModeError = ROIbotModeException("Command invalid outside host mode")
 writeProtectError = ROIbotModeException("EEPROM is write protected")
+unrecoverableError = ROIbotUnrecoverableErrorException("Unrecoverable")
 
 
 #
@@ -72,6 +76,22 @@ class ROIbot(serial.Serial):
         """
         self._writeEEPROM = False
 
+    def assertCancelError(self):
+        """Attempts to clear the error status, if any, twice.  If an error
+           exists after that, it raises an unrecoverableError exception.
+        """
+        if not self.execCancelError():
+            if not self.execCancelError():
+                raise unrecoverableError
+
+    def assertReset(self):
+        """Resets the robot.  On failure raises an unrecoverableError
+           exception.
+        """
+        if not self.execReset():
+            if not self.execReset():
+                raise unrecoverableError
+
     def sendCommand(self, *args):
         """Send a command to the robot and wait for a response; a command
            is of the form:
@@ -107,11 +127,11 @@ class ROIbot(serial.Serial):
     # Assertion convenience functions for software enforced state flags
     #
     def assertHostModeON(self):
-        if (self._hostModeON == False and self.AdhocTestON == False):
+        if (self._hostModeON == False and self._AdhocTestON == False):
             raise hostModeError
 
     def assertWritableEEPROM(self):
-        if (self._writeEEPROM == False and self.AdhocTestON == False):
+        if (self._writeEEPROM == False and self._AdhocTestON == False):
             raise writeProtectError
 
     #
@@ -254,7 +274,7 @@ class ROIbot(serial.Serial):
         """
         self.assertHostModeON()
         self.assertWritableEEPROM()
-        return self.TFResult(self.sendCommand("WPAR", *args))
+        return self.TFResult(self.sendCommand("WPAR" + str(parameter), *args))
 
 
     #
@@ -363,7 +383,7 @@ class ROIbot(serial.Serial):
            """
         self.assertHostModeON()
         self.assertWritableEEPROM()
-        return self.TFResult(self.sendCommand("WSTX", "0001", *args))
+        return self.TFResult(self.sendCommand("WSTX", *args))
 
     def textReadSequential(self):
         """Read sequential text.  Start reading back sequential program steps.
@@ -465,16 +485,16 @@ class ROIbot(serial.Serial):
            """
         return self.TFResult(self.sendCommand("STOP"))
 
-    def execJog(self, x, y, z, rotation):
+    def execJog(self, X="SP", Y="SP", Z="SP", R="SP"):
         """Move the robot in up to four axes. Motion will occur one axis
            at a time.  Multiple axes can not be moved at the same time.
            """
         self.assertHostModeON()
         return self.TFResult(self.sendCommand("JGST",
-                                              "X=" + str(x),
-                                              "Y=" + str(y),
-                                              "Z=" + str(z),
-                                              "R=" + str(rotation)))
+                                              "X=" + str(X),
+                                              "Y=" + str(Y),
+                                              "Z=" + str(Z),
+                                              "R=" + str(R)))
 
     def execDirectPortOutput(self, station, portNumber, outputDesignation):
         """Direct port output."""

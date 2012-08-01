@@ -1,0 +1,50 @@
+This is a set of robot control programs.  They vary in complexity, but
+all are generally useful in programming the robot.  They are:
+
+
+	parameter_reset		This resets the robot parameters; it
+				should not be necessary to zero memory,
+				but if you end up needing to, this puts
+				everything back to where it should be.
+
+	goto_origin		Move the robot finger to its origin
+				position.  This tends to be useful.
+
+	point_picker		Pick a point; this provides a graphical
+				representation of the X, Y, and Z location
+				of the finger.  'o' returns to origin, 'q'
+				quits, '1', '2', '3', and '4' provide
+				smaller motion resolution, cursor left and
+				right pick an axis, and cursor up moves
+				along that axis toward the origin, while
+				cursor down moves away.  I typically hit
+				return after the robot is fully done moving,
+				which updates the current coordinate display.
+
+				This is almost the only reasonable way to
+				get a registration for the touch area
+				bounding box with any degree of accuracy,
+				since we don't have a teaching pendant.
+
+	flick_with_liftoff	This is the primary initial point programming
+				module; it implements the following gestures:
+
+					Flick with liftoff
+					Variable speed flick
+					Variable sped 2 finger scroll
+
+				The default as it's currently programmed is
+				to move into position to perform a gesture,
+				drop the Z to touch the touch surface, and
+				then make a downward motion.
+
+				There are three configuration parameters at
+				the top of the script to control whether a
+				flick or scroll is done, which device
+				bounding region to configure, and velocity
+				of the gesture.
+
+It's expected that additional gesture scripts will become available in the
+future.
+
+End Of Document.

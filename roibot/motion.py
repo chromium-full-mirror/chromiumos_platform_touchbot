@@ -70,14 +70,11 @@ def assertOneAxis(x, y, z, rotation):
 
 def waitForCondition(roibot, conditionFunction, context, timeout, timeoutError):
     """This function is a barrier function which calls a condition function
-       every 10ms until the condition is true or a timeout occurs.  If a
-       timeout occurs, it raises the exception timeoutError.
-
-       The timeout is in 10ms ticks."""
-    for ms10 in xrange(int(timeout)):
+       continuously until the condition is true or a timeout occurs.  If a
+       timeout occurs, it raises the exception timeoutError."""
+    for loop_count in xrange(int(timeout)):
         if conditionFunction(roibot, context):
             return
-        time.sleep(.01)
     raise motionTimeoutError
 
 #
@@ -111,7 +108,7 @@ def condOneAxisDone(roibot, watchFor):
        to the specified value, within some small fuzz factor to account
        for polling latency, since we can not request a move to an absolute
        coordinate."""
-    fuzz = 6  # strongly timing dependent!!!
+    fuzz = 4  # strongly timing dependent!!!
     axis, want = watchFor.split("=")
     want = float(want)
     axis = axisToIndexTable[axis]

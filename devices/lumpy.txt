@@ -1,0 +1,25 @@
+# Lumpy
+#
+# Orientation on sample area
+#
+# ,-----------------,
+# |     ,-----.     |
+# |     |     |     |
+# |     `-----'     |
+# |,-.-.-.-.-.-.-.-.|
+# |`-+-+-+-+-+-+-+-'|
+# |`-+-+-+-+-+-+-+-'|
+# |`-+-+-+-+-+-+-+-'|
+# |`-`-`-`-`-`-`-`-'|
+# `-----------------'
+#
+# Sample area locations to use for stops
+#
+108, 203, 311, 404
+#
+# Coordinates for touch area bounding box:
+#
+X = 35.00..90.00
+Y = 115.00..208.00
+Z(paper contact) = 86.00
+Z(button press) = 86.56
