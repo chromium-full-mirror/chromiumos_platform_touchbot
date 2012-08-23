@@ -140,13 +140,13 @@ try:
     #            y
     #
     def showSampleArea(stdscr, x, y, z):
-    # These numbers are based on screen coordinates
+        # These numbers are based on screen coordinates
         base_x = 10
         base_y = 6
         dim_x = 20
         dim_y = 40
         dim_z = 5
-    # These numbers reflect hardware limits of the robot itself
+        # These numbers reflect hardware limits of the robot itself
         max_x = 400.00
         max_y = 250.00
         max_z = 100.00
