@@ -17,3 +17,4 @@
 from roibot import *
 import error
 import motion
+import program

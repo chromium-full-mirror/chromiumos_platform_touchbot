@@ -42,4 +42,22 @@ module in python, along with sub-modules for the following:
 			any case, but stored positions will end up as
 			more reproducible when in motion.
 
+	program.py	A package for loading programs into the robots
+			EEPROM.  This builds on the other packages in
+			order to leverage the textWriteSequential() to
+			write a series of program steps.  These steps are
+			described in the "Sequential text (Write and read
+			commands)" section of the programming manual.
+
+			There are two sets of functions encapsulated in
+			this module; the first set is to create command
+			strings for use in the textWriteSequential() and
+			the textReadSequential() functions, as helpers.
+			The second set allows incremental sequential
+			command writes which will throw a catchable
+			exception if they fail.  This greatly simplifies
+			the act of programming by moving the error
+			handling out to an encapsulating try/catch and
+			makes the resulting code much more readable.
+
 End Of Document.
