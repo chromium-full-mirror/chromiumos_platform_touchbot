@@ -9,7 +9,7 @@
 # BA Series
 # CA10-M00
 #
-# Industrial robot interface mode control module
+# Industrial robot interface motion control module
 #
 #
 # This module defines more complex motion commands than the simple Jog is
