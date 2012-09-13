@@ -607,10 +607,10 @@ class ROIbot(serial.Serial):
            """
         return self.TFResult(self.sendCommand("MRSS",
                                               "TASK=%02d" % task,
-                                              "X=%04.02f" % x,
-                                              "X=%04.02f" % y,
-                                              "X=%04.02f" % z,
-                                              "X=%04.02f" % rotation,
+                                              "X=%07.02f" % x,
+                                              "X=%07.02f" % y,
+                                              "X=%07.02f" % z,
+                                              "X=%07.02f" % rotation,
                                               "X=%02" % velocity))
 
     def monRequestCounterValue(self, counter):
