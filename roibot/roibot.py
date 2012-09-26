@@ -274,7 +274,7 @@ class ROIbot(serial.Serial):
         """
         self.assertHostModeON()
         self.assertWritableEEPROM()
-        return self.TFResult(self.sendCommand("WPAR" + str(parameter), *args))
+        return self.TFResult(self.sendCommand("WPAR", str(parameter), *args))
 
 
     #
