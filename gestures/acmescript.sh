@@ -23,6 +23,6 @@
 BASEDIR=`dirname $0`
 BASENAME=`basename $0`
 PYTHONNAME="${BASENAME}.py"
-PYTHONPATH="${BASEDIR}/../roibot":"${PYTHONPATH}"
+export PYTHONPATH="${BASEDIR}/..":"${PYTHONPATH}"
 
 python "${PYTHONNAME}"

@@ -221,10 +221,10 @@ def counterConditionWait(counterNumber, operator, value):
     return ("CWIT", "CN%02d%s" % (counterNumber, operator), "%04d" % value)
 
 def end():
-     """Return the program step counter to step 0001 and wait for another
-        START input.  When multitasking, and the end occurs in tasks 2
-        through 4, the task returns to step 0001 and waits for another
-        taskStart().
+    """Return the program step counter to step 0001 and wait for another
+       START input.  When multitasking, and the end occurs in tasks 2
+       through 4, the task returns to step 0001 and waits for another
+       taskStart().
     """
     return ("END")
 
