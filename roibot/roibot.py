@@ -59,6 +59,8 @@ class ROIbot(serial.Serial):
     _AdhocTestON = True
     _writeEEPROM = False
     _hostModeON = False
+    _line_number = 1
+    _point_number = 1
 
     #
     # Utility functions
@@ -656,4 +658,46 @@ class ROIbot(serial.Serial):
         """Request error history."""
         return self.sendCommand("EHTR", "NO=01")
 
+    # High level EEPROM programming instructions
+    #
+    # The follow functions wrap the commands for writing a program to the
+    # EEPROM of the robot.  They all will make multiple attempts to issue
+    # their command, and raise an exception if they are unsuccessful.
+    def addCmd(self, cmd):
+        """Upload a new command into the next spot in the eeprom.  This adds a
+        new instruction to the program in the robots memory.
+        """
+        print "ADDING:  %04d %s" % (self._line_number, cmd)
+        self.tryOrFail(self.textWriteSequential,
+                       "%04d" % self._line_number, cmd)
+        self._line_number += 1
+
+    def setParam(self, cmd):
+        """Set a parameter's value.  This can be any "parameter" in the robot,
+        such as altering speed profiles or point tables, etc.
+        """
+        print "SETTING: %s" % cmd
+        self.tryOrFail(self.parameterWrite, cmd)
+
+    def addPoint(self, x, y, z):
+        """Add a new point to the point table (returns the point number)."""
+        self.setParam("T1 PT=%03d " % self._point_number +
+                      "X=+%07.02f " % x +
+                      "Y=+%07.02f " % y +
+                      "Z=+%07.02f " % z +
+                      "R=+0000.00")
+        self._point_number += 1
+        return self._point_number - 1
+
+    def tryOrFail(self, fn, *args, **kwargs):
+        """Make multiple attempts to call a function fn().  The function should
+        return True or False.  If after NUM_RETRIES attempts, there still
+        hasn't been a success, raise an exception.
+        """
+        NUM_RETRIES = 2
+        for i in range(NUM_RETRIES):
+            result = fn(*args, **kwargs)
+            if result:
+                return result
+        raise unrecoverableError
 # End
