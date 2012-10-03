@@ -25,4 +25,4 @@ BASENAME=`basename $0`
 PYTHONNAME="${BASENAME}.py"
 export PYTHONPATH="${BASEDIR}/..":"${PYTHONPATH}"
 
-python "${PYTHONNAME}"
+python "${PYTHONNAME}" $*

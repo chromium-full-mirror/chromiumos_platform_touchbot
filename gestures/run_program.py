@@ -12,7 +12,7 @@
 import roibot
 
 
-def run_program(program=None):
+def run_program(program=None, *args, **kwargs):
     # Open the robot interface.
     robot = roibot.ROIbot(port='/dev/ttyUSB0',
                           baudrate=9600,
@@ -35,7 +35,7 @@ def run_program(program=None):
 
         # If we have a new program to load onto the robot
         if program != None:
-            program(robot)
+            program(robot, *args, **kwargs)
 
         # Switch the program mode to auto (run the program in eeprom)
         robot.tryOrFail(robot.modeAutomatic)

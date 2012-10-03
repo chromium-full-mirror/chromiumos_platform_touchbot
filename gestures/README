@@ -2,6 +2,24 @@ This is a set of robot control programs.  They vary in complexity, but
 all are generally useful in programming the robot.  They are:
 
 
+	run_program		When run by itself this "gesture" simply tells
+				the robot to run whatever program is currently
+				in memory.  Otherwise it can be imported to do
+				all the setup for programming a new gesture.
+				Read basic.py for an example of how to do this.
+
+	basic			Intended mostly as an example of how to
+				program the robot, this is a very simple
+				gesture that simple traverses the perimeter
+				of the touchpad, but can be useful in
+				calibrating the robot for a new device.
+
+	scroll			Does a two-finger "scroll" gesture.  It touches
+				the pad at the top and  moves down.  If passed
+				the command line argument "fling" it will lift
+				off smoothly.  If not, it will pause before
+				lifting off the pad.
+
 	parameter_reset		This resets the robot parameters; it
 				should not be necessary to zero memory,
 				but if you end up needing to, this puts
@@ -30,26 +48,5 @@ all are generally useful in programming the robot.  They are:
 				get a registration for the touch area
 				bounding box with any degree of accuracy,
 				since we don't have a teaching pendant.
-
-	flick_with_liftoff	This is the primary initial point programming
-				module; it implements the following gestures:
-
-					Flick with liftoff
-					Variable speed flick
-					Variable sped 2 finger scroll
-
-				The default as it's currently programmed is
-				to move into position to perform a gesture,
-				drop the Z to touch the touch surface, and
-				then make a downward motion.
-
-				There are three configuration parameters at
-				the top of the script to control whether a
-				flick or scroll is done, which device
-				bounding region to configure, and velocity
-				of the gesture.
-
-It's expected that additional gesture scripts will become available in the
-future.
 
 End Of Document.
