@@ -7,6 +7,11 @@ all are generally useful in programming the robot.  They are:
 				but if you end up needing to, this puts
 				everything back to where it should be.
 
+	diagonals		Make the robot move in a tight, diagonal criss-
+				cross pattern over the whole touchpad.  This
+				allows us to see linearity errors in the sensor
+				and compensate for them in the future.
+
 	goto_origin		Move the robot finger to its origin
 				position.  This tends to be useful.
 
