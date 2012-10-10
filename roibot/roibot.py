@@ -13,6 +13,7 @@
 #
 
 import serial
+import time
 
 #
 # Exceptions
@@ -699,5 +700,6 @@ class ROIbot(serial.Serial):
             result = fn(*args, **kwargs)
             if result:
                 return result
+            time.sleep(1)
         raise unrecoverableError
 # End
