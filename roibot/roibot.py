@@ -12,6 +12,7 @@
 # Industrial robot interface mode control module
 #
 
+import select
 import serial
 import time
 
@@ -62,6 +63,7 @@ class ROIbot(serial.Serial):
     _hostModeON = False
     _line_number = 1
     _point_number = 1
+    _RESPONSE_TIMEOUT = 2   # In seconds
 
     #
     # Utility functions
@@ -113,6 +115,13 @@ class ROIbot(serial.Serial):
         cmdlist = [str(arg) for arg in args]
         cmd = ' '.join(args)
         self.write("@" + cmd + "\r\n")
+
+        # Wait for a few seconds to see if there is a respose.  If not, fail
+        rfds, wfds, efds = select.select([self], [], [], self._RESPONSE_TIMEOUT)
+        if not self in rfds:
+            raise readTimeoutError
+
+        # Get whatever data the robot sent back
         response = self.readline().lstrip("@").rstrip("\r\n").split(" ")
         code = response.pop(0)
         if (code == ''):
