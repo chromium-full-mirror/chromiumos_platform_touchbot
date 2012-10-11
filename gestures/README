@@ -14,6 +14,10 @@ all are generally useful in programming the robot.  They are:
 				of the touchpad, but can be useful in
 				calibrating the robot for a new device.
 
+	line			Make the robot run along a straight line
+				specified via command line arguments on the
+				touchpad at a similarly specified speed.
+
 	scroll			Does a two-finger "scroll" gesture.  It touches
 				the pad at the top and  moves down.  If passed
 				the command line argument "fling" it will lift
