@@ -1,24 +1,24 @@
-# Lumpy
-#
-# Orientation on sample area
-#
-# ,-----------------,
-# |     ,-----.     |
-# |     |     |     |
-# |     `-----'     |
-# |,-.-.-.-.-.-.-.-.|
-# |`-+-+-+-+-+-+-+-'|
-# |`-+-+-+-+-+-+-+-'|
-# |`-+-+-+-+-+-+-+-'|
-# |`-`-`-`-`-`-`-`-'|
-# `-----------------'
-#
-# Sample area locations to use for stops
-#
+Lumpy
+
+Device orientation on robot sampling area
+
+        Y-------->
+    ,-----------------,
+    |     ,-----.     |
+ X  |     |     |     |
+ |  |     `-----'     |
+ |  |,-.-.-.-.-.-.-.-.|
+ |  |`-+-+-+-+-+-+-+-'|
+\|/ |`-+-+-+-+-+-+-+-'|
+    |`-+-+-+-+-+-+-+-'|
+    |`-`-`-`-`-`-`-`-'|
+    `-----------------'
+
+Place the stops at the following locations:
 108, 203, 311, 404
-#
-# Coordinates for touch area bounding box:
-#
+
+Coordinates for touchpad area bounding box (lumpy.pp):
+Measured with gestures/point_picker.py
 X = 35.00..90.00
 Y = 115.00..208.00
 Z(paper contact) = 86.00

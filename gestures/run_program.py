@@ -1,18 +1,18 @@
-#
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# EEPROM programming wrapper.  The run_prog() function can be used externally
-# to load a program into eeprom or this script can be run on its own to run
-# whatever program is currently stored there.  This allows us to cut down on
-# the number of read/write cycles to the eeprom as well as makes the code for
-# gestures much nicer.
-#
+
+"""EEPROM programming wrapper.  The run_prog() function can be used externally
+to load a program into eeprom or this script can be run on its own to run
+whatever program is currently stored there.  This allows us to cut down on
+the number of read/write cycles to the eeprom as well as makes the code for
+gestures much nicer.
+"""
+
 import roibot
 
 
-def run_program(program=None, *args, **kwargs):
+def run_program(program=None, device=None, *args, **kwargs):
     # Open the robot interface.
     robot = roibot.ROIbot(port='/dev/ttyUSB0',
                           baudrate=9600,
@@ -35,7 +35,11 @@ def run_program(program=None, *args, **kwargs):
 
         # If we have a new program to load onto the robot
         if program != None:
-            program(robot, *args, **kwargs)
+            if device == None:
+                print "You must specify a device to load a new program"
+                return
+            bounds = roibot.BoundingVolume(device)
+            program(robot, bounds, *args, **kwargs)
 
         # Switch the program mode to auto (run the program in eeprom)
         robot.tryOrFail(robot.modeAutomatic)
@@ -51,8 +55,10 @@ def run_program(program=None, *args, **kwargs):
     except Exception as e:
         print "Exception Caught"
         print "Error(" + str(e) + ")"
+        print
+        print "Current robot status:"
         for statusElement in roibot.error.statusReport(robot):
-            print "    ", statusElement
+            print statusElement
         raise
     finally:
         robot.timeout = None

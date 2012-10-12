@@ -30,12 +30,10 @@ import roibot
 import run_program
 
 
-def program(robot, *args, **kwargs):
+def program(robot, bounds, *args, **kwargs):
     """Upload a new program to the robot.  This program moves the finger
     in a given straight line as a specified speed in mm/s.
     """
-    # TODO: replace with a device parameter instead of hardcoded "lumpy"
-    bounds = roibot.BoundingVolume("lumpy")
 
     # Setup speed book-keeping for the robot
     STROKE_TABLE = 1
@@ -81,11 +79,15 @@ def program(robot, *args, **kwargs):
     robot.addCmd("END")
 
 
-if len(sys.argv) != 6:
-   print "You need to specify start_x start_y end_x endy speed_mm_per_s"
-start_x = float(sys.argv[1])
-start_y = float(sys.argv[2])
-end_x = float(sys.argv[3])
-end_y = float(sys.argv[4])
-speed = float(sys.argv[5])
-run_program.run_program(program, start_x, start_y, end_x, end_y, speed)
+if __name__=="__main__":
+    if len(sys.argv) != 7:
+        print "Usage: ./line device_name start_x start_y end_x end_y speed_mm/s"
+    else:
+        device = sys.argv[1]
+        start_x = float(sys.argv[2])
+        start_y = float(sys.argv[3])
+        end_x = float(sys.argv[4])
+        end_y = float(sys.argv[5])
+        speed = float(sys.argv[6])
+        run_program.run_program(program, device, start_x, start_y, end_x,
+                                end_y, speed)

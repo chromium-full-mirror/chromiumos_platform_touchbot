@@ -1,30 +1,32 @@
-#
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# This script makes the robot do a "scroll" function on the touchpad
-# by placing two fingers near the top of the touchpad, moving down at a
-# specified speed, and optionally lifting off smoothly to create a "fling"
-# on stopping to leave it as a scroll.
-#
-# This requires the second finger to be in the down position to work!
-#
+
+"""This script makes the robot do a "scroll" function on the touchpad
+by placing two fingers near the top of the touchpad, moving down at a
+specified speed, and optionally lifting off smoothly to create a "fling"
+on stopping to leave it as a scroll.
+
+Usage:
+    ./scroll device          Does a "scroll" gesture
+    ./scroll device fling    Does a "fling" gesture
+
+This requires the second finger to be in the down position to work!
+"""
+
+
+import sys
 
 import roibot
 import run_program
-import sys
 
-def program(robot, *arg, **kwargs):
+
+def program(robot, bounds, *arg, **kwargs):
     """Upload a new program to the robot.
     This program does a single scroll action (Possibly with fling)
-    Usage:
-        ./scroll          Does a "scroll" gesture
-        ./scroll fling    Does a "fling" gesture
     """
 
     # Define the parameters of the gesture (speeds are in mm/s)
-    bounds = roibot.BoundingVolume("lumpy")
     SCROLL_SPEED = 30
     SCROLL_SPEED_TABLE = 1
     SETUP_SPEED = 60
@@ -33,7 +35,7 @@ def program(robot, *arg, **kwargs):
     PAUSE_TIME = 1.5        # How long to pause before lifting (seconds)
 
     # Compute where the finger should be for this device
-    # note: The touchpad has to sit sideways on the robot, so y->x
+    # Note: The touchpad has to sit sideways on the robot, so y->x
     scrollY = ((bounds.maxY() - bounds.minY()) / 2.0) + bounds.minY()
     bufferX = (bounds.maxX() - bounds.minX()) * BUFFER_PERC
     startX = bounds.maxX() - bufferX
@@ -81,8 +83,10 @@ def program(robot, *arg, **kwargs):
     # End the program nicely
     robot.addCmd("END")
 
-print sys.argv
-shouldFling = False
-if (len(sys.argv) > 1 and sys.argv[1].lower() == "fling"):
-   shouldFling = True
-run_program.run_program(program, fling=shouldFling)
+if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[2].lower() == "fling":
+        run_program.run_program(program, sys.argv[1], fling=True)
+    elif len(sys.argv) == 2:
+        run_program.run_program(program, sys.argv[1], fling=False)
+    else:
+        print "Usage: ./scroll device_name [fling]"

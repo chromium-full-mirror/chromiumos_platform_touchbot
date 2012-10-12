@@ -1,11 +1,12 @@
-#
 # Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-#
-# Run in a diagonal criss-cross pattern over the whole touchpad to try and
-# expose non-linearities in the touchpad sensor
-#
+
+"""Run in a diagonal criss-cross pattern over the whole touchpad to try and
+expose non-linearities in the touchpad sensor
+"""
+
+import sys
 
 import roibot
 import run_program
@@ -28,12 +29,12 @@ class StrokeController:
     def add_destination(self, pt):
         self.robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
     def add_single_line(self, start, end):
-                x1, y1 = start
-        pt1_up = self.robot.addPoint((x1, y1, self.up))
-        pt1_down = self.robot.addPoint((x1, y1, self.down))
+        x1, y1 = start
+        pt1_up = self.robot.addPoint(x1, y1, self.up)
+        pt1_down = self.robot.addPoint(x1, y1, self.down)
         x2, y2 = end
-        pt2_up = self.robot.addPoint((x2, y2, self.up))
-        pt2_down = self.robot.addPoint((x2, y2, self.down))
+        pt2_up = self.robot.addPoint(x2, y2, self.up)
+        pt2_down = self.robot.addPoint(x2, y2, self.down)
 
         self.add_destination(pt1_up)
         self.add_destination(pt1_down)
@@ -48,22 +49,20 @@ class StrokeController:
         self.add_single_line(start, end)
         self.add_single_line(self.mirrorX(start), self.mirrorX(end))
 
-def program(robot):
+def program(robot, bounds):
     """Upload a new program to the robot.
     This program moves the finger in a tight diagonal criss-cross covering
     the whole pad as thoroughly as possible to try and measure linearity
     errors in the sensor.
     """
-    bounds = roibot.BoundingVolume("lumpy")
-    STROKE_SPEED = 100
+    STROKE_SPEED = 5
     STROKE_SPEED_TABLE = 1
     SETUP_SPEED = 200
     SETUP_SPEED_TABLE = 2
-    GRID_STEP_MM = 20
+    GRID_STEP_MM = 2
     TOUCH_Z = bounds.paperZ()
     UP_Z = bounds.upZ()
 
-    print "Begin Programming"
     # Set up the speed table
     robot.setParam("T2 V%02d=%06.01f" % (SETUP_SPEED_TABLE, SETUP_SPEED)),
     robot.setParam("T2 V%02d=%06.01f" % (STROKE_SPEED_TABLE, STROKE_SPEED)),
@@ -105,4 +104,9 @@ def program(robot):
     # End the program nicely
     robot.addCmd("END")
 
-run_program.run_program(program)
+if __name__=="__main__":
+    if len(sys.argv) != 2:
+        print "Usage: ./diagonals device_name"
+    else:
+        device = sys.argv[1]
+        run_program.run_program(program, device)
