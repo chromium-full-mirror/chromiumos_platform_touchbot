@@ -79,7 +79,11 @@ def run_program(program=None, device=None, *args, **kwargs):
 
         # Start eeprom program 1
         robot.tryOrFail(robot.execStartSequential, 1)
-        print "Execution started."
+        print "Execution started"
+
+        # Block until the program has finished
+        roibot.motion.waitForExecution(robot)
+        print "Execution completed"
 
     except Exception as e:
         print "Exception Caught"
