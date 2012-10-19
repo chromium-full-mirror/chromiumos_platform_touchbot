@@ -31,25 +31,16 @@ The directory structure is laid out as follows:
 
 	documentation/	More detailed documentation not covered by pydoc.
 
-	devices/	A set of textual descriptions and coordinate
-			bounding box regions for devices the robot is
-			prepared to operate on.
-
-	examples/	Some examples of robot motion control programs
-			achievable with the control module.  These all
-			have helper scripts screated at build time which
-			will automatically set the PYTHONPATH to include
-			the 'roibot/' directory, as long as the argv[0]
-			matches the actual invocation path (don't mess
-			around with your execve/posix_spawn arguments,
-			in other words)
-
 	gestures/	A set of gesture programs utilizing the roibot/
 			library to implement program commands and allow
 			interactive control of the robot finger positions,
 			return to origin, and so on.
 
 	roibot/		The control module itself.
+
+	roibot/devices/	A set of textual descriptions and coordinate
+			bounding box regions for devices the robot is
+			prepared to operate on.
 
 	test/		Test support for calidation of the control
 			module itself.  This does not contain the
