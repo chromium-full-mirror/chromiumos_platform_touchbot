@@ -9,12 +9,41 @@ the number of read/write cycles to the eeprom as well as makes the code for
 gestures much nicer.
 """
 
+import glob
+
 import roibot
 
 
+def scan_serial_ports():
+    ports = glob.glob('/dev/ttyUSB*')
+
+    for port in ports:
+        print "Trying port: %s" % port
+        try:
+            robot = roibot.ROIbot(port=port,
+                                  baudrate=9600,
+                                  bytesize=8,
+                                  parity='E',
+                                  stopbits=1,
+                                  rtscts=0)
+            robot.timeout = 2
+            robot.tryOrFail(robot.modeRequestRobotType)
+            print "\tRobot detected"
+            return port
+        except:
+            print "\tNo robot found"
+
+    return None
+
 def run_program(program=None, device=None, *args, **kwargs):
+    # Detect which serial port the robot is listening on
+    robot_port = scan_serial_ports()
+    if robot_port is None:
+       print "No robot found, please ensure that it is connected"
+       return
+
     # Open the robot interface.
-    robot = roibot.ROIbot(port='/dev/ttyUSB0',
+    robot = roibot.ROIbot(port=robot_port,
                           baudrate=9600,
                           bytesize=8,
                           parity='E',
