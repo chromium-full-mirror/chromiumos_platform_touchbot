@@ -3,25 +3,10 @@
 # found in the LICENSE file.
 
 """Move the finger in a straight line between two points at a specified
-speed in mm/s.  The point coordinates are given in the range of 0.0
-through 1.0 indicating a percentage of the way long that axis, so the
-gesture can be generalized across multiple devices.
+speed in mm/s.
 
-The line is specified from the touchpad's point of view.
-Refer to the diagram of the touchpad below to specify your lines.
-     ____________
-    |1          2|
-    |  touchpad  |
-    |            |
-    |3__________4|
-
-    1: (0.0, 0.0)
-    2: (1.0, 0.0)
-    3: (0.0, 1.0)
-    4: (1.0, 1.0)
-
-Usage: ./line START_X START_Y END_X END_Y SPEED_IN_MM_PER_S
-   eg: ./line 0.1 0.1 0.9 0.9 15.0
+Usage: ./line DEVICE START_X START_Y END_X END_Y SPEED_IN_MM_PER_S
+   eg: ./line snow 0.1 0.1 0.9 0.9 15.0
 """
 
 import sys
@@ -41,13 +26,8 @@ def program(robot, bounds, *args, **kwargs):
     SETUP_TABLE = 2
 
     # Compute the endpoints of the stroke from the robots point of view
-    # noting that the robot is rotated 90 degrees from the touchpad.
-    range_y = bounds.maxY() - bounds.minY()
-    range_x = bounds.maxX() - bounds.minX()
-    start_x = bounds.maxX() - float(args[1]) * range_x
-    start_y = bounds.maxY() - float(args[0]) * range_y
-    end_x = bounds.maxX() - float(args[3]) * range_x
-    end_y = bounds.maxY() - float(args[2]) * range_y
+    start_x, start_y = bounds.convert(float(args[0]), float(args[1]))
+    end_x, end_y = bounds.convert(float(args[2]), float(args[3]))
     speed = float(args[4])
 
     # Set up the speed tables

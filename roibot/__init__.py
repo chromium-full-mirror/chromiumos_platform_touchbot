@@ -54,3 +54,29 @@ class BoundingVolume:
 
     def clickZ(self):
         return self.deviceRange[2][1]
+
+    def convert(self, touchpad_x, touchpad_y):
+        """Take a set of coordinates on the touchpad and convert them into the
+        robot's view. Since the touchpad is rotated 90 degrees from the
+        touchpad, the x and y coordinates are switched and then the values are
+        scaled to fit the bounds of this specific touchpad
+
+        The touchpad coordinates are to be specified in the range from 0.0-1.0
+        Refer to the diagram of the touchpad below to specify any points.
+             ____________
+            |1          2|
+            |  touchpad  |
+            |            |
+            |3__________4|
+
+            1: (0.0, 0.0)
+            2: (1.0, 0.0)
+            3: (0.0, 1.0)
+            4: (1.0, 1.0)
+        """
+        range_y = self.maxY() - self.minY()
+        range_x = self.maxX() - self.minX()
+        robot_x = self.maxX() - float(touchpad_y) * range_x
+        robot_y = self.maxY() - float(touchpad_x) * range_y
+
+        return  robot_x, robot_y

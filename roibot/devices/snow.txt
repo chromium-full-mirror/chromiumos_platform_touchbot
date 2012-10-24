@@ -21,5 +21,5 @@ Coordinates for touchpad area bounding box (snow.pp):
 Measured with gestures/point_picker.py
 X = 37.50..77.6
 Y = 116.30..201.3
-Z(paper contact) = 91.51
-Z(button press) = 92.4
+Z(paper contact) = 87.00
+Z(button press) = 89.52
