@@ -27,33 +27,37 @@ class BoundingVolume:
     from a manually generated pickled file, and presents it to the script in
     a simpler format instead of having to remember all the matrix indices.
     """
-    # TODO(charliemooney) Reimplement device files as something less cryptic
+
+    # How much room to give when lifting the finger off the touchpad (in mm)
+    TOUCHPAD_CLEARANCE = 15
+
     def __init__(self, device):
-        path = device + ".pp"
-        path = os.path.join(os.path.dirname(__file__), "devices", path)
-        self.deviceRange = pickle.load(open(path, "r"))
+        exec "from devices.%s import bounds" % device
+        self.bounds = bounds
 
     def minX(self):
-        return self.deviceRange[0][0]
+        return self.bounds['minX']
 
     def maxX(self):
-        return self.deviceRange[0][1]
+        return self.bounds['maxX']
 
     def minY(self):
-        return self.deviceRange[1][0]
+        return self.bounds['minY']
 
     def maxY(self):
-        return self.deviceRange[1][1]
+        return self.bounds['maxY']
 
     def upZ(self):
-        # TODO(charliemooney@) Get rid of magic number (touchpad clearance)
-        return self.paperZ() - 15
+        return self.bounds['paperZ'] - self.TOUCHPAD_CLEARANCE
 
     def paperZ(self):
-        return self.deviceRange[2][0]
+        return self.bounds['paperZ']
+
+    def tapZ(self):
+        return self.bounds['tapZ']
 
     def clickZ(self):
-        return self.deviceRange[2][1]
+        return self.bounds['clickZ']
 
     def convert(self, touchpad_x, touchpad_y):
         """Take a set of coordinates on the touchpad and convert them into the

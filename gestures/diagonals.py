@@ -59,7 +59,7 @@ def program(robot, bounds):
     STROKE_SPEED_TABLE = 1
     SETUP_SPEED = 200
     SETUP_SPEED_TABLE = 2
-    GRID_STEP_MM = 2
+    GRID_STEP_MM = 10
     TOUCH_Z = bounds.paperZ()
     UP_Z = bounds.upZ()
 

@@ -45,7 +45,7 @@ def program(robot, bounds, *args, **kwargs):
     if args[2].lower() == "tap":
         robot.addCmd("SPD V=%02d" % TAP_TABLE)
         # To achieve a fluid "tap" set the movement as PASS and overshoot
-        pt = robot.addPoint(target_x, target_y, bounds.clickZ())
+        pt = robot.addPoint(target_x, target_y, bounds.tapZ())
         robot.addCmd("MOVP a PT=%03d CN=00 S V=00 PASS" % pt)
     else:
         robot.addCmd("SPD V=%02d" % CLICK_TABLE)
