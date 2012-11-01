@@ -22,56 +22,39 @@ def program(robot, bounds, *args, **kwargs):
     in a given straight line as a specified speed in mm/s.
     """
 
-    # Setup speed book-keeping for the robot
-    STROKE_TABLE = 1
-    SETUP_SPEED = 60
-    SETUP_TABLE = 2
-
     # Compute the endpoints of the stroke from the robots point of view
     start_x, start_y = bounds.convert(float(args[0]), float(args[1]))
     end_x, end_y = bounds.convert(float(args[2]), float(args[3]))
-    speed = float(args[4])
+    line_speed = float(args[4])
     line_type = args[5].lower()
 
-    # Set up the speed tables
-    robot.setParam("T2 V%02d=%06.01f" % (STROKE_TABLE, speed))
-    robot.setParam("T2 V%02d=%06.01f" % (SETUP_TABLE, SETUP_SPEED))
-
     # Get into position
-    robot.addCmd("SPD V=%02d" % SETUP_TABLE)
-
-    pt = robot.addPoint(start_x, start_y, bounds.upZ())
-    robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
-
-    pt = robot.addPoint(start_x, start_y, bounds.paperZ())
-    robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
+    SETUP_SPEED = 60
+    robot.addMoveCommand(start_x, start_y, bounds.upZ(), SETUP_SPEED)
 
     # Preform the stroke
-    robot.addCmd("SPD V=%02d" % STROKE_TABLE)
     if line_type  == "basic":
-        # Stay on the touchpad for the duration of the line
-        pt = robot.addPoint(end_x, end_y, bounds.paperZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
+        # Touch down and stay on the touchpad for the duration of the line
+        robot.addMoveCommand(start_x, start_y, bounds.paperZ(), SETUP_SPEED)
+        robot.addMoveCommand(end_x, end_y, bounds.paperZ(), line_speed)
 
         # Lift up only once the whole line is done
-        pt = robot.addPoint(end_x, end_y, bounds.upZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
+        robot.addMoveCommand(end_x, end_y, bounds.upZ(), SETUP_SPEED)
     else:
         # Gradually lower onto the surface over the first 1/4 of the line
         touchdown_x = (3.0 * start_x + end_x) / 4.0
         touchdown_y = (3.0 * start_y + end_y) / 4.0
-        pt = robot.addPoint(touchdown_x, touchdown_y, bounds.paperZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 PASS" % pt)
+        robot.addMoveCommand(touchdown_x, touchdown_y, bounds.paperZ(),
+                             line_speed, accuracy="PASS")
 
         # Stay on the touchpad for 3/4 of the distance
-        mid_x = (start_x + 3.0 * end_x) / 4.0
-        mid_y = (start_y + 3.0 * end_y) / 4.0
-        pt = robot.addPoint(mid_x, mid_y, bounds.paperZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 PASS" % pt)
+        liftup_x = (start_x + 3.0 * end_x) / 4.0
+        liftup_y = (start_y + 3.0 * end_y) / 4.0
+        robot.addMoveCommand(liftup_x, liftup_y, bounds.paperZ(), line_speed,
+                             accuracy="PASS")
 
         # Then lift up gradually for the remaining 1/4
-        pt = robot.addPoint(end_x, end_y, bounds.upZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 PASS" % pt)
+        robot.addMoveCommand(end_x, end_y, bounds.upZ(), line_speed)
 
     # End the program nicely
     robot.addCmd("END")

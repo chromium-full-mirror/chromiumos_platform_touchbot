@@ -63,6 +63,11 @@ class ROIbot(serial.Serial):
     _hostModeON = False
     _line_number = 1
     _point_number = 1
+    _speed_number = 1
+    _points = {}
+    _speeds = {}
+    _current_speed = -1
+    _MAX_SPEED_NUMBER = 10
     _RESPONSE_TIMEOUT = 2   # In seconds
 
     #
@@ -689,15 +694,39 @@ class ROIbot(serial.Serial):
         print "SETTING: %s" % cmd
         self.tryOrFail(self.parameterWrite, cmd)
 
+    def setSpeed(self, speed):
+        """Change the robot's operating speed.  This will add new entries to the
+        speed table and new program instructions only if it needs to.
+        """
+        if speed <= 0 or speed > 999:
+            return
+
+        if self._current_speed == speed:
+            return
+
+        if not speed in self._speeds:
+            if self._speed_number > self._MAX_SPEED_NUMBER:
+                print "WARNING: Unable to add speed %d to the speed table!"
+                return
+            self._speeds[speed] = self._speed_number
+            self.setParam("T2 V%02d=%06.01f" % (self._speed_number, speed))
+            self._speed_number += 1
+
+        self.addCmd("SPD V=%02d" % self._speeds[speed])
+        self._current_speed = speed
+
+
     def addPoint(self, x, y, z):
         """Add a new point to the point table (returns the point number)."""
-        self.setParam("T1 PT=%03d " % self._point_number +
-                      "X=+%07.02f " % x +
-                      "Y=+%07.02f " % y +
-                      "Z=+%07.02f " % z +
-                      "R=+0000.00")
-        self._point_number += 1
-        return self._point_number - 1
+        if not (x, y, z) in self._points:
+            self.setParam("T1 PT=%03d " % self._point_number +
+                          "X=+%07.02f " % x +
+                          "Y=+%07.02f " % y +
+                          "Z=+%07.02f " % z +
+                          "R=+0000.00")
+            self._points[(x, y, z)] = self._point_number
+            self._point_number += 1
+        return self._points[(x, y, z)]
 
     def tryOrFail(self, fn, *args, **kwargs):
         """Make multiple attempts to call a function fn().  The function should
@@ -711,4 +740,13 @@ class ROIbot(serial.Serial):
                 return result
             time.sleep(1)
         raise unrecoverableError
+
+    def addMoveCommand(self, x, y, z, speed, accuracy="POST"):
+        """Add the command necessary to tell the robot to move to the point
+        (x, y, z) at the specified speed.  This conserves eeprom space and
+        will not add unnecessary instructions.
+        """
+        self.setSpeed(speed)
+        point_index = self.addPoint(x, y, z)
+        self.addCmd("MOVP a PT=%03d CN=00 S V=00 %s" % (point_index, accuracy))
 # End
