@@ -59,6 +59,11 @@ class BoundingVolume:
     def clickZ(self):
         return self.bounds['clickZ']
 
+    def keyCoordinates(self, key):
+        if self.bounds.get('keys'):
+            return self.bounds['keys'].get(key)
+        return None
+
     def convert(self, touchpad_x, touchpad_y):
         """Take a set of coordinates on the touchpad and convert them into the
         robot's view. Since the touchpad is rotated 90 degrees from the
