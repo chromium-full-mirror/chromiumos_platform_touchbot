@@ -69,6 +69,7 @@ def run_program(program=None, device=None, *args, **kwargs):
                 return
             bounds = roibot.BoundingVolume(device)
             program(robot, bounds, *args, **kwargs)
+            robot.addCmd("END")
 
         # Switch the program mode to auto (run the program in eeprom)
         robot.tryOrFail(robot.modeAutomatic)

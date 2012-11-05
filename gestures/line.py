@@ -56,9 +56,6 @@ def program(robot, bounds, *args, **kwargs):
         # Then lift up gradually for the remaining 1/4
         robot.addMoveCommand(end_x, end_y, bounds.upZ(), line_speed)
 
-    # End the program nicely
-    robot.addCmd("END")
-
 
 if __name__=="__main__":
     if len(sys.argv) != 8:

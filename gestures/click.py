@@ -56,9 +56,6 @@ def program(robot, bounds, *args, **kwargs):
     pt = robot.addPoint(target_x, target_y, bounds.upZ())
     robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
 
-    # End the program nicely
-    robot.addCmd("END")
-
 
 if __name__ == "__main__":
     if len(sys.argv) != 5:

@@ -101,8 +101,6 @@ def program(robot, bounds):
         strokes.add_line((bounds.maxX(), y), (x_int, y_int))
         y += GRID_STEP_MM
 
-    # End the program nicely
-    robot.addCmd("END")
 
 if __name__=="__main__":
     if len(sys.argv) != 2:

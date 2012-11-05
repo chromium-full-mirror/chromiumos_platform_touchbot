@@ -31,7 +31,6 @@ def program(robot, bounds, *args, **kwargs):
     key_coordinates = bounds.keyCoordinates(key)
     if not key_coordinates:
         print 'ERROR: key "%s" not defined for this device!' % args[0]
-        robot.addCmd("END")
         return
     key_x, key_y, key_z = key_coordinates
 
@@ -39,9 +38,6 @@ def program(robot, bounds, *args, **kwargs):
     robot.addMoveCommand(key_x, key_y, key_z - CLEARANCE_Z, PRESS_SPEED)
     robot.addMoveCommand(key_x, key_y, key_z, PRESS_SPEED, accuracy="PASS")
     robot.addMoveCommand(key_x, key_y, key_z - CLEARANCE_Z, PRESS_SPEED)
-
-    # End the program nicely
-    robot.addCmd("END")
 
 
 if __name__ == "__main__":
