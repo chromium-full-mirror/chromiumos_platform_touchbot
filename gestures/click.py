@@ -4,8 +4,9 @@
 
 """ Perform a click or tap action at the specified location.
 
-Usage: ./click device TARGET_X TARGET_Y [tap|click]
+Usage: ./click device TARGET_X TARGET_Y [TARGET2_X TARGET2_Y ...] [tap|click]
    eg: ./click snow 0.5 0.5 tap
+   eg: ./click snow 0.5 0.5 0.1 0.9 0.2 0.44 click
 """
 
 import sys
@@ -21,53 +22,43 @@ def program(robot, bounds, *args, **kwargs):
 
     # Setup speed book-keeping for the robot
     TAP_SPEED = 600
-    TAP_TABLE = 1
     CLICK_SPEED = 100
-    CLICK_TABLE = 2
     SETUP_SPEED = 60
-    SETUP_TABLE = 3
 
     # Convert the coordinates into the robot's view.
-    target_x, target_y = bounds.convert(float(args[0]), float(args[1]))
+    targets = [bounds.convert(x, y) for x, y in args[0]]
+    click_type = args[1].lower()
 
-    # Set up the speed tables
-    robot.setParam("T2 V%02d=%06.01f" % (TAP_TABLE, TAP_SPEED))
-    robot.setParam("T2 V%02d=%06.01f" % (CLICK_TABLE, CLICK_SPEED))
-    robot.setParam("T2 V%02d=%06.01f" % (SETUP_TABLE, SETUP_SPEED))
+    for target_x, target_y in targets:
+        # Get into position
+        robot.addMoveCommand(target_x, target_y, bounds.upZ(), SETUP_SPEED)
 
-    # Get into position
-    robot.addCmd("SPD V=%02d" % SETUP_TABLE)
-
-    pt = robot.addPoint(target_x, target_y, bounds.upZ())
-    robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
-
-    # Perform the click action
-    if args[2].lower() == "tap":
-        robot.addCmd("SPD V=%02d" % TAP_TABLE)
-        # To achieve a fluid "tap" set the movement as PASS and overshoot
-        pt = robot.addPoint(target_x, target_y, bounds.tapZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 PASS" % pt)
-    else:
-        robot.addCmd("SPD V=%02d" % CLICK_TABLE)
-        # To achieve a deliberate "click" set movement to POST and move slowly
-        pt = robot.addPoint(target_x, target_y, bounds.clickZ())
-        robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
-
-    pt = robot.addPoint(target_x, target_y, bounds.upZ())
-    robot.addCmd("MOVP a PT=%03d CN=00 S V=00 POST" % pt)
+        # Perform the click action
+        if click_type == "tap":
+            # To achieve a fluid "tap" set the movement as PASS and overshoot
+            robot.addMoveCommand(target_x, target_y, bounds.tapZ(), TAP_SPEED,
+                                 accuracy="PASS")
+            robot.addMoveCommand(target_x, target_y, bounds.upZ(), TAP_SPEED)
+        else:
+            robot.addMoveCommand(target_x, target_y, bounds.clickZ(),
+                                 CLICK_SPEED)
+            robot.addMoveCommand(target_x, target_y, bounds.upZ(), CLICK_SPEED)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print "Usage: ./click device_name target_x target_y [tap|click]"
+    if len(sys.argv) < 5 or len(sys.argv) % 2 == 0:
+        print "Usage: ./click device_name target_x target_y " \
+              "[target2_x target2_y ...] [tap|click]"
     else:
         device = sys.argv[1]
-        target_x = float(sys.argv[2])
-        target_y = float(sys.argv[3])
-        click_type = sys.argv[4].lower()
+        targets = []
+        for i in range(2, len(sys.argv) - 1, 2):
+            target_x = float(sys.argv[i])
+            target_y = float(sys.argv[i + 1])
+            targets.append((target_x, target_y))
+        click_type = sys.argv[-1].lower()
         if click_type != "click" and click_type != "tap":
             print 'Illegal click type: "%s".' % click_type
             print 'Options are: "tap" and "click"'
         else:
-            run_program.run_program(program, device, target_x, target_y,
-                                    click_type)
+            run_program.run_program(program, device, targets, click_type)
