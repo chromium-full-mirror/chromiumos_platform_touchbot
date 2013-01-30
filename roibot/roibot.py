@@ -118,7 +118,7 @@ class ROIbot(serial.Serial):
            by a (potentially empty) list of additional data items.
         """
         cmdlist = [str(arg) for arg in args]
-        cmd = ' '.join(args)
+        cmd = ' '.join(cmdlist)
         self.write("@" + cmd + "\r\n")
 
         # Wait for a few seconds to see if there is a respose.  If not, fail
@@ -682,6 +682,9 @@ class ROIbot(serial.Serial):
         """Upload a new command into the next spot in the eeprom.  This adds a
         new instruction to the program in the robots memory.
         """
+        if type(cmd) is tuple:
+            cmd = " ".join(cmd)
+
         print "ADDING:  %04d %s" % (self._line_number, cmd)
         self.tryOrFail(self.textWriteSequential,
                        "%04d" % self._line_number, cmd)
