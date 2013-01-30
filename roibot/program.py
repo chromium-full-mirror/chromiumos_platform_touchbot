@@ -345,8 +345,8 @@ def internalPortInputWait(internalPortNumber, pattern, logic):
     return ("INSP", "PN%1d=%s" % (internalPortNumber, pattern), logic)
 
 def jump(tagNumber):
-    """Jump onconditionally to the specified tag."""
-    return ("JMP", "TAG=%03d", tagNumber)
+    """Jump unconditionally to the specified tag."""
+    return ("JMP", "TAG=%03d" % tagNumber)
 
 def jumpCounterConditional(tagNumber, counterNumber, operator, value):
     """Jump to the specified tag when the specified counter contents satisfy
