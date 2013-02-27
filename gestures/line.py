@@ -43,7 +43,7 @@ def program(robot, bounds, *args, **kwargs):
 
         # Lift up only once the whole line is done
         robot.addMoveCommand(end_x, end_y, bounds.upZ(), SETUP_SPEED)
-    elif line_type = "swipe":
+    elif line_type == "swipe":
         # Gradually lower onto the surface over the first 1/4 of the line
         touchdown_x = (3.0 * start_x + end_x) / 4.0
         touchdown_y = (3.0 * start_y + end_y) / 4.0
@@ -58,7 +58,7 @@ def program(robot, bounds, *args, **kwargs):
 
         # Then lift up gradually for the remaining 1/4
         robot.addMoveCommand(end_x, end_y, bounds.upZ(), line_speed)
-    elif line_type = "fling":
+    elif line_type == "fling":
         # Touch down and stay on the touchpad for most of the line
         robot.addMoveCommand(start_x, start_y, bounds.paperZ(), SETUP_SPEED)
 
