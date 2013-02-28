@@ -90,7 +90,7 @@ def condExecutionDone(roibot, context):
        operations which clear the execution bit on completion, such as
        returning all axes to their origin position."""
     report0 = roibot.modeRequestStatus(0)
-    report0status1 = int(str(report0[1][1]).lstrip("ST1="),16)
+    report0status1 = roibot.parseStatusCode(report0[1][1])
     # still in execution?
     if report0status1 & 0x02:
         return False;

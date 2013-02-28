@@ -210,6 +210,12 @@ class ROIbot(serial.Serial):
         """
         return self.sendCommand("STAS", "SNO=" + str(statusNumber))
 
+    def parseStatusCode(self, response):
+        """ Parse out the status code from a raw response.  Takes a string of
+            the form 'STR1=13' and returns the status code
+        """
+        return int(str(response).split("=")[1], 16)
+
     def modeHostON(self):
         """Enter host mode.  This mode is required to use most commands."""
         result = self.TFResult(self.sendCommand("HSON"))

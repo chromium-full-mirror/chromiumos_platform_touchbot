@@ -212,12 +212,12 @@ def statusReport(roibot):
     # SNO=0 status
     element = []
     report0 = roibot.modeRequestStatus(0)
-    report0status1 = int(str(report0[1][1]).lstrip("ST1="),16)
+    report0status1 = roibot.parseStatusCode(report0[1][1])
     if report0status1 & 0x01:
         # SNO=1 error code and optional amplifier alarm code
         report1 = roibot.modeRequestStatus(1)
-        report1status1 = str(report1[1][1]).lstrip("ST1=")
-        report1status2 = str(report1[1][2]).lstrip("ST2=")
+        report1status1 = roibot.parseStatusCode(report1[1][1])
+        report1status2 = roibot.parseStatusCode(report1[1][2])
         element.append("error=" + translate(report1status1, report1status2))
     for bit, message in ((0x02, "in execution"),
                          (0x04, "paused"),
@@ -234,7 +234,7 @@ def statusReport(roibot):
     # SNO=2 Robot mode
     element = []
     report2 = roibot.modeRequestStatus(2)
-    report2status1 = int(str(report2[1][1]).lstrip("ST1="),16)
+    report2status1 = roibot.parseStatusCode(report2[1][1])
     # bits 0 1
     for value, message in ((0x00, "Sequential mode"),
                            (0x01, "Palletizing mode"),
@@ -264,7 +264,7 @@ def statusReport(roibot):
     # SNO=3 Servo, slave, and card status (if memory card option is installed)
     element = []
     report3 = roibot.modeRequestStatus(3)
-    report3status1 = int(str(report3[1][1]).lstrip("ST1="),16)
+    report3status1 = roibot.parseStatusCode(report3[1][1])
     # bits 0 1 2 3
     for bit, message in ((0x01, "Servo ON"),
                          (0x02, "Reserved SNO=3 bit 0x02"),
@@ -288,7 +288,7 @@ def statusReport(roibot):
     # SNO=4 Input and output status
     element = []
     report4 = roibot.modeRequestStatus(4)
-    report4status1 = int(str(report4[1][1]).lstrip("ST1="),16)
+    report4status1 = roibot.parseStatusCode(report4[1][1])
     for bit, message in ((0x01, "Escape input ON"),
                          (0x02, "Continuous input ON"),
                          (0x04, "INPUT wait"),
