@@ -19,10 +19,11 @@ import curses
 import curses.textpad
 
 import roibot
+import run_program
 
 # Open the robot interface.
-# robot = roibot.ROIbot(sys.argv[1])
-robot = roibot.ROIbot(port='/dev/ttyUSB0',
+robot_port = run_program.scan_serial_ports()
+robot = roibot.ROIbot(port=robot_port,
                       baudrate=9600,
                       bytesize=8,
                       parity='E',
