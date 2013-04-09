@@ -616,6 +616,17 @@ class ROIbot(serial.Serial):
            """
         return self.sendCommand("MPST")
 
+    def getCurrentPosition(self):
+        """Requests the position and returns it as an (x, y, z) tuple of
+           floats.  This eliminates the parsing issues and the unused r
+           dimension since we don't have that on our robot anyway.
+           """
+        response_type, response_data = self.monRequestPresentPosition()
+        x = float(response_data[0].split("=")[1])
+        y = float(response_data[1].split("=")[1])
+        z = float(response_data[2].split("=")[1])
+        return (x, y, z)
+
     def monRequestPresentOffsetValue(self):
         """Request present offset value.  Returns the current X, Y, Zm and
            rotational offsets.  Not all robots support all coordinates.
