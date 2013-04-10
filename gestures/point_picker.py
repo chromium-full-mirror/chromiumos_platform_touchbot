@@ -183,8 +183,8 @@ try:
                                  base_x + dim_x + 1, base_y + dim_y + 1)
         stdscr.move(base_x - 1, base_y + 10)
         stdscr.addstr("Motion Rectangle")
-        point_x = base_x + ((x * dim_x) / max_x)
-        point_y = base_y + ((y * dim_y) / max_y)
+        point_x = int(base_x + ((x * dim_x) / max_x))
+        point_y = int(base_y + ((y * dim_y) / max_y))
         lim_z = base_y + int(y)
         stdscr.move(point_x, point_y)
         if (z < max_z):
