@@ -31,9 +31,20 @@ class BoundingVolume:
     # How much room to give when lifting the finger off the touchpad (in mm)
     TOUCHPAD_CLEARANCE = 15
 
+    # The offsets from the calibrated z value and the tap and click z's
+    TAP_Z_OFFSET = 0
+    CLICK_Z_OFFSET = 3
+
     def __init__(self, device):
-        exec "from devices.%s import bounds" % device
+        exec 'from devices.%s import bounds' % device
         self.bounds = bounds
+        if os.path.isfile('calibrated_dimensions.py'):
+            from calibrated_dimensions import z, calibrated_device
+            if calibrated_device == device:
+                print 'Calibrated values for %s found' % device
+                self.bounds['paperZ'] = z
+                self.bounds['tapZ'] = z + self.TAP_Z_OFFSET
+                self.bounds['clickZ'] = z + self.CLICK_Z_OFFSET
 
     def minX(self):
         return self.bounds['minX']

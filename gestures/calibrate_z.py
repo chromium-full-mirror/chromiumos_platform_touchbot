@@ -66,4 +66,6 @@ if __name__ == '__main__':
         robot.timeout = 2
 
         x, y, z = robot.getCurrentPosition()
-        print z
+        with open('calibrated_dimensions.py', 'w') as fo:
+            fo.write('calibrated_device = "%s"\n' % device)
+            fo.write('z = %f\n' % z)
