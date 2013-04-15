@@ -33,7 +33,7 @@ class BoundingVolume:
 
     # The offsets from the calibrated z value and the tap and click z's
     TAP_Z_OFFSET = 0
-    CLICK_Z_OFFSET = 3
+    CLICK_Z_OFFSET = 5
 
     def __init__(self, device):
         exec 'from devices.%s import bounds' % device
