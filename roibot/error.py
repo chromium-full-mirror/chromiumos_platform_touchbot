@@ -196,7 +196,7 @@ def translate(errorCode, alarmCode="00"):
         else:
             error = errorTable[errorCode]
     else:
-        error = "Unrecognized error code " + errorCode
+        error = "Unrecognized error code " + str(errorCode)
     return error
 
 
