@@ -1,0 +1,41 @@
+Non-linearity Analysis tools
+
+These tools are designed to characterize the non-linearity in the feedback of a
+touch sensor  In the end they generate a binary file that contains this data in
+a format that CMT's non-linearity filter can process and compensate for the
+errors.
+
+Dependencies:
+These scripts require a couple of outside libraries, but they are easily
+installed using "apt-get" with the following command:
+  sudo apt-get install python-numpy python-scipy python-matplotlib
+
+
+Usage:
+1.) Generate a large collection of activity_log's recording the robot moving
+very slowly in diagonal lines across the pad.  These should cover every spot
+on the pad with as many different finger sizes as possible.  It is likely a
+good idea to repeat this process on multiple machines and use them all to
+reduce the effect of an individual machine.
+
+2.) Parse the logs using the parse.py script.  This will generate a large
+collection of "stroke" files that each store the data of a single straight
+line drawn on the pad.
+
+    python parse.py my_logs/activity_log*.txt
+
+3.) Confirm that those strokes look right.  You can plot them as such
+
+    python showPath.py my_strokes/stroke*.p
+
+4.) Confirm that the errors have been computed correctly and that everything
+looks right by drawing a heatmap of the X and Y error at each position of
+the pad for a given pressure value.  This should manifest itself as a series
+of vertical stripes for one direction and horizontal stripes for the other
+
+    python displayError.py my_strokes/stroke*.p
+
+5.) Finally generate your binary using generateBlob.py once you're
+satisfied that your data looks reasonable.
+
+    python generateBlob.py my_strokes/stroke*.p
