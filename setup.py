@@ -8,6 +8,6 @@ setup(
     version='1.0',
     description='Touch robot controls',
     packages=['gestures', 'roibot', 'roibot.devices', 'touchbotII',
-              'touchbotII.touchbotII'],
+              'touchbotII.touchbotII', 'quickstep'],
     package_data={'touchbotII.touchbotII': ['nest/*', 'detector/*']}
 )
