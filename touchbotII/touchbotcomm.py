@@ -73,7 +73,7 @@ class TouchbotComm:
         return error_code, data
 
     def DisplayCmd(self, cmd_string):
-            """ Print the name of a command to the console before sending it """
+        """ Print the name of a command to the console before sending it """
         print '[COMMAND]\t"%s"' % cmd_string[:-1]
 
     def DisplayResponse(self, error_code, data):
