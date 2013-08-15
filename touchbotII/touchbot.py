@@ -14,6 +14,17 @@ class Touchbot:
     offers high level robot control commands.
     """
 
+    # Network connection parameters for the robot
+    TOUCHBOT_IP_ADDR = '192.168.0.1'
+    TOUCHBOT_PORT = 10100
+
+    # Useful speeds for movement
+    SPEED_VERY_SLOW = 1.0
+    SPEED_SLOW = 5.0
+    SPEED_MEDIUM = 10.0
+    SPEED_FAST = 15.0
+    SPEED_VERY_FAST = 20.0
+
     AXIS_Z = 1
     AXIS_SHOULDER = 2
     AXIS_ELBOW = 3
