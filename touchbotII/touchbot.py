@@ -102,3 +102,15 @@ class Touchbot:
     def SetGPIO(self, gpio_num, value):
         """ Set the value of a GPIO output on the robot """
         return self.comm.SendCmd('sig', gpio_num, value)
+
+    def SetAngles(self, pos):
+        """ Move the robot to pos by the raw joint angles """
+        return self.comm.SendCmd('movej', pos.ax_1, pos.ax_2, pos.ax_3,
+                                 pos.ax_4, pos.ax_5)
+    def SetCartesian(self, pos):
+        """ Move the robot to pos by Cartesian coordinates """
+        return self.comm.SendCmd('movec', pos.x, pos.y, pos.z,
+                                 pos.yaw, pos.pitch, pos.roll)
+
+    def Wait(self):
+        return self.comm.SendCmd('waitForEom')
