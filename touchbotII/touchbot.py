@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 from position import Position
+from profile import Profile
 from touchbotcomm import TouchbotComm
 
 
@@ -66,3 +67,12 @@ class Touchbot:
         if error_code != 0:
             return None
         return Position.FromTouchbotResponse(data)
+
+    def GetCurrentProfile(self):
+        """ Get a copy of the current movement profile """
+        error_code, data = self.comm.SendCmd('profile')
+        return Profile.FromTouchbotResponse(data)
+
+    def SetProfileData(self, profile):
+        """ Replace the robot's current profile with this one """
+        return self.comm.SendCmd('profile', str(profile))
