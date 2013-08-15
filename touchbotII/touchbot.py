@@ -21,6 +21,20 @@ class Touchbot:
     AXIS_HAND = 5
     ALL_AXES_BUT_HAND = [AXIS_Z, AXIS_SHOULDER, AXIS_ELBOW, AXIS_WRIST]
 
+    # GPIO addresses for the robot's fingers
+    FINGER_FL = 16
+    FINGER_BL = 15
+    FINGER_BR = 14
+    FINGER_FR = 13
+    ALL_FINGERS = [FINGER_FL, FINGER_BL, FINGER_BR, FINGER_FR]
+
+    # GPIO addresses for the nest close and open valves
+    NEST_CLOSE_VALVE = 800013
+    NEST_OPEN_VALVE = 800015
+
+    # GPIO address for the fingertip detection sensor
+    FINGERTIP_DETECT = 810005
+
     def __init__(self, ip_address, port):
         self.comm = TouchbotComm(ip_address, port)
 
@@ -76,3 +90,15 @@ class Touchbot:
     def SetProfileData(self, profile):
         """ Replace the robot's current profile with this one """
         return self.comm.SendCmd('profile', str(profile))
+
+    def GetGPIO(self, gpio_num):
+        """ Get the value of a GPIO input from the robot """
+        error_code, raw_data = self.comm.SendCmd('sig', gpio_num)
+        if error_code == 0:
+            return int(raw_data.split()[1])
+        else:
+            return None
+
+    def SetGPIO(self, gpio_num, value):
+        """ Set the value of a GPIO output on the robot """
+        return self.comm.SendCmd('sig', gpio_num, value)
