@@ -39,7 +39,7 @@ class BoundingVolume:
         exec 'from devices.%s import bounds' % device
         self.bounds = bounds
         if os.path.isfile('calibrated_dimensions.py'):
-            from calibrated_dimensions import z, calibrated_device
+            execfile('calibrated_dimensions.py')
             if calibrated_device == device:
                 print 'Calibrated values for %s found' % device
                 self.bounds['paperZ'] = z
