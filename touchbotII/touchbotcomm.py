@@ -22,7 +22,7 @@ class TouchbotComm:
       error_code, data = botcomm.SendCmd('freemode', -1)
       ...
     """
-    def __init__(self, ip_addr, port=10100):
+    def __init__(self, ip_addr, port):
         """ Initiate contact with the TouchbotII over ethernet """
         self.soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.soc.setsockopt(socket.SOL_SOCKET, socket.SO_DONTROUTE, 1)

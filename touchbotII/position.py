@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import os
+import pickle
+
+
 class Position:
     """ Representation of a robot position
 
@@ -36,6 +40,16 @@ class Position:
         roll, pitch, yaw = values[3:6]
         ax_1, ax_2, ax_3, ax_4, ax_5 = values[6:]
         return Position(x, y, z, roll, pitch, yaw, ax_1, ax_2, ax_3, ax_4, ax_5)
+
+    @staticmethod
+    def FromPickledFile(filename):
+        this_dir = os.path.dirname(os.path.abspath(__file__))
+        filename = os.path.join(this_dir, filename)
+        try:
+            with open(filename, 'rb') as fo:
+                return pickle.load(fo)
+        except:
+            return None
 
     def __str__(self):
         """ Print the position in the format the robot expects """

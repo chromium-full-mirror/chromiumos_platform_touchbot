@@ -14,7 +14,7 @@ from touchbot import Touchbot
 
 
 # Connect to the robot
-bot = Touchbot(Touchbot.IP_ADDR, Touchbot.PORT)
+bot = Touchbot()
 
 # Have the user specify two positions by manually adjusting the robot
 pos1 = bot.CalibratePosition()
@@ -31,7 +31,6 @@ bot.SetAngles(pos1)
 bot.SetAngles(pos2)
 bot.SetCartesian(pos1)
 bot.SetCartesian(pos2)
-bot.Wait()
 
 # Extend, then retract each finger in turn
 for f in Touchbot.ALL_FINGERS:
@@ -52,3 +51,8 @@ bot.SetGPIO(Touchbot.NEST_CLOSE_VALVE, 0)
 for i in range(10):
     bot.GetGPIO(Touchbot.FINGERTIP_DETECT)
     time.sleep(1)
+
+# Test the robot's ability to change its fingertips
+for size in range(len(Touchbot.NEST_POSITION_FILES)):
+    bot.GetFingertips(size)
+    bot.DropFingertips()
