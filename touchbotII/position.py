@@ -10,20 +10,20 @@ class Position:
     """ Representation of a robot position
 
     The robot position is represented in two ways:
-        Cartesian: x, y, z, roll, pitch, yaw
+        Cartesian: x, y, z, yaw, pitch, roll
         Joint: ax_1, ax_2, ax_3, ax_4, ax_5
 
     This class stores all the variables in one cohesive object
     to be used for any method that works on robot positions
     """
 
-    def __init__(self, x, y, z, roll, pitch, yaw, ax_1, ax_2, ax_3, ax_4, ax_5):
+    def __init__(self, x, y, z, yaw, pitch, roll, ax_1, ax_2, ax_3, ax_4, ax_5):
         self.x = x
         self.y = y
         self.z = z
-        self.roll = roll
-        self.pitch = pitch
         self.yaw = yaw
+        self.pitch = pitch
+        self.roll = roll
         self.ax_1 = ax_1
         self.ax_2 = ax_2
         self.ax_3 = ax_3
@@ -37,9 +37,9 @@ class Position:
         if len(values) != 11:
             return None
         x, y, z = values[0:3]
-        roll, pitch, yaw = values[3:6]
+        yaw, pitch, roll = values[3:6]
         ax_1, ax_2, ax_3, ax_4, ax_5 = values[6:]
-        return Position(x, y, z, roll, pitch, yaw, ax_1, ax_2, ax_3, ax_4, ax_5)
+        return Position(x, y, z, yaw, pitch, roll, ax_1, ax_2, ax_3, ax_4, ax_5)
 
     @staticmethod
     def FromPickledFile(filename):
@@ -54,5 +54,5 @@ class Position:
     def __str__(self):
         """ Print the position in the format the robot expects """
         return '%f %f %f %f %f %f %f %f %f %f %f' % (self.x, self.y, self.z,
-                    self.roll, self.pitch, self.yaw, self.ax_1,
+                    self.yaw, self.pitch, self.roll, self.ax_1,
                     self.ax_2, self.ax_3, self.ax_4, self.ax_5)
