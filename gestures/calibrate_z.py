@@ -14,7 +14,7 @@ import roibot
 import run_program
 
 
-def write_program(robot, bounds, *args, **kwargs):
+def write_calibration_program(robot, bounds, *args, **kwargs):
     # Book keeping for the robots internal registers
     GPIO_COUNTER = 1
     DESCEND_LOOP_START = 1
@@ -47,13 +47,21 @@ def write_program(robot, bounds, *args, **kwargs):
 
     robot.addCmd(roibot.program.setTag(DESCEND_LOOP_END))
 
+def write_lift_finger_program(robot, bounds, *args, **kwargs):
+    # Move to above the pad so that the finger is guaranteed not
+    # to be in contact with the pad after calibration.
+    SPEED = 200
+    robot.addMoveCommand((bounds.minX() + bounds.maxX()) / 2.0,
+                         (bounds.minY() + bounds.maxY()) / 2.0,
+                         0, SPEED)
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         print 'Usage: ./' + sys.argv[0] + ' device_name'
     else:
         device = sys.argv[1]
-        run_program.run_program(write_program, device)
+        # Descend the finger onto the pad until it touches it
+        run_program.run_program(write_calibration_program, device)
 
         # Reconnect to the robot and query the current Z position
         robot_port = run_program.scan_serial_ports();
@@ -69,3 +77,6 @@ if __name__ == '__main__':
         with open('calibrated_dimensions.py', 'w') as fo:
             fo.write('calibrated_device = "%s"\n' % device)
             fo.write('z = %f\n' % z)
+
+        # Pick the finger up off the touchpad
+        run_program.run_program(write_lift_finger_program, device)
