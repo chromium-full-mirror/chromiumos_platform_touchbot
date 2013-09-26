@@ -31,6 +31,11 @@ class Touchbot:
     SPEED_FAST = 15.0
     SPEED_VERY_FAST = 20.0
 
+    # Setting for the accuracy (InRange) value of a profile
+    BLEND_MOVEMENTS = -1
+    ALWAYS_STOP = 0
+    MAX_ACCURACY = 1
+
     # Indicies for adressing specific axes of the robot's arm
     AXIS_Z = 1
     AXIS_SHOULDER = 2
@@ -62,6 +67,11 @@ class Touchbot:
                                        'detector/fingerfl.p',
                                        'detector/fingerbl.p',
                                        'detector/fingerbr.p']
+
+    # It appears that the units are not exactly mm, but are scaled slightly
+    # By scaling distances by this value the accuracy goes up dramatically
+    DISTANCE_SCALING_FACTOR = 0.75
+
 
     def __init__(self, ip_address=TOUCHBOT_IP_ADDR, port=TOUCHBOT_PORT):
         self.comm = TouchbotComm(ip_address, port)
@@ -148,8 +158,17 @@ class Touchbot:
             self.Wait()
         return response
 
-    def SetCartesian(self, pos, blocking=True):
+    def SetCartesian(self, pos, finger_distance=None, blocking=True):
         """ Move the robot to pos by Cartesian coordinates. """
+        # If a finger spacing has been specified add that to the movement
+        # command.  The finger spacing motors were added as an additional axis
+        # so are not controlled by the 'movec' command by default.  They must
+        # be specified before with the 'moveExtraAxis' command, and then are
+        # moved when the robot receives the next 'movec.'
+        if finger_distance:
+            adjusted_dist = finger_distance * Touchbot.DISTANCE_SCALING_FACTOR
+            self.comm.SendCmd('moveExtraAxis', adjusted_dist)
+
         response = self.comm.SendCmd('movec', pos.x, pos.y, pos.z,
                                      pos.yaw, pos.pitch, pos.roll)
         if blocking:
@@ -221,6 +240,10 @@ class Touchbot:
         """ Control which fingers are extended and which are retracted. """
         for finger, state in zip(Touchbot.ALL_FINGERS, states):
             self.SetGPIO(finger, state)
+
+    def FingerStates(self):
+        """ See which fingers are extended and which are retracted. """
+        return [self.GetGPIO(finger) for finger in Touchbot.ALL_FINGERS]
 
     def OpenNest(self):
         """ Open the nest to allow fingertips to pass in and out. """
