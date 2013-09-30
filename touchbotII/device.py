@@ -56,11 +56,14 @@ class Device:
                         self.__InterpolateValue(p1.ax_4, p2.ax_4, ratio),
                         self.__InterpolateValue(p1.ax_5, p2.ax_5, ratio))
 
-    def RelativePosToAbsolutePos(self, rel_p):
+    def RelativePosToAbsolutePos(self, rel_p, angle=None):
         """ Convert from relative (0.0->1.0 scaled) coordinates to absolute
         values for this device.
         """
         rel_x, rel_y = rel_p
         ptop = self.__InterpolatePosition(self.tl, self.tr, rel_x)
         pbot = self.__InterpolatePosition(self.bl, self.br, rel_x)
-        return self.__InterpolatePosition(ptop, pbot, rel_y)
+        abs_p = self.__InterpolatePosition(ptop, pbot, rel_y)
+        if angle is not None:
+            abs_p.yaw = angle
+        return abs_p

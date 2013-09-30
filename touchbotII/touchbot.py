@@ -5,6 +5,7 @@
 import copy
 import time
 
+from numpy import clip
 from position import Position
 from profile import Profile
 from touchbotcomm import TouchbotComm
@@ -30,11 +31,20 @@ class Touchbot:
     SPEED_MEDIUM = 10.0
     SPEED_FAST = 15.0
     SPEED_VERY_FAST = 20.0
+    MAX_SPEED = 300.0
+
+    # Limits on how far the robot hand can move the fingers in and out
+    MIN_FINGER_DISTANCE = 15
+    MAX_FINGER_DISTANCE = 140
 
     # Setting for the accuracy (InRange) value of a profile
     BLEND_MOVEMENTS = -1
     ALWAYS_STOP = 0
     MAX_ACCURACY = 1
+
+    # Settings for how to interpolate points (straight or curved)
+    STRAIGHT_INTERPOLATION = -1
+    JOINT_INTERPOLATION = 0
 
     # Indicies for adressing specific axes of the robot's arm
     AXIS_Z = 1
@@ -166,6 +176,9 @@ class Touchbot:
         # be specified before with the 'moveExtraAxis' command, and then are
         # moved when the robot receives the next 'movec.'
         if finger_distance:
+            finger_distance = clip(finger_distance,
+                                   Touchbot.MIN_FINGER_DISTANCE,
+                                   Touchbot.MAX_FINGER_DISTANCE)
             adjusted_dist = finger_distance * Touchbot.DISTANCE_SCALING_FACTOR
             self.comm.SendCmd('moveExtraAxis', adjusted_dist)
 
@@ -254,3 +267,19 @@ class Touchbot:
         """ Close the nest to keep fingertips from leaving. """
         self.SetGPIO(Touchbot.NEST_CLOSE_VALVE, 1)
         self.SetGPIO(Touchbot.NEST_OPEN_VALVE, 0)
+
+    def IsLegalSpeed(self, speed):
+        """ Is a speed an acceptable value for this robot """
+        return speed > 0.0 and speed < Touchbot.MAX_SPEED
+
+    def IsLegalRelativeCoordinate(self, coords):
+        """ Are the x and y values between 0 and 1 """
+        if len(coords) != 2:
+            return False
+        x, y = coords
+        return 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0
+
+    def IsLegalFingerList(self, fingers):
+        """ Check that a finger selection list is legal """
+        return (len(fingers) == len(Touchbot.ALL_FINGERS) and
+                all([bool(f in [0, 1]) for f in fingers]))
