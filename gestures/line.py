@@ -6,10 +6,12 @@
 speed in mm/s.  Optionally preform a "swipe" along this line where it lowers
 down up gradually instead of tracing the points, or do a "fling" where the
 robot begins normally but quickly jerks up at the end to simulate a user
-flinging a web page.
+flinging a web page.  Finally a "no_pause" line is similar to a swipe but
+has a much shorter period of lift-off, essentially creating a basic line
+but with less of a pause at the beginning and end.
 
 Usage: ./line DEVICE START_X START_Y END_X END_Y
-              SPEED_IN_MM_PER_S [basic|swipe|fling]
+              SPEED_IN_MM_PER_S [basic|no_pause|swipe|fling]
    eg: ./line snow 0.1 0.1 0.9 0.9 15.0 basic
    eg: ./line snow 0.5 0.0 0.5 0.9 15.0 swipe
 """
@@ -43,6 +45,21 @@ def program(robot, bounds, *args, **kwargs):
 
         # Lift up only once the whole line is done
         robot.addMoveCommand(end_x, end_y, bounds.upZ(), SETUP_SPEED)
+    if line_type  == "no_pause":
+        # Touch down smoothly and start the line
+        touchdown_x = (5.0 * start_x + end_x) / 6.0
+        touchdown_y = (5.0 * start_y + end_y) / 6.0
+        robot.addMoveCommand(touchdown_x, touchdown_y, bounds.paperZ(),
+                             line_speed, accuracy="PASS")
+
+        # Go for the majority of the line as usual
+        liftup_x = (start_x + 5.0 * end_x) / 6.0
+        liftup_y = (start_y + 5.0 * end_y) / 6.0
+        robot.addMoveCommand(liftup_x, liftup_y, bounds.paperZ(), line_speed,
+                             accuracy="PASS")
+
+        # Then lift up gradually for the remaining 1/6
+        robot.addMoveCommand(end_x, end_y, bounds.upZ(), line_speed)
     elif line_type == "swipe":
         # Gradually lower onto the surface over the first 1/4 of the line
         touchdown_x = (3.0 * start_x + end_x) / 4.0
@@ -75,7 +92,8 @@ def program(robot, bounds, *args, **kwargs):
 if __name__=="__main__":
     if len(sys.argv) != 8:
         print "Usage: ./line device_name " \
-              "start_x start_y end_x end_y speed_mm/s [basic|swipe|fling]"
+              "start_x start_y end_x end_y speed_mm/s " \
+              "[basic|no_pause|swipe|fling]"
     else:
         device = sys.argv[1]
         start_x = float(sys.argv[2])
