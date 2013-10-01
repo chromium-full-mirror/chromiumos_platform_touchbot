@@ -30,8 +30,7 @@ import sys
 
 from collections import namedtuple
 
-from device import Device
-from touchbot import Touchbot
+from touchbotII import Touchbot, Device
 
 Position = namedtuple('Position', ['x', 'y', 'angle', 'finger_distance'])
 

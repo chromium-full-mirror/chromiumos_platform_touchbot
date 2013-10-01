@@ -24,8 +24,7 @@ import math
 import pickle
 import sys
 
-from device import Device
-from touchbot import Touchbot
+from touchbotII import Touchbot, Device
 
 def distance(p1, p2):
     x1, y1 = p1

@@ -10,7 +10,7 @@ development prior to more sophisticated uses of the robot being implemented.
 """
 
 import time
-from touchbot import Touchbot
+from touchbotII import Touchbot
 
 
 # Connect to the robot
