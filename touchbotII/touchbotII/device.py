@@ -65,5 +65,5 @@ class Device:
         pbot = self.__InterpolatePosition(self.bl, self.br, rel_x)
         abs_p = self.__InterpolatePosition(ptop, pbot, rel_y)
         if angle is not None:
-            abs_p.yaw = angle
+            abs_p.yaw += angle
         return abs_p
