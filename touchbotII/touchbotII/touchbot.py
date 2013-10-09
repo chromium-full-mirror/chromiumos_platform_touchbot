@@ -37,6 +37,9 @@ class Touchbot:
     MIN_FINGER_DISTANCE = 15
     MAX_FINGER_DISTANCE = 140
 
+    # How long it takes for the fingertip pistons to extend (in seconds)
+    MINIMUM_FINGER_EXTENSION_TIME = 0.1
+
     # Setting for the accuracy (InRange) value of a profile
     BLEND_MOVEMENTS = -1
     ALWAYS_STOP = 0

@@ -30,15 +30,14 @@ import sys
 
 from collections import namedtuple
 
-from touchbotII import Touchbot, Device
+from touchbotII import Touchbot, Device, PositionArg
 
-Position = namedtuple('Position', ['x', 'y', 'angle', 'finger_distance'])
 
 try:
     # Load the device spec
     device = Device(sys.argv[1])
-    start = Position(*[float(v) for v in sys.argv[2:6]])
-    end = Position(*[float(v) for v in sys.argv[6:10]])
+    start = PositionArg(*[float(v) for v in sys.argv[2:6]])
+    end = PositionArg(*[float(v) for v in sys.argv[6:10]])
     fingers = [int(arg) for arg in sys.argv[10:14]]
     speed = float(sys.argv[14])
 except:
