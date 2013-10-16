@@ -25,7 +25,6 @@ Examples:
     python line.py lumpy.p 0.5 0.5 30 45 0.5 0.5 27 20 1 0 1 0 75
 """
 
-import math
 import sys
 
 from collections import namedtuple
@@ -83,6 +82,10 @@ abs_start = device.RelativePosToAbsolutePos((start.x, start.y),
                                             angle=start.angle)
 abs_end = device.RelativePosToAbsolutePos((end.x, end.y),
                                           angle=end.angle)
+
+# Offset the position to center the finger if it's only using one
+abs_start = bot.CenterIfSingleFinger(fingers, abs_start, start.finger_distance)
+abs_end = bot.CenterIfSingleFinger(fingers, abs_end, end.finger_distance)
 
 # Go to the starting point and lower the fingers
 bot.SetFingerStates([0, 0, 0, 0])

@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import copy
+import math
 import time
 
 from numpy import clip
@@ -58,11 +59,11 @@ class Touchbot:
     ALL_AXES = [AXIS_Z, AXIS_SHOULDER, AXIS_ELBOW, AXIS_WRIST, AXIS_HAND]
 
     # GPIO addresses for the robot's fingers
-    FINGER_FL = 16
-    FINGER_BL = 15
-    FINGER_BR = 14
-    FINGER_FR = 13
-    ALL_FINGERS = [FINGER_FL, FINGER_BL, FINGER_BR, FINGER_FR]
+    FINGER_BR = 16
+    FINGER_FR = 15
+    FINGER_FL = 14
+    FINGER_BL = 13
+    ALL_FINGERS = [FINGER_FR, FINGER_FL, FINGER_BL, FINGER_BR]
 
     # GPIO addresses for the nest close and open valves
     NEST_CLOSE_VALVE = 800013
@@ -280,9 +281,26 @@ class Touchbot:
         if len(coords) != 2:
             return False
         x, y = coords
-        return 0.0 <= x <= 1.0 and 0.0 <= y <= 1.0
+        return -0.05 <= x <= 1.05 and -0.05 <= y <= 1.05
 
     def IsLegalFingerList(self, fingers):
         """ Check that a finger selection list is legal """
         return (len(fingers) == len(Touchbot.ALL_FINGERS) and
                 all([bool(f in [0, 1]) for f in fingers]))
+
+    def CenterIfSingleFinger(self, fingers, abs_pos, finger_distance):
+        """ Offset them if only 1 finger is down (you're on your own for >1
+        finger) This way the *finger* itself will be centered at the point,
+        not the point where all the fingers meet.
+        """
+        if len(fingers) == 4 and sum(fingers) == 1:
+            # Find which finger is down and how many degrees off center it is
+            finger_index = fingers.index(1)
+            finger_angle_offset = (90 * finger_index) - 45
+
+            # Shift the x and y accordingly for both points in the line
+            angle = math.radians(abs_pos.yaw + finger_angle_offset)
+            abs_pos.x += math.cos(angle) * finger_distance / 2.0
+            abs_pos.y += math.sin(angle) * finger_distance / 2.0
+
+        return abs_pos
