@@ -13,7 +13,7 @@ Usage: python calibrate_new_device.py lumpy
 import pickle
 import sys
 
-from touchbot import Touchbot
+from touchbotII import Touchbot
 
 
 # Connect to the robot and set its speed to slow

@@ -7,5 +7,6 @@ setup(
     name='touchbot',
     version='1.0',
     description='Touch robot controls',
-    packages=['gestures', 'roibot', 'roibot.devices'],
+    packages=['gestures', 'roibot', 'roibot.devices', 'touchbotII',
+              'touchbotII.touchbotII'],
 )
