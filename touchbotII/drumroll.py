@@ -61,6 +61,9 @@ bot.SetProfileData(prof)
 # Convert the point specifications into something the robot understands
 abs_pos = device.RelativePosToAbsolutePos((pos.x, pos.y), angle=pos.angle)
 
+# For one finger taps, compensate to center the finger
+abs_pos = bot.CenterIfSingleFinger(fingers, abs_pos, pos.finger_distance)
+
 # Go to the starting point and prepare for the drumroll
 bot.SetFingerStates([0, 0, 0, 0])
 bot.SetCartesian(abs_pos, pos.finger_distance, blocking=True)
@@ -76,12 +79,18 @@ for tap_num in range(num_taps):
     middle_states = [1 if (l or n) else 0
                      for l, n in zip(last_state, next_states)]
 
-    # Start the new finger moving down before lifting up the last one
-    bot.SetFingerStates(middle_states)
-    time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME / 2)
-    # Now start to lift the finger that was on the pad before
-    bot.SetFingerStates(next_states)
-    time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME / 2)
+    if sum(fingers) > 1:
+        # Start the new finger moving down before lifting up the last one
+        bot.SetFingerStates(middle_states)
+        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME / 2)
+        # Now start to lift the finger that was on the pad before
+        bot.SetFingerStates(next_states)
+        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME / 2)
+    else:
+        bot.SetFingerStates(next_states)
+        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME)
+        bot.SetFingerStates([0, 0, 0, 0])
+        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME / 4)
 
     last_state = next_states
     next_finger += 1
