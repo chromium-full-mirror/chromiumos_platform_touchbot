@@ -9,4 +9,5 @@ setup(
     description='Touch robot controls',
     packages=['gestures', 'roibot', 'roibot.devices', 'touchbotII',
               'touchbotII.touchbotII'],
+    package_data={'touchbotII.touchbotII': ['nest/*', 'detector/*']}
 )
