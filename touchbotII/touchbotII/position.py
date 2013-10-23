@@ -56,3 +56,8 @@ class Position:
         return '%f %f %f %f %f %f %f %f %f %f %f' % (self.x, self.y, self.z,
                     self.yaw, self.pitch, self.roll, self.ax_1,
                     self.ax_2, self.ax_3, self.ax_4, self.ax_5)
+
+    def CartesianDistanceFrom(self, other):
+        return ((self.x - other.x) ** 2 +
+                (self.y - other.y) ** 2 +
+                (self.z - other.z) ** 2) ** 0.5

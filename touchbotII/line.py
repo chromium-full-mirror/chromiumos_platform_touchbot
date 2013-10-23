@@ -13,19 +13,21 @@ The gestures take in two points (start and end) which consist of:
     finger distance in mm that specifies how far apart the hand should open
 Which fingers the robot should extend as a list of 4 booleans
     Top right, Top Left, Bottom Left, Bottom Right
-And finally a speed in approximately mm/s
+A speed in approximately mm/s
+Which kind of line to do which should be either "swipe" or "basic"
 
 The robot will then linearly interpolate between those two points
 
 Examples:
     For a two finger scroll motion you might do something like:
-    python line.py link.p 0.5 0.1 0 40 0.5 0.9 0 40 0 1 0 1 100
+    python line.py link.p 0.5 0.1 0 40 0.5 0.9 0 40 0 1 0 1 100 swipe
 
     For a human-like pinch zoom motion
-    python line.py lumpy.p 0.5 0.5 30 45 0.5 0.5 27 20 1 0 1 0 75
+    python line.py lumpy.p 0.5 0.5 30 45 0.5 0.5 27 20 1 0 1 0 75 basic
 """
 
 import sys
+import time
 
 from collections import namedtuple
 
@@ -39,24 +41,30 @@ try:
     end = PositionArg(*[float(v) for v in sys.argv[6:10]])
     fingers = [int(arg) for arg in sys.argv[10:14]]
     speed = float(sys.argv[14])
+    is_swipe = bool(sys.argv[15] == 'swipe')
 except:
-    print 'Usage: python %s device.p start end finger_states speed' % __file__
+    print ('Usage: python %s device.p start end finger_states speed ' +
+           '[swipe|basic]' % __file__)
     print '     * start and end: formatted as x y angle finger_distance'
     print '     * finger_states: a list of 4 values (1s and 0s)'
     print '     * speed: a decimal value for the speed in mm/s'
+    print '     * which kind of line to draw: either "swipe" or "basic"'
     print
     print 'For a two finger scroll motion you might do something like:'
-    print 'python %s link.p 0.5 0.1 0 40 0.5 0.9 0 40 0 1 0 1 100' % __file__
+    print ('python %s link.p 0.5 0.1 0 40 0.5 0.9 0 40 0 1 0 1 100 swipe' %
+           __file__)
     print
     print 'For a human-like pinch zoom motion'
-    print 'python %s lumpy.p 0.5 0.5 30 45 0.5 0.5 27 20 1 0 1 0 75' % __file__
+    print ('python %s lumpy.p 0.5 0.5 30 45 0.5 0.5 27 20 1 0 1 0 75 basic' %
+          __file__)
     sys.exit(-1)
 
 print 'Executing the line defined by:'
-print '\tStart:   %s' % str(start)
-print '\tEnd:     %s' % str(end)
-print '\tFingers: %s' % str(fingers)
-print '\tSpeed:   %f' % speed
+print '\tStart:     %s' % str(start)
+print '\tEnd:       %s' % str(end)
+print '\tFingers:   %s' % str(fingers)
+print '\tSpeed:     %f' % speed
+print '\tIs Swipe?: %s' % str(is_swipe)
 
 # Connect to the robot and configure the profile
 bot = Touchbot()
@@ -87,11 +95,31 @@ abs_end = device.RelativePosToAbsolutePos((end.x, end.y),
 abs_start = bot.CenterIfSingleFinger(fingers, abs_start, start.finger_distance)
 abs_end = bot.CenterIfSingleFinger(fingers, abs_end, end.finger_distance)
 
-# Go to the starting point and lower the fingers
+# Go to the starting point
 bot.SetFingerStates([0, 0, 0, 0])
 bot.SetCartesian(abs_start, start.finger_distance, blocking=True)
-bot.SetFingerStates(fingers)
 
-# Move to the end point and lift them back up
-bot.SetCartesian(abs_end, end.finger_distance, blocking=True)
-bot.SetFingerStates([0, 0, 0, 0])
+# Begin moving to the end point
+bot.SetCartesian(abs_end, end.finger_distance, blocking=False)
+
+# Sort out what to do with the fingers as it moves depending on if it is a
+# swipe or a regular, basic line.
+if is_swipe:
+    distance_to_travel = abs_start.CartesianDistanceFrom(abs_end)
+    distance_traveled = 0.0
+    # Wait until 1/4 of the distance has been traveled to extend the fingers
+    # This allows the hand to get up to speed before touching the pad
+    while distance_traveled < 0.25 * distance_to_travel:
+        curr_pos = bot.GetCurrentPosition()
+        distance_traveled = curr_pos.CartesianDistanceFrom(abs_start)
+    bot.SetFingerStates(fingers)
+
+    # Raise the fingers after only 3/4 of the distance has been traveled
+    while distance_traveled < 0.75 * distance_to_travel:
+        curr_pos = bot.GetCurrentPosition()
+        distance_traveled = curr_pos.CartesianDistanceFrom(abs_start)
+    bot.SetFingerStates([0, 0, 0, 0])
+else:
+    bot.SetFingerStates(fingers)
+    bot.Wait()
+    bot.SetFingerStates([0, 0, 0, 0])
