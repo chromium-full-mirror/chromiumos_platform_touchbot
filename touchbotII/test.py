@@ -54,5 +54,14 @@ for i in range(10):
 
 # Test the robot's ability to change its fingertips
 for size in range(len(Touchbot.NEST_POSITION_FILES)):
-    bot.GetFingertips(size)
-    bot.DropFingertips()
+    bot.ManipulateFingertips([1, 1, 1, 1], size, True)
+    fingers_present = bot.DetectFingertips()
+    if not all(fingers_present):
+        print "Some finger wasn't picked up!"
+        break
+
+    bot.ManipulateFingertips([1, 1, 1, 1], size, False)
+    fingers_present = bot.DetectFingertips()
+    if any(fingers_present):
+        print "Some finger wasn't put back!"
+        break

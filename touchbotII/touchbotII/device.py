@@ -33,10 +33,11 @@ class Device:
         self.device_data = None
         with open(device_file, 'r') as fo:
             self.device_data = pickle.load(fo)
-            self.tr = self.device_data['top right']
-            self.tl = self.device_data['top left']
-            self.bl = self.device_data['bottom left']
-            self.br = self.device_data['bottom right']
+            self.tr = self.device_data['corners']['top right']
+            self.tl = self.device_data['corners']['top left']
+            self.bl = self.device_data['corners']['bottom left']
+            self.br = self.device_data['corners']['bottom right']
+            self.click_z = self.device_data['click_z']
 
     def __InterpolateValue(self, v1, v2, ratio):
         """ Linearly interpolate between v1 and v2 """
@@ -56,7 +57,7 @@ class Device:
                         self.__InterpolateValue(p1.ax_4, p2.ax_4, ratio),
                         self.__InterpolateValue(p1.ax_5, p2.ax_5, ratio))
 
-    def RelativePosToAbsolutePos(self, rel_p, angle=None):
+    def RelativePosToAbsolutePos(self, rel_p, angle=None, is_click=False):
         """ Convert from relative (0.0->1.0 scaled) coordinates to absolute
         values for this device.
         """
@@ -66,4 +67,7 @@ class Device:
         abs_p = self.__InterpolatePosition(ptop, pbot, rel_y)
         if angle is not None:
             abs_p.yaw += angle
+
+        if is_click:
+            abs_p.z = abs_p.ax_1 = self.click_z
         return abs_p

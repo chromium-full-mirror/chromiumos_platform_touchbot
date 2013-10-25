@@ -46,13 +46,19 @@ bot.SetFingerStates([1, 1, 1, 1])
 CORNERS = ['top right', 'top left', 'bottom left', 'bottom right']
 corners = {}
 for corner in CORNERS:
-    print 'Position the extended finger in the %s corner of the device' % corner
+    print 'Position the fingers in the %s corner of the device' % corner
     print 'and keep the hand as aligned with the touchpad as possible'
     corners[corner] = bot.CalibratePosition()
+
+# Calibrate the physical click height
+bot.SetFingerStates([0, 0, 0, 0])
+print 'Lower the robot down until it has just clicked the pad'
+click = bot.CalibratePosition()
 
 # Standardize the angle by averaging all the readings
 angle = sum([corners[c].yaw for c in corners]) / 4.0
 for c in corners:
     corners[c].yaw = angle
 
-pickle.dump(corners, open('%s.p' % sys.argv[1], 'wb'))
+pickle.dump({'corners':corners, 'click_z': click.z},
+            open('%s.p' % sys.argv[1], 'wb'))
