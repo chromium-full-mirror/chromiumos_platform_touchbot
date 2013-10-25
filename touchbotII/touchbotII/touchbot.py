@@ -39,7 +39,7 @@ class Touchbot:
     MAX_FINGER_DISTANCE = 140
 
     # How long it takes for the fingertip pistons to extend (in seconds)
-    MINIMUM_FINGER_EXTENSION_TIME = 0.05
+    MINIMUM_FINGER_EXTENSION_TIME = 0.09
 
     # Setting for the accuracy (InRange) value of a profile
     BLEND_MOVEMENTS = -1
@@ -100,7 +100,6 @@ class Touchbot:
         if not all(self.fingertip_detect_positions):
             print 'WARNING: Some fingertip detector position loaded incorrectly'
 
-        self.finger_size = -1
         self.SetFingerStates([0, 0, 0, 0])
         self.OpenNest()
 
@@ -195,19 +194,24 @@ class Touchbot:
     def Wait(self):
         return self.comm.SendCmd('waitForEom')
 
-    def _AddSafetyClearance(self, pos):
+    def AddSafetyClearance(self, pos):
         new_pos = copy.deepcopy(pos)
         new_pos.ax_1 += Touchbot.SAFETY_CLEARANCE
+        new_pos.z += Touchbot.SAFETY_CLEARANCE
         return new_pos
 
-    def _ManipulateFingers(self, size, should_keep_fingers):
-        """ Either attach or detach all four fingers. """
-        if size < 0 or size > len(self.nest_positions):
+    def ManipulateFingertips(self, fingers, size, should_keep_fingertips):
+        """ Either attach or detach the selected fingers. """
+        if size < 0 or size > len(self.nest_positions) or len(fingers) != 4:
             return False
 
-        nest_pos = self.nest_positions[size]
-        above_nest_pos = self._AddSafetyClearance(nest_pos)
+        curr_pos = self.GetCurrentPosition()
+        above_curr_pos = self.AddSafetyClearance(curr_pos)
 
+        nest_pos = self.nest_positions[size]
+        above_nest_pos = self.AddSafetyClearance(nest_pos)
+
+        response = self.SetAngles(above_curr_pos)
         self.OpenNest()
         response = self.SetAngles(above_nest_pos)
         if not response or response[0] != 0:
@@ -215,14 +219,11 @@ class Touchbot:
             return False
         self.SetAngles(nest_pos)
 
-        self.SetFingerStates([1, 1, 1, 1])
+        self.SetFingerStates(fingers)
 
-        if should_keep_fingers:
-            self.finger_size = size
-        else:
+        if not should_keep_fingertips:
             time.sleep(1)
             self.CloseNest()
-            self.finger_size = -1
 
         time.sleep(1)
         self.SetFingerStates([0, 0, 0, 0])
@@ -237,21 +238,6 @@ class Touchbot:
             self.SetAngles(pos)
             states.append(self.GetGPIO(Touchbot.FINGERTIP_DETECT) != 0)
         return states
-
-    def GetFingertips(self, size):
-        """ Pick up all four fingertips of a given size."""
-        if not self._ManipulateFingers(size, should_keep_fingers=True):
-            return False
-        fingertips_present = self.DetectFingertips()
-        return all(fingertips_present)
-
-    def DropFingertips(self):
-        """ Put the currently attached finger tips back in the nest. """
-        if not self._ManipulateFingers(self.finger_size,
-                                       should_keep_fingers=False):
-            return False
-        fingertips_present = self.DetectFingertips()
-        return not all(fingertips_present)
 
     def SetFingerStates(self, states):
         """ Control which fingers are extended and which are retracted. """
