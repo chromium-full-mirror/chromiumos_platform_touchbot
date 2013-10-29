@@ -25,12 +25,14 @@ bot.SetProfileData(prof)
 # First make sure there are no fingertips
 if any(bot.DetectFingertips()):
     print 'You can not have any fingertips on for this script'
-    sys.exit(-1)
+    sys.exit(1)
 
 # Get the smallest fingertips
-if not bot.GetFingertips(0):
-    print 'Failed to get the fingertips!'
-    sys.exit(-1)
+bot.ManipulateFingertips([1, 1, 1, 1], 0, True)
+fingers_present = bot.DetectFingertips()
+if not all(fingers_present):
+    print 'Some finger was not picked up!'
+    sys.exit(1)
 
 # Bring the fingers all in close together and raise the whole arm up
 pos = bot.GetCurrentPosition()
@@ -54,6 +56,13 @@ for corner in CORNERS:
 bot.SetFingerStates([0, 0, 0, 0])
 print 'Lower the robot down until it has just clicked the pad'
 click = bot.CalibratePosition()
+
+# Return the fingertips to the nest
+bot.ManipulateFingertips([1, 1, 1, 1], 0, False)
+fingers_present = bot.DetectFingertips()
+if any(fingers_present):
+    print 'Some finger was not returned properly!'
+    sys.exit(1)
 
 # Standardize the angle by averaging all the readings
 angle = sum([corners[c].yaw for c in corners]) / 4.0
