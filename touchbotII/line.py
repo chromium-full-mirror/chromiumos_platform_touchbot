@@ -43,8 +43,8 @@ try:
     speed = float(sys.argv[14])
     is_swipe = bool(sys.argv[15] == 'swipe')
 except:
-    print ('Usage: python %s device.p start end finger_states speed ' +
-           '[swipe|basic]' % __file__)
+    print (('Usage: python %s device.p start end finger_states speed ' +
+            '[swipe|basic]') % __file__)
     print '     * start and end: formatted as x y angle finger_distance'
     print '     * finger_states: a list of 4 values (1s and 0s)'
     print '     * speed: a decimal value for the speed in mm/s'
