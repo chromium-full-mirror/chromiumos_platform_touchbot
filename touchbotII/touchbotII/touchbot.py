@@ -23,8 +23,8 @@ class Touchbot:
     TOUCHBOT_IP_ADDR = '192.168.0.1'
     TOUCHBOT_PORT = 10100
 
-    # How high above something to approach it from to be safe
-    SAFETY_CLEARANCE = 40
+    # How high above to approach from to be safe
+    SAFETY_CLEARANCE = 220
 
     # Useful speeds for movement
     SPEED_VERY_SLOW = 1.0
@@ -196,8 +196,8 @@ class Touchbot:
 
     def AddSafetyClearance(self, pos):
         new_pos = copy.deepcopy(pos)
-        new_pos.ax_1 += Touchbot.SAFETY_CLEARANCE
-        new_pos.z += Touchbot.SAFETY_CLEARANCE
+        new_pos.ax_1 = Touchbot.SAFETY_CLEARANCE
+        new_pos.z = Touchbot.SAFETY_CLEARANCE
         return new_pos
 
     def ManipulateFingertips(self, fingers, size, should_keep_fingertips):
