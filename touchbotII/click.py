@@ -78,7 +78,7 @@ bot.SetCartesian(abs_pos, pos.finger_distance, blocking=True)
 bot.SetCartesian(above_pos, pos.finger_distance, blocking=True)
 
 # Put the fingers back
-returned_fingertips = bot.ManipulateFingertips(fingers, 0, False):
+returned_fingertips = bot.ManipulateFingertips(fingers, 0, False)
 if returned_fingertips:
     fingertips_present = bot.DetectFingertips()
     returned_fingertips = not any(fingertips_present)
