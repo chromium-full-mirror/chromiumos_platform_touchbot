@@ -87,6 +87,9 @@ class Touchbot:
     # By scaling distances by this value the accuracy goes up dramatically
     DISTANCE_SCALING_FACTOR = 0.75
 
+    # The range of legal relative coordinates.
+    RELATIVE_COORDINATE_RANGE = (-0.05, 1.05)
+
 
     def __init__(self, ip_address=TOUCHBOT_IP_ADDR, port=TOUCHBOT_PORT):
         self.comm = TouchbotComm(ip_address, port)
@@ -275,7 +278,8 @@ class Touchbot:
         if len(coords) != 2:
             return False
         x, y = coords
-        return -0.05 <= x <= 1.05 and -0.05 <= y <= 1.05
+        min_val, max_val = Touchbot.RELATIVE_COORDINATE_RANGE
+        return min_val <= x <= max_val and min_val <= y <= max_val
 
     def IsLegalFingerList(self, fingers):
         """ Check that a finger selection list is legal """

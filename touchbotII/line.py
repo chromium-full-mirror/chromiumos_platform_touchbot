@@ -75,7 +75,8 @@ bot.SetProfileData(prof)
 
 if not (bot.IsLegalRelativeCoordinate((start.x, start.y)) and
         bot.IsLegalRelativeCoordinate((end.x, end.y))):
-    print 'All coordinates must fall in the range of 0.0 to 1.0'
+    print ('All coordinates must fall in the range of %s' %
+           str(Touchbot.RELATIVE_COORDINATE_RANGE))
     sys.exit(-1)
 if not bot.IsLegalFingerList(fingers):
     print 'Your finger list must contain exactly 4 values, each either 1 or 0'
