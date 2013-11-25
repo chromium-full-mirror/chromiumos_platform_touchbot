@@ -71,6 +71,7 @@ class Touchbot:
 
     # GPIO address for the fingertip detection sensor
     FINGERTIP_DETECT = 810005
+    FINGERTIP_DETECTION_REPITITIONS = 10
 
     # Paths to pre-recorded Positions hovering above the nest
     NEST_POSITION_FILES = ['nest/size0.p', 'nest/size1.p',
@@ -236,7 +237,14 @@ class Touchbot:
         states = []
         for pos in self.fingertip_detect_positions:
             self.SetAngles(pos)
-            states.append(self.GetGPIO(Touchbot.FINGERTIP_DETECT) != 0)
+            readings = []
+            for i in range(Touchbot.FINGERTIP_DETECTION_REPITITIONS):
+                    time.sleep(0.1)
+                    readings.append(self.GetGPIO(Touchbot.FINGERTIP_DETECT))
+            num_present = sum([1 for reading in readings if reading != 0])
+            states.append(num_present >=
+                          (Touchbot.FINGERTIP_DETECTION_REPITITIONS / 2.0))
+            print 'Finger readings %s -> %d' % (str(readings), states[-1])
         return states
 
     def SetFingerStates(self, states):
