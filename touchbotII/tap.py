@@ -67,9 +67,7 @@ if num_fingers < 1:
 
 # Connect to the robot and configure the profile to move slowly
 bot = Touchbot()
-prof = bot.GetCurrentProfile()
-prof.speed = Touchbot.SPEED_SLOW
-bot.SetProfileData(prof)
+bot.SetSpeed(Touchbot.SPEED_SLOW)
 
 # Convert the point specifications into something the robot understands
 abs_pos = device.RelativePosToAbsolutePos((pos.x, pos.y), angle=pos.angle)

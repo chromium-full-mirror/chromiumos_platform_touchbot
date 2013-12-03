@@ -49,11 +49,9 @@ if num_fingers < 1:
     print 'You must specify at least 1 finger to use'
     sys.exit(1)
 
-# Connect to the robot and configure the profile to move slowly
+# Connect to the robot and configure the profile to move quickly
 bot = Touchbot()
-prof = bot.GetCurrentProfile()
-prof.speed = Touchbot.SPEED_SLOW
-bot.SetProfileData(prof)
+bot.SetSpeed(Touchbot.SPEED_FAST)
 
 # Convert the point specifications into something the robot understands
 abs_pos = device.RelativePosToAbsolutePos((pos.x, pos.y), angle=pos.angle,
@@ -73,9 +71,14 @@ if not got_fingertips:
     print 'Error: Failed to get the fingertips required'
     sys.exit(1)
 
+# First get into position above the pad
 bot.SetCartesian(above_pos, pos.finger_distance, blocking=True)
+
+# Slow down and perform the actual click before speeding back up
+bot.SetSpeed(Touchbot.SPEED_SLOW)
 bot.SetCartesian(abs_pos, pos.finger_distance, blocking=True)
 bot.SetCartesian(above_pos, pos.finger_distance, blocking=True)
+bot.SetSpeed(Touchbot.SPEED_FAST)
 
 # Put the fingers back
 returned_fingertips = bot.ManipulateFingertips(fingers, 0, False)

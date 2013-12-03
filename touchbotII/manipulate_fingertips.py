@@ -54,11 +54,9 @@ if num_fingers < 1:
     print 'You must specify at least 1 finger to use'
     sys.exit(1)
 
-# Connect to the robot and configure the profile to move slowly
+# Connect to the robot and configure the profile to move quickly
 bot = Touchbot()
-prof = bot.GetCurrentProfile()
-prof.speed = Touchbot.SPEED_SLOW
-bot.SetProfileData(prof)
+bot.SetSpeed(Touchbot.SPEED_FAST)
 
 # Lift the hand up to get clear of anything it may be near before moving
 pos = bot.GetCurrentPosition()

@@ -18,9 +18,7 @@ from touchbotII import Touchbot
 
 # Connect to the robot and set its speed to slow
 bot = Touchbot()
-prof = bot.GetCurrentProfile()
-prof.speed = Touchbot.SPEED_SLOW
-bot.SetProfileData(prof)
+bot.SetSpeed(Touchbot.SPEED_SLOW)
 
 # First make sure there are no fingertips
 if any(bot.DetectFingertips()):

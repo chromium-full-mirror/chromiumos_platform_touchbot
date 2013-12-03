@@ -15,16 +15,11 @@ from touchbotII import Touchbot
 
 # Connect to the robot
 bot = Touchbot()
+bot.SetSpeed(Touchbot.SPEED_SLOW)
 
 # Have the user specify two positions by manually adjusting the robot
 pos1 = bot.CalibratePosition()
 pos2 = bot.CalibratePosition()
-
-# Load the current profile and set the speed much slower to prevent damage
-prof = bot.GetCurrentProfile()
-prof.speed = Touchbot.SPEED_SLOW
-bot.SetProfileData(prof)
-prof = bot.GetCurrentProfile()
 
 # Move between the two positions measured earlier
 bot.SetAngles(pos1)

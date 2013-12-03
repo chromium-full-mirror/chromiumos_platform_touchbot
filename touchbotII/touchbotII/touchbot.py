@@ -32,7 +32,7 @@ class Touchbot:
     SPEED_MEDIUM = 10.0
     SPEED_FAST = 15.0
     SPEED_VERY_FAST = 20.0
-    MAX_SPEED = 300.0
+    MAX_SPEED = 100.0
 
     # Limits on how far the robot hand can move the fingers in and out
     MIN_FINGER_DISTANCE = 15
@@ -127,6 +127,11 @@ class Touchbot:
             return None
 
         return self.GetCurrentPosition()
+
+    def SetSpeed(self, speed):
+        prof = self.GetCurrentProfile()
+        prof.speed = speed
+        self.SetProfileData(prof)
 
     def FreeAxes(self):
         """ Set all axis into free mode, ie: make them go limp. """
