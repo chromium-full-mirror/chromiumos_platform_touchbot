@@ -24,21 +24,29 @@ from touchbotII import Touchbot, Device
 def dist(p1, p2):
     return ((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2) ** 0.5
 
+manual_fingertips = "--manual-fingertips" in sys.argv
+
 # Connect to the robot and set its speed to slow
 bot = Touchbot()
 bot.SetSpeed(Touchbot.SPEED_SLOW)
 
-# First make sure there are no fingertips
-if any(bot.DetectFingertips()):
-    print 'You can not have any fingertips on for this script'
-    sys.exit(1)
+if not manual_fingertips:
+    # First make sure there are no fingertips
+    if any(bot.DetectFingertips()):
+        print 'You can not have any fingertips on for this script'
+        sys.exit(1)
 
-# Get the smallest fingertips
-bot.ManipulateFingertips([1, 1, 1, 1], 0, True)
-fingers_present = bot.DetectFingertips()
-if not all(fingers_present):
-    print 'Some finger was not picked up!'
-    sys.exit(1)
+    # Get the smallest fingertips
+    bot.ManipulateFingertips([1, 1, 1, 1], 0, True)
+    fingers_present = bot.DetectFingertips()
+    if not all(fingers_present):
+        print 'Some finger was not picked up!'
+        sys.exit(1)
+else:
+    print 'skipping fingertip setup are you sure? [y/N]'
+    response = sys.stdin.readline()
+    if response.strip() not in ('y', 'Y', 'yes', 'Yes'):
+        sys.exit(1)
 
 # Bring the fingers all in close together and raise the whole arm up
 pos = bot.GetCurrentPosition()
@@ -100,8 +108,14 @@ with open(min_device_file, 'wb') as fo:
     pickle.dump({'corners':corners, 'click_z': dev.click_z}, fo)
 
 # Return the fingertips to the nest
-bot.ManipulateFingertips([1, 1, 1, 1], 0, False)
-fingers_present = bot.DetectFingertips()
-if any(fingers_present):
-    print 'Some finger was not returned properly!'
-    sys.exit(1)
+if not manual_fingertips:
+    # Return the fingertips to the nest
+    bot.ManipulateFingertips([1, 1, 1, 1], 0, False)
+    fingers_present = bot.DetectFingertips()
+    if any(fingers_present):
+        print 'Some finger was not returned properly!'
+        sys.exit(1)
+else:
+    # Clear from touchpad
+    pos = bot.AddSafetyClearance(bot.GetCurrentPosition())
+    bot.SetAngles(pos)
