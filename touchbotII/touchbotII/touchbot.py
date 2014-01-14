@@ -279,7 +279,7 @@ class Touchbot:
 
     def IsLegalSpeed(self, speed):
         """ Is a speed an acceptable value for this robot """
-        return speed > 0.0 and speed < Touchbot.MAX_SPEED
+        return speed > 0.0 and speed <= Touchbot.MAX_SPEED
 
     def IsLegalRelativeCoordinate(self, coords):
         """ Are the x and y values between 0 and 1 """
