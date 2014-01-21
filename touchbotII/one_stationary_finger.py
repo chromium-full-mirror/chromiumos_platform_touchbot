@@ -29,6 +29,7 @@ from collections import namedtuple
 from touchbotII import Touchbot, Device, PositionArg
 
 NUM_STEPS = 15
+YAW_BUFFER = 20
 
 try:
     device = Device(sys.argv[1])
@@ -66,6 +67,7 @@ abs_stationary = device.RelativePosToAbsolutePos((stationary_x, stationary_y))
 # Split the movement up into a bunch of small steps to increase precision
 # in the middle of the gesture
 last_angle = None
+positions = []
 for step in range(NUM_STEPS):
     # Compute where the moving finger should be at this point
     percent = float(step) / float(NUM_STEPS - 1)
@@ -107,13 +109,36 @@ for step in range(NUM_STEPS):
     dy = abs_stationary.y - abs_moving.y
     dist = (dx ** 2 + dy ** 2) ** 0.5
 
-    # Execute the move
-    bot.SetCartesian(abs_mid, finger_distance=dist, blocking=False)
+    # Store this position
+    positions.append((abs_mid, dist))
+
+
+# Check to make sure the wrist won't alias around to the other side
+# If it does, determine if it can be fixed with a 180 degree offset
+min_yaw, max_yaw = bot.NonBindingYawRange(positions[0][0], YAW_BUFFER)
+yaw_shift = 0
+for abs_pos, finger_distance in positions:
+    if abs_pos.yaw > max_yaw:
+        yaw_shift = -180
+    elif abs_pos.yaw < min_yaw:
+        yaw_shift = 180
+    if yaw_shift != 0:
+        break
+for i, (abs_pos, finger_distance) in enumerate(positions):
+    abs_pos.yaw += yaw_shift
+    positions[i] = (abs_pos, finger_distance)
+    if abs_pos.yaw > max_yaw or abs_pos.yaw < min_yaw:
+        print 'Error, unable perform this gesture without wrist aliasing!'
+        sys.exit(1)
+
+# Execute the move
+for step, (abs_pos, finger_distance) in enumerate(positions):
+    bot.SetCartesian(abs_pos, finger_distance=finger_distance, blocking=False)
 
     # If this is the first or last step, block then raise/lower the fingertips
-    if step in [0, (NUM_STEPS - 1)]:
+    if step == 0:
         bot.Wait()
-        if step == 0:
-            bot.SetFingerStates([1, 0, 1, 0])
-        else:
-            bot.SetFingerStates([0, 0, 0, 0])
+        bot.SetFingerStates([1, 0, 1, 0])
+    elif step == (len(positions) - 1):
+        bot.Wait()
+        bot.SetFingerStates([0, 0, 0, 0])
