@@ -90,6 +90,9 @@ class Touchbot:
     # The range of legal relative coordinates.
     RELATIVE_COORDINATE_RANGE = (-0.05, 1.05)
 
+    # The range of non-binding values for ax_4
+    AX_4_MIN = -40
+    AX_4_MAX = 400
 
     def __init__(self, ip_address=TOUCHBOT_IP_ADDR, port=TOUCHBOT_PORT):
         self.comm = TouchbotComm(ip_address, port)
@@ -307,3 +310,23 @@ class Touchbot:
             abs_pos.y += math.sin(angle) * finger_distance / 2.0
 
         return abs_pos
+
+    def NonBindingYawRange(self, pos=None, safety_buffer=0):
+        """ Compute the range of legal yaw values for a given arm configuration
+        If no position is given, the robot's current position will be used.
+        """
+        pos = self.GetCurrentPosition() if not pos else pos
+        pos.ax_4 = self.AX_4_MIN
+        self.SetAngles(pos)
+        pos = self.GetCurrentPosition()
+        yaw_min = pos.yaw
+
+        pos.ax_4 = self.AX_4_MAX
+        self.SetAngles(pos)
+        pos = self.GetCurrentPosition()
+        yaw_max = pos.yaw
+
+        if yaw_max - yaw_min < 360:
+            yaw_max += 360
+
+        return (yaw_min + safety_buffer, yaw_max - safety_buffer)
