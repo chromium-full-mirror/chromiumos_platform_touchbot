@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import sys
+import time
 
 from touchbotII import Touchbot, Device, PositionArg
 
@@ -41,7 +42,7 @@ try:
     device = Device(sys.argv[1])
     pos = PositionArg(*[float(v) for v in sys.argv[2:6]])
     fingers = [int(arg) for arg in sys.argv[6:10]]
-    size = int(sys.argv[11])
+    size = int(sys.argv[10])
 except:
     print ('Usage: python %s device.p position finger_states' +
            ' [--manual-fingertips]' % __file__)
@@ -66,11 +67,15 @@ bot = Touchbot()
 bot.SetSpeed(Touchbot.SPEED_FAST)
 
 # Convert the point specifications into something the robot understands
-abs_pos = device.RelativePosToAbsolutePos((pos.x, pos.y), angle=pos.angle,
-                                          is_click=True)
+abs_pos_hover = device.RelativePosToAbsolutePos((pos.x, pos.y),
+                        angle=pos.angle, is_click=False)
+abs_pos_click = device.RelativePosToAbsolutePos((pos.x, pos.y),
+                        angle=pos.angle, is_click=True)
 # For one finger clicks, compensate to center the finger
-abs_pos = bot.CenterIfSingleFinger(fingers, abs_pos, pos.finger_distance)
-
+abs_pos_click = bot.CenterIfSingleFinger(fingers, abs_pos_click,
+                                         pos.finger_distance)
+abs_pos_hover = bot.CenterIfSingleFinger(fingers, abs_pos_hover,
+                                         pos.finger_distance)
 above_pos = bot.AddSafetyClearance(abs_pos)
 
 # Get the fingertips needed for the click
@@ -87,9 +92,16 @@ if not manual_fingertips:
 # First get into position above the pad
 bot.SetCartesian(above_pos, pos.finger_distance, blocking=True)
 
+# Move to a position above the click target and touch down fingers
+bot.SetSpeed(Touchbot.SPEED_FAST)
+bot.SetCartesian(abs_pos_hover, pos.finger_distance, blocking=True)
+bot.SetFingerStates(fingers)
+time.sleep(1)
+
 # Slow down and perform the actual click before speeding back up
 bot.SetSpeed(Touchbot.SPEED_SLOW)
-bot.SetCartesian(abs_pos, pos.finger_distance, blocking=True)
+bot.SetCartesian(abs_pos_click, pos.finger_distance, blocking=True)
+bot.SetFingerStates([0, 0, 0, 0])
 bot.SetCartesian(above_pos, pos.finger_distance, blocking=True)
 bot.SetSpeed(Touchbot.SPEED_FAST)
 
