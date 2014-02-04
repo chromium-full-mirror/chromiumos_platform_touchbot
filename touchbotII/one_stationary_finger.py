@@ -10,14 +10,21 @@ where the stationary finger should be placed.  The other two specify the start
 and end coordinates for the mobile finger.  Finally it takes a speed paramater
 between 0 and 100.
 
+There is one optional flag to indicate how many times to tap the stationary
+finger during the gesture.  If this is omitted, the finger will just rest on
+the pad.
+
 Usage:
     python one_stationary_finger.py device.p stationary_pos start_pos
-           end_pos speed
+           end_pos speed [--taps=n]
 
 Example:
     # Slowly move one finger from the top left to bottom right corner while
     # keeping a finger stationary in the bottom left
     python one_stationary_finger.py link.p 0.1 0.9 0.1 0.1 0.9 0.9 10
+
+    # The same as above but tapping in the bottom left corner 3 times
+    python one_stationary_finger.py link.p 0.1 0.9 0.1 0.1 0.9 0.9 10 --taps=3
 """
 
 import math
@@ -37,11 +44,19 @@ try:
     start_x, start_y = (float(sys.argv[4]), float(sys.argv[5]))
     end_x, end_y = (float(sys.argv[6]), float(sys.argv[7]))
     speed = float(sys.argv[8])
+
+    num_taps = 0
+    if len(sys.argv) > 9:
+        for arg in sys.argv[9:len(sys.argv)]:
+            if arg.startswith('--taps='):
+                num_taps = int(arg.split('=')[1])
+                break
+
 except:
     print ('Usage: python %s device.p stationary_pos start_pos end_pos speed' %
            __file__)
     print 'Example: python %s link.p 0.1 0.9 0.1 0.1 0.9 0.9 10' % __file__
-    sys.exit(-1)
+    sys.exit(1)
 
 # Connect to the robot and configure the profile
 bot = Touchbot()
@@ -59,6 +74,9 @@ if not (bot.IsLegalRelativeCoordinate((stationary_x, stationary_y)) and
     sys.exit(-1)
 if not bot.IsLegalSpeed(speed):
     print 'The speed %f is not acceptable for this robot' % speed
+    sys.exit(-1)
+if num_taps < 0:
+    print 'The number of taps to execute (%d) must be >= 0' % num_taps
     sys.exit(-1)
 
 
@@ -131,14 +149,28 @@ for i, (abs_pos, finger_distance) in enumerate(positions):
         print 'Error, unable perform this gesture without wrist aliasing!'
         sys.exit(1)
 
+# Compute which steps (if any) the taps will be executed on
+tap_steps = []
+if num_taps > 0:
+    tap_steps = [(i + 1) * len(positions) / (num_taps + 1)
+                 for i in range(num_taps)]
+lifted_fingers = [1, 0, 0, 0] if yaw_shift != 0 else [0, 0, 1, 0]
+
 # Execute the move
 for step, (abs_pos, finger_distance) in enumerate(positions):
     bot.SetCartesian(abs_pos, finger_distance=finger_distance, blocking=False)
 
+    # If the stationary finger should tap here, do it.  The non-blocking nature
+    # of the SetCartesian command should allow this to work without issues
+    if step in tap_steps:
+        bot.SetFingerStates([1, 0, 1, 0])
+        time.sleep(bot.MINIMUM_FINGER_EXTENSION_TIME)
+        bot.SetFingerStates(lifted_fingers)
+
     # If this is the first or last step, block then raise/lower the fingertips
     if step == 0:
         bot.Wait()
-        bot.SetFingerStates([1, 0, 1, 0])
+        bot.SetFingerStates([1, 0, 1, 0] if num_taps is 0 else lifted_fingers)
     elif step == (len(positions) - 1):
         bot.Wait()
         bot.SetFingerStates([0, 0, 0, 0])
