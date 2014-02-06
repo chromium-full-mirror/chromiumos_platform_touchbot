@@ -91,8 +91,8 @@ class Touchbot:
     RELATIVE_COORDINATE_RANGE = (-0.05, 1.05)
 
     # The range of non-binding values for ax_4
-    AX_4_MIN = -40
-    AX_4_MAX = 400
+    AX_4_MIN = 1
+    AX_4_MAX = 359
 
     def __init__(self, ip_address=TOUCHBOT_IP_ADDR, port=TOUCHBOT_PORT):
         self.comm = TouchbotComm(ip_address, port)
