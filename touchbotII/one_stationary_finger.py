@@ -102,8 +102,9 @@ for step in range(NUM_STEPS):
                                 (stationary_x, stationary_y))
     abs_moving = device.RelativePosToAbsolutePos(
                                 (moving_finger_x, moving_finger_y))
-    angle = math.degrees(math.atan((abs_stationary.y - abs_moving.y) /
-                                   (abs_stationary.x - abs_moving.x)))
+    dx = abs_stationary.x - abs_moving.x
+    dy = abs_stationary.y - abs_moving.y
+    angle = math.degrees(math.atan2(dy, dx))
     # The fingers are offset by 45 degrees
     angle += 45
 
@@ -112,13 +113,13 @@ for step in range(NUM_STEPS):
     # if we don't check for it and compensate.
     if last_angle:
         curr_change = abs(angle - last_angle)
-        aliased_change_pos = abs((angle + 180) - last_angle)
-        aliased_change_neg = abs((angle - 180) - last_angle)
+        aliased_change_pos = abs((angle + 360) - last_angle)
+        aliased_change_neg = abs((angle - 360) - last_angle)
         min_change = min([curr_change, aliased_change_pos, aliased_change_neg])
         if aliased_change_pos == min_change:
-            angle = angle + 180
+            angle = angle + 360
         elif aliased_change_neg == min_change:
-            angle = angle - 180
+            angle = angle - 360
     last_angle = angle
     abs_mid.yaw = angle
 
@@ -132,29 +133,33 @@ for step in range(NUM_STEPS):
 
 
 # Check to make sure the wrist won't alias around to the other side
-# If it does, determine if it can be fixed with a 180 degree offset
+# If it does, determine if it can be fixed with a 180 or 360 deg offset
 min_yaw, max_yaw = bot.NonBindingYawRange(positions[0][0], YAW_BUFFER)
-yaw_shift = 0
-for abs_pos, finger_distance in positions:
-    if abs_pos.yaw > max_yaw:
-        yaw_shift = -180
-    elif abs_pos.yaw < min_yaw:
-        yaw_shift = 180
-    if yaw_shift != 0:
+chosen_yaw_shift = None
+for yaw_shift in [-360, -180, 0, 180, 360]:
+    legal = True
+    for abs_pos, _ in positions:
+        if (abs_pos.yaw + yaw_shift > max_yaw or
+            abs_pos.yaw + yaw_shift < min_yaw):
+            legal = False
+            break
+    if legal:
+        chosen_yaw_shift = yaw_shift
         break
-for i, (abs_pos, finger_distance) in enumerate(positions):
-    abs_pos.yaw += yaw_shift
-    positions[i] = (abs_pos, finger_distance)
-    if abs_pos.yaw > max_yaw or abs_pos.yaw < min_yaw:
-        print 'Error, unable perform this gesture without wrist aliasing!'
-        sys.exit(1)
+
+if chosen_yaw_shift is None:
+    print 'ERROR: Unable to perform this gesture with wrapping the wrist'
+    sys.exit(1)
+
+for i in range(len(positions)):
+    positions[i][0].yaw += chosen_yaw_shift
 
 # Compute which steps (if any) the taps will be executed on
 tap_steps = []
 if num_taps > 0:
     tap_steps = [(i + 1) * len(positions) / (num_taps + 1)
                  for i in range(num_taps)]
-lifted_fingers = [1, 0, 0, 0] if yaw_shift != 0 else [0, 0, 1, 0]
+lifted_fingers = [1, 0, 0, 0] if chosen_yaw_shift % 360 == 0 else [0, 0, 1, 0]
 
 # Execute the move
 for step, (abs_pos, finger_distance) in enumerate(positions):
