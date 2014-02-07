@@ -35,6 +35,7 @@ Examples:
     To pick up two size 3 fingertips'
         python manipulate_fingertips.py 0 1 0 1 3 True'
 """
+NUM_RETRIES = 3
 
 try:
     fingers = [int(arg) for arg in sys.argv[1:5]]
@@ -67,14 +68,26 @@ if error_code:
     sys.exit(1)
 
 # Check what we can to make sure there will not be a collision
-fingertips_present = bot.DetectFingertips()
+success = False
 if should_keep_fingertips:
-    if any([want and have for want, have in zip(fingers, fingertips_present)]):
+    for i in range(NUM_RETRIES):
+        fingertips_present = bot.DetectFingertips()
+        if not any([want and have for want, have
+                    in zip(fingers, fingertips_present)]):
+            success = True
+            break
+
+    if not success:
         print 'Error: there are already fingertips there!'
         sys.exit(1)
 else:
-    if any([should_drop and not have for should_drop, have
-            in zip(fingers, fingertips_present)]):
+    for i in range(NUM_RETRIES):
+        fingertips_present = bot.DetectFingertips()
+        if all([should_drop and have for should_drop, have
+                    in zip(fingers, fingertips_present)]):
+            success = True
+            break
+    if not success:
         print 'Error: Can not return fingertips that are not attached!'
         sys.exit(1)
 
@@ -85,15 +98,25 @@ if not success:
     sys.exit(1)
 
 # Check what we can to make sure it worked correctly
-fingertips_present = bot.DetectFingertips()
+success = False
 if should_keep_fingertips:
-    if not all([not want or have for want, have
+    for i in range(NUM_RETRIES):
+        fingertips_present = bot.DetectFingertips()
+        if all([not want or have for want, have
                 in zip(fingers, fingertips_present)]):
+            success = True
+            break
+    if not success:
         print 'Error: Not all the fingertips were picked up!'
         sys.exit(1)
 else:
-    if any([should_drop and have for should_drop, have
-            in zip(fingers, fingertips_present)]):
+    for i in range(NUM_RETRIES):
+        fingertips_present = bot.DetectFingertips()
+        if not any([should_drop and have for should_drop, have
+                    in zip(fingers, fingertips_present)]):
+            success = True
+            break
+    if not success:
         print 'Error: Not all the fingertips were dropped!'
         sys.exit(1)
 
