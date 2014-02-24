@@ -116,7 +116,7 @@ def clip_timeframes(positions, laser_crossings):
     laser_end = laser_crossings[-1].timestamp
 
     positions = [p for p in positions
-                 if (p.timestamp <= laser_end and p.timestamp >= laser_start)
+                 if (p.timestamp <= laser_end and p.timestamp >= laser_start)]
     laser_crossings = [q for q in laser_crossings
                        if (q.timestamp <= touchpad_end and
                            q.timestamp >= touchpad_start)]
@@ -201,8 +201,8 @@ def compute_latency(line_positions, laser_positions):
     Returns a list of floats corresponding to the latency for each crossing
     """
     latencies = []
-    for (probe_timestamp, _, _), (laser_timestamp, _, _) in
-                                        zip(line_positions, laser_positions):
+    for (probe_timestamp, _, _), (laser_timestamp, _, _) \
+                                in zip(line_positions, laser_positions):
         latencies.append(probe_timestamp - laser_timestamp)
     return latencies
 
@@ -219,7 +219,7 @@ def main(evtest_log_filename, quickstep_log_filename):
         return
 
     # Find the points where the laser was crossed
-    laser_crossing_points =
+    laser_crossing_points = \
                 get_laser_crossing_points(positions, laser_crossings)
 
     # Separate those points of two "lines" (the laser essentially defines two)
@@ -248,12 +248,16 @@ def main(evtest_log_filename, quickstep_log_filename):
     print np.average(latencies), max(latencies), min(latencies)
 
     # Draw everything, and make a picture of the data for debugging
-    maxx = max([x for t, x, y in laser_crossing_points])
-    maxy = max([y for t, x, y in laser_crossing_points])
+    maxx = max([x for t, x, y in positions])
+    maxy = max([y for t, x, y in positions])
     img = ppm.Image(maxx + 50, maxy + 50)
 
+    last_x, last_y = None, None
     for t, x, y in positions:
-        img.Circle((x, y), ppm.BLACK, radius=1)
+        img.Circle((x, y), ppm.BLACK, radius=2)
+        if not last_x is None:
+            img.Line((last_x, last_y), (x, y), ppm.BLACK)
+        last_x, last_y = x, y
 
     for t, x, y in touchpad_crossing_points0:
         img.Circle((x, y), ppm.BLACK, radius=6)
