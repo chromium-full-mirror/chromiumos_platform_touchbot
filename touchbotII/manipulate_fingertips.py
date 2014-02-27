@@ -83,7 +83,7 @@ if should_keep_fingertips:
 else:
     for i in range(NUM_RETRIES):
         fingertips_present = bot.DetectFingertips()
-        if all([should_drop and have for should_drop, have
+        if all([not should_drop or have for should_drop, have
                     in zip(fingers, fingertips_present)]):
             success = True
             break
