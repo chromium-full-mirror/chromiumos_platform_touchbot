@@ -76,7 +76,7 @@ abs_pos_click = bot.CenterIfSingleFinger(fingers, abs_pos_click,
                                          pos.finger_distance)
 abs_pos_hover = bot.CenterIfSingleFinger(fingers, abs_pos_hover,
                                          pos.finger_distance)
-above_pos = bot.AddSafetyClearance(abs_pos)
+above_pos = bot.AddSafetyClearance(abs_pos_hover)
 
 # Get the fingertips needed for the click
 if not manual_fingertips:
