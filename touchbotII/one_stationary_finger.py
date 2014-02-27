@@ -154,6 +154,16 @@ if chosen_yaw_shift is None:
 for i in range(len(positions)):
     positions[i][0].yaw += chosen_yaw_shift
 
+# Nudge the wrist into the right direction before starting.  If the wrist
+# begins the gesture way on the other side of its rotation sometimes it will
+# go the wrong direction and result in problems when it tries to over-extend.
+# By nudging the wrist closer to the starting position, this shouldn't happen.
+dist_min = abs(positions[0][0].yaw - min_yaw)
+dist_max = abs(positions[0][0].yaw - max_yaw)
+nudge_pos = bot.GetCurrentPosition()
+nudge_pos.ax_4 = bot.AX_4_MAX if dist_min > dist_max else bot.AX_4_MIN
+bot.SetAngles(nudge_pos)
+
 # Compute which steps (if any) the taps will be executed on
 tap_steps = []
 if num_taps > 0:
