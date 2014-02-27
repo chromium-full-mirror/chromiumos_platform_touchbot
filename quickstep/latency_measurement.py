@@ -206,17 +206,12 @@ def compute_latency(line_positions, laser_positions):
         latencies.append(probe_timestamp - laser_timestamp)
     return latencies
 
-
-def main(evtest_log_filename, quickstep_log_filename):
-    positions = get_finger_positions(evtest_log_filename)
-    laser_crossings = get_laser_crossings(quickstep_log_filename)
-    if not laser_crossings:
-        print 'ERROR: Unable to get the laser crossings log.'
-        return
-    positions, laser_crossings = clip_timeframes(positions, laser_crossings)
-    if not positions:
-        print 'ERROR: Unable to get the touchpad activity log.'
-        return
+def measure_latencies(finger_positions, laser_crossings, filename=None):
+    positions, laser_crossings = \
+                        clip_timeframes(finger_positions, laser_crossings)
+    if not positions or not laser_crossings:
+        print 'ERROR: There are no overlapping events in the input'
+        return []
 
     # Find the points where the laser was crossed
     laser_crossing_points = \
@@ -241,39 +236,51 @@ def main(evtest_log_filename, quickstep_log_filename):
                                  laser_crossing_points0)
     latencies1 = compute_latency(touchpad_crossing_points1,
                                  laser_crossing_points1)
-    latencies = latencies0 + latencies1
+
+    if filename:
+        # Draw everything, and make a picture of the data for debugging
+        maxx = max([x for t, x, y in positions])
+        maxy = max([y for t, x, y in positions])
+        img = ppm.Image(maxx + 50, maxy + 50)
+
+        last_x, last_y = None, None
+        for t, x, y in positions:
+            img.Circle((x, y), ppm.BLACK, radius=2)
+            if not last_x is None:
+                img.Line((last_x, last_y), (x, y), ppm.BLACK)
+            last_x, last_y = x, y
+
+        for t, x, y in touchpad_crossing_points0:
+            img.Circle((x, y), ppm.BLACK, radius=6)
+        for t, x, y in touchpad_crossing_points1:
+            img.Circle((x, y), ppm.BLACK, radius=6)
+
+        for i, (t, x, y) in enumerate(laser_crossing_points):
+            img.Circle((x, y), ppm.BLACK, radius=6)
+        for i, (t, x, y) in enumerate(laser_crossing_points0):
+            img.Circle((x, y), ppm.MAGENTA if i % 2 else ppm.RED)
+        for i, (t, x, y) in enumerate(laser_crossing_points1):
+            img.Circle((x, y), ppm.YELLOW if i % 2 else ppm.CYAN)
+
+        img.Line((0, line0(0)), (maxx + 50, line0(maxx + 50)), ppm.BLUE)
+        img.Line((0, line1(0)), (maxx + 50, line1(maxx + 50)), ppm.GREEN)
+        img.Save(filename)
+
+    return latencies0 + latencies1
+
+
+def main(evtest_log_filename, quickstep_log_filename):
+    positions = get_finger_positions(evtest_log_filename)
+    laser_crossings = get_laser_crossings(quickstep_log_filename)
+
+    latencies = measure_latencies(positions, laser_crossings, 'out.ppm')
+    if not latencies:
+        print 'ERROR: Unable to compute any latencies'
+        return
 
     # Display the results
     print 'Average', 'Maximum', 'Minimum'
     print np.average(latencies), max(latencies), min(latencies)
-
-    # Draw everything, and make a picture of the data for debugging
-    maxx = max([x for t, x, y in positions])
-    maxy = max([y for t, x, y in positions])
-    img = ppm.Image(maxx + 50, maxy + 50)
-
-    last_x, last_y = None, None
-    for t, x, y in positions:
-        img.Circle((x, y), ppm.BLACK, radius=2)
-        if not last_x is None:
-            img.Line((last_x, last_y), (x, y), ppm.BLACK)
-        last_x, last_y = x, y
-
-    for t, x, y in touchpad_crossing_points0:
-        img.Circle((x, y), ppm.BLACK, radius=6)
-    for t, x, y in touchpad_crossing_points1:
-        img.Circle((x, y), ppm.BLACK, radius=6)
-
-    for i, (t, x, y) in enumerate(laser_crossing_points):
-        img.Circle((x, y), ppm.BLACK, radius=6)
-    for i, (t, x, y) in enumerate(laser_crossing_points0):
-        img.Circle((x, y), ppm.MAGENTA if i % 2 else ppm.RED)
-    for i, (t, x, y) in enumerate(laser_crossing_points1):
-        img.Circle((x, y), ppm.YELLOW if i % 2 else ppm.CYAN)
-
-    img.Line((0, line0(0)), (maxx + 50, line0(maxx + 50)), ppm.BLUE)
-    img.Line((0, line1(0)), (maxx + 50, line1(maxx + 50)), ppm.GREEN)
-    img.Save('out.ppm')
 
 
 if __name__ == '__main__':
