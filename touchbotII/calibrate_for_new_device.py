@@ -21,6 +21,8 @@ import sys
 
 from touchbotII import Touchbot, Device
 
+FINGERTIP_SIZE = 3
+
 def dist(p1, p2):
     return ((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2) ** 0.5
 
@@ -28,7 +30,7 @@ manual_fingertips = "--manual-fingertips" in sys.argv
 
 # Connect to the robot and set its speed to slow
 bot = Touchbot()
-bot.SetSpeed(Touchbot.SPEED_SLOW)
+bot.SetSpeed(Touchbot.SPEED_FAST)
 
 if not manual_fingertips:
     # First make sure there are no fingertips
@@ -37,7 +39,7 @@ if not manual_fingertips:
         sys.exit(1)
 
     # Get the smallest fingertips
-    bot.ManipulateFingertips([1, 1, 1, 1], 0, True)
+    bot.ManipulateFingertips([1, 1, 1, 1], FINGERTIP_SIZE, True)
     fingers_present = bot.DetectFingertips()
     if not all(fingers_present):
         print 'Some finger was not picked up!'
@@ -51,7 +53,7 @@ else:
 # Bring the fingers all in close together and raise the whole arm up
 pos = bot.GetCurrentPosition()
 pos.ax_1 += Touchbot.SAFETY_CLEARANCE # Move up in the Z direction
-pos.ax_5 = 10.0 # Inter-finger distance in approximately mm
+pos.ax_5 = 18.0 # Inter-finger distance in approximately mm
 pos = bot.SetAngles(pos)
 
 # Extend the fingers once the user says everything is okay
@@ -110,7 +112,7 @@ with open(min_device_file, 'wb') as fo:
 # Return the fingertips to the nest
 if not manual_fingertips:
     # Return the fingertips to the nest
-    bot.ManipulateFingertips([1, 1, 1, 1], 0, False)
+    bot.ManipulateFingertips([1, 1, 1, 1], FINGERTIP_SIZE, False)
     fingers_present = bot.DetectFingertips()
     if any(fingers_present):
         print 'Some finger was not returned properly!'
