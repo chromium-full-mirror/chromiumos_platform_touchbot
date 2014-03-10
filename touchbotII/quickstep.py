@@ -29,9 +29,6 @@ FINGERS = [0, 0, 1, 0]
 TOP_EDGE = EDGE_BUFFER
 BOTTOM_EDGE = 1.0 - EDGE_BUFFER
 
-# The fingers must extend a little further than normal to avoid accidentally
-# interrupting the laser beam.
-LASER_CLEARANCE_SHIFT = 5
 
 try:
     # Load the device spec
@@ -66,12 +63,10 @@ xs = xs + [(1.0 - i * step) for i in range(int(NUM_CROSSINGS / 4.0))]
 for x in xs:
     abs_start = device.RelativePosToAbsolutePos((x, TOP_EDGE))
     abs_start = bot.CenterIfSingleFinger(FINGERS, abs_start, 20)
-    abs_start.z += LASER_CLEARANCE_SHIFT
     bot.SetCartesian(abs_start, finger_distance=FINGER_SPREAD, blocking=True)
 
     abs_end = device.RelativePosToAbsolutePos((x, BOTTOM_EDGE))
     abs_end = bot.CenterIfSingleFinger(FINGERS, abs_end, 20)
-    abs_end.z += LASER_CLEARANCE_SHIFT
     bot.SetCartesian(abs_end, finger_distance=FINGER_SPREAD, blocking=True)
 
 bot.SetFingerStates([0, 0, 0, 0])
