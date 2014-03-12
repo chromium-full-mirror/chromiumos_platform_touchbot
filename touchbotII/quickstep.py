@@ -57,9 +57,9 @@ bot.SetFingerStates(FINGERS)
 bot.SetSpeed(speed)
 
 # Compute a number of lines to draw across the pad and move in a zig-zag
-step = 1.0 / (NUM_CROSSINGS / 4.0)
-xs = [i * step for i in range(int(NUM_CROSSINGS / 4.0))]
-xs = xs + [(1.0 - i * step) for i in range(int(NUM_CROSSINGS / 4.0))]
+step = (1.0 - 2 * EDGE_BUFFER) / (NUM_CROSSINGS / 4.0)
+xs = [EDGE_BUFFER + i * step for i in range(int(NUM_CROSSINGS / 4.0))]
+xs += [(1.0 - EDGE_BUFFER - i * step) for i in range(int(NUM_CROSSINGS / 4.0))]
 for x in xs:
     abs_start = device.RelativePosToAbsolutePos((x, TOP_EDGE))
     abs_start = bot.CenterIfSingleFinger(FINGERS, abs_start, 20)
