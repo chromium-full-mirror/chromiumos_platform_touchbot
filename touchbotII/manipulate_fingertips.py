@@ -41,6 +41,9 @@ try:
     fingers = [int(arg) for arg in sys.argv[1:5]]
     size = int(sys.argv[5])
     should_keep_fingertips = bool(sys.argv[6] == 'True')
+    skip_first_check = False
+    if len(sys.argv) > 7 and sys.argv[7] == "--fast-check":
+        skip_first_check = True
 except:
     print 'Usage: python %s fingers size should_keep_fingertips' % __file__
     print 'Example:'
@@ -69,27 +72,28 @@ if error_code:
 
 # Check what we can to make sure there will not be a collision
 success = False
-if should_keep_fingertips:
-    for i in range(NUM_RETRIES):
-        fingertips_present = bot.DetectFingertips()
-        if not any([want and have for want, have
-                    in zip(fingers, fingertips_present)]):
-            success = True
-            break
+if not skip_first_check:
+    if should_keep_fingertips:
+        for i in range(NUM_RETRIES):
+            fingertips_present = bot.DetectFingertips()
+            if not any([want and have for want, have
+                        in zip(fingers, fingertips_present)]):
+                success = True
+                break
 
-    if not success:
-        print 'Error: there are already fingertips there!'
-        sys.exit(1)
-else:
-    for i in range(NUM_RETRIES):
-        fingertips_present = bot.DetectFingertips()
-        if all([not should_drop or have for should_drop, have
-                    in zip(fingers, fingertips_present)]):
-            success = True
-            break
-    if not success:
-        print 'Error: Can not return fingertips that are not attached!'
-        sys.exit(1)
+        if not success:
+            print 'Error: there are already fingertips there!'
+            sys.exit(1)
+    else:
+        for i in range(NUM_RETRIES):
+            fingertips_present = bot.DetectFingertips()
+            if all([not should_drop or have for should_drop, have
+                        in zip(fingers, fingertips_present)]):
+                success = True
+                break
+        if not success:
+            print 'Error: Can not return fingertips that are not attached!'
+            sys.exit(1)
 
 # Execute the swap
 success = bot.ManipulateFingertips(fingers, size, should_keep_fingertips)
