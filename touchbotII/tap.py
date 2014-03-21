@@ -32,7 +32,6 @@ Example:
 import math
 import sys
 import time
-
 from touchbotII import Touchbot, Device, PositionArg
 
 
@@ -43,6 +42,9 @@ try:
     fingers = [int(arg) for arg in sys.argv[6:10]]
     num_taps = int(sys.argv[10])
     is_drumroll = (sys.argv[11] == 'drumroll')
+    delay = 0.0
+    if len(sys.argv) > 11:
+        delay = float(sys.argv[12])
 except:
     print ('Usage: python %s device.p position fingers num_taps [tap|drumroll]'
                                                                     % __file__)
@@ -105,7 +107,8 @@ for tap_num in range(num_taps):
         bot.SetFingerStates(fingers)
         # The pressure is split across all the fingers, so they are slower to
         # extend if there are multiples being used at once
-        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME * num_fingers)
+        time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME * num_fingers
+                   + delay)
         bot.SetFingerStates([0, 0, 0, 0])
         time.sleep(Touchbot.MINIMUM_FINGER_EXTENSION_TIME)
 
