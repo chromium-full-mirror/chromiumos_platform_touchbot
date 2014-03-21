@@ -42,6 +42,9 @@ try:
     fingers = [int(arg) for arg in sys.argv[10:14]]
     speed = float(sys.argv[14])
     is_swipe = bool(sys.argv[15] == 'swipe')
+    delay = 0.0
+    if len(sys.argv) > 15:
+        delay = float(sys.argv[16])
 except:
     print (('Usage: python %s device.p start end finger_states speed ' +
             '[swipe|basic]') % __file__)
@@ -65,6 +68,7 @@ print '\tEnd:       %s' % str(end)
 print '\tFingers:   %s' % str(fingers)
 print '\tSpeed:     %f' % speed
 print '\tIs Swipe?: %s' % str(is_swipe)
+print '\tDelay:     %f' % delay
 
 # Connect to the robot and configure the profile
 bot = Touchbot()
@@ -100,12 +104,12 @@ abs_end = bot.CenterIfSingleFinger(fingers, abs_end, end.finger_distance)
 bot.SetFingerStates([0, 0, 0, 0])
 bot.SetCartesian(abs_start, start.finger_distance, blocking=True)
 
-# Begin moving to the end point
-bot.SetCartesian(abs_end, end.finger_distance, blocking=False)
-
 # Sort out what to do with the fingers as it moves depending on if it is a
 # swipe or a regular, basic line.
 if is_swipe:
+    # start moving to end point
+    bot.SetCartesian(abs_end, end.finger_distance, blocking=False)
+
     distance_to_travel = abs_start.CartesianDistanceFrom(abs_end)
     distance_traveled = 0.0
     # Wait until 1/4 of the distance has been traveled to extend the fingers
@@ -121,6 +125,9 @@ if is_swipe:
         distance_traveled = curr_pos.CartesianDistanceFrom(abs_start)
     bot.SetFingerStates([0, 0, 0, 0])
 else:
+    # put fingers down and wait for delay
     bot.SetFingerStates(fingers)
-    bot.Wait()
+    time.sleep(delay)
+    # Move to end point
+    bot.SetCartesian(abs_end, end.finger_distance, blocking=True)
     bot.SetFingerStates([0, 0, 0, 0])
