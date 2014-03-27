@@ -219,9 +219,9 @@ def measure_latencies(finger_positions, laser_crossings, filename=None):
 
     # Separate those points of two "lines" (the laser essentially defines two)
     laser_crossing_points0 = [p for i, p in enumerate(laser_crossing_points)
-                              if int(i / 2) % 2 == 0]
+                              if int((i + 1) / 2) % 2 == 0]
     laser_crossing_points1 = [p for i, p in enumerate(laser_crossing_points)
-                              if int(i / 2) % 2 == 1]
+                              if int((i + 1) / 2) % 2 == 1]
 
     # Fit a line to them to estimate where the actual laser is
     line0 = estimate_laser_line(laser_crossing_points0)
