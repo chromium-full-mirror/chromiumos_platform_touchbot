@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import pickle
+import sys
 
 from position import Position
 
@@ -28,6 +29,16 @@ class Device:
         # Send the converted points directly as movements
         bot.SetAngles(abs_p1)
         bot.SetAngles(abs_p2)
+
+    If this script is run from the command line it will take in a device spec
+    as an argument, compute the width and height of the touchpad and print them
+    This is useful so you can figure out what relative coordinates you need if
+    you want the fingers to be a fixed, absolute distance apart.
+    The dimensions are returned in millimeters.
+
+    Usage:
+        localhost ~ # python device.py link.p
+        68.1363218184 102.914542215
     """
     def __init__(self, device_file):
         self.device_data = None
@@ -71,3 +82,33 @@ class Device:
         if is_click:
             abs_p.z = abs_p.ax_1 = self.click_z
         return abs_p
+
+    def __Distance(self, pos1, pos2):
+        dx = pos1.x - pos2.x
+        dy = pos1.y - pos2.y
+        return (dx * dx + dy * dy) ** 0.5
+
+    def DeviceHeight(self):
+        heights = [];
+        for x in [0.0, 1.0]:
+            p1 = self.RelativePosToAbsolutePos((x, 0.0))
+            p2 = self.RelativePosToAbsolutePos((x, 1.0))
+            heights.append(self.__Distance(p1, p2))
+        return (heights[0] + heights[1]) / 2.0
+
+    def DeviceWidth(self):
+        widths = [];
+        for y in [0.0, 1.0]:
+            p1 = self.RelativePosToAbsolutePos((0.0, y))
+            p2 = self.RelativePosToAbsolutePos((1.0, y))
+            widths.append(self.__Distance(p1, p2))
+        return (widths[0] + widths[1]) / 2.0
+
+if __name__ == '__main__':
+    try:
+        device = Device(sys.argv[1])
+    except:
+        print 'Usage: %s device.p' % __file__
+        sys.exit(1)
+
+    print device.DeviceHeight(), device.DeviceWidth()
