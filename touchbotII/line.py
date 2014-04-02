@@ -28,7 +28,7 @@ Examples:
 
 import sys
 import time
-
+import traceback
 from collections import namedtuple
 
 from touchbotII import Touchbot, Device, PositionArg
@@ -42,12 +42,14 @@ try:
     fingers = [int(arg) for arg in sys.argv[10:14]]
     speed = float(sys.argv[14])
     is_swipe = bool(sys.argv[15] == 'swipe')
+    is_fling = bool(sys.argv[15] == 'fling')
     delay = 0.0
     if len(sys.argv) > 15:
         delay = float(sys.argv[16])
 except:
+    traceback.print_exc()
     print (('Usage: python %s device.p start end finger_states speed ' +
-            '[swipe|basic]') % __file__)
+            '[swipe|basic|fling] [delay]') % __file__)
     print '     * start and end: formatted as x y angle finger_distance'
     print '     * finger_states: a list of 4 values (1s and 0s)'
     print '     * speed: a decimal value for the speed in mm/s'
@@ -68,6 +70,7 @@ print '\tEnd:       %s' % str(end)
 print '\tFingers:   %s' % str(fingers)
 print '\tSpeed:     %f' % speed
 print '\tIs Swipe?: %s' % str(is_swipe)
+print '\tIs Fling?: %s' % str(is_fling)
 print '\tDelay:     %f' % delay
 
 # Connect to the robot and configure the profile
@@ -120,6 +123,19 @@ if is_swipe:
     bot.SetFingerStates(fingers)
 
     # Raise the fingers after only 3/4 of the distance has been traveled
+    while distance_traveled < 0.75 * distance_to_travel:
+        curr_pos = bot.GetCurrentPosition()
+        distance_traveled = curr_pos.CartesianDistanceFrom(abs_start)
+    bot.SetFingerStates([0, 0, 0, 0])
+elif is_fling:
+    # put fingers down and wait for delay
+    bot.SetFingerStates(fingers)
+    time.sleep(delay)
+    bot.SetCartesian(abs_end, end.finger_distance, blocking=False)
+
+    # Move to end point
+    distance_to_travel = abs_start.CartesianDistanceFrom(abs_end)
+    distance_traveled = 0.0
     while distance_traveled < 0.75 * distance_to_travel:
         curr_pos = bot.GetCurrentPosition()
         distance_traveled = curr_pos.CartesianDistanceFrom(abs_start)
