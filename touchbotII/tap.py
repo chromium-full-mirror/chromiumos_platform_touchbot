@@ -43,7 +43,7 @@ try:
     num_taps = int(sys.argv[10])
     is_drumroll = (sys.argv[11] == 'drumroll')
     delay = 0.0
-    if len(sys.argv) > 11:
+    if len(sys.argv) > 12:
         delay = float(sys.argv[12])
 except:
     print ('Usage: python %s device.p position fingers num_taps [tap|drumroll]'

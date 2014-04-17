@@ -44,7 +44,7 @@ try:
     is_swipe = bool(sys.argv[15] == 'swipe')
     is_fling = bool(sys.argv[15] == 'fling')
     delay = 0.0
-    if len(sys.argv) > 15:
+    if len(sys.argv) > 16:
         delay = float(sys.argv[16])
 except:
     traceback.print_exc()
