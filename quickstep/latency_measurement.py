@@ -58,6 +58,7 @@ def get_finger_positions(filename):
     points = []
     fingers = {}
     curr_id = 0
+    last_x = last_y = 0
 
     for line in log:
         if not line.startswith('Event: '):
@@ -73,8 +74,8 @@ def get_finger_positions(filename):
             fingers[curr_id]['y'] = get_evtest_value(line)
         elif 'SYN_REPORT' in line and curr_id != -1:
             t = get_evtest_timestamp(line)
-            x = fingers[curr_id].get('x', None)
-            y = fingers[curr_id].get('y', None)
+            last_x = x = fingers[curr_id].get('x', last_x)
+            last_y = y = fingers[curr_id].get('y', last_y)
             points.append(FingerPosition(t, x, y))
 
     log.close()
