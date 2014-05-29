@@ -95,6 +95,7 @@ class Touchbot:
     AX_4_MAX = 359
 
     def __init__(self, ip_address=TOUCHBOT_IP_ADDR, port=TOUCHBOT_PORT):
+        self.speed_stack = []
         self.comm = TouchbotComm(ip_address, port)
 
         self.nest_positions = [Position.FromPickledFile(filename)
@@ -135,6 +136,10 @@ class Touchbot:
         prof = self.GetCurrentProfile()
         prof.speed = speed
         self.SetProfileData(prof)
+
+    def GetSpeed(self):
+        prof = self.GetCurrentProfile()
+        return prof.speed
 
     def FreeAxes(self):
         """ Set all axis into free mode, ie: make them go limp. """
@@ -315,6 +320,8 @@ class Touchbot:
         """ Compute the range of legal yaw values for a given arm configuration
         If no position is given, the robot's current position will be used.
         """
+        self.PushSpeed(Touchbot.MAX_SPEED)
+
         pos = self.GetCurrentPosition() if not pos else pos
         pos.ax_4 = self.AX_4_MIN
         self.SetAngles(pos)
@@ -329,4 +336,13 @@ class Touchbot:
         if yaw_max - yaw_min < 360:
             yaw_max += 360
 
+        self.PopSpeed()
         return (yaw_min + safety_buffer, yaw_max - safety_buffer)
+
+    def PushSpeed(self, new_speed):
+        self.speed_stack.append(self.GetSpeed())
+        self.SetSpeed(new_speed)
+
+    def PopSpeed(self):
+        if len(self.speed_stack) >= 1:
+            self.SetSpeed(self.speed_stack.pop())
