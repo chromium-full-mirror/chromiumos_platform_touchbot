@@ -1,0 +1,14 @@
+application: crostouchlatency
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /
+  static_files: optofidelity/html/index.html
+  upload: optofidelity/html/index.html
+
+- url: /(.*)
+  static_files: optofidelity/html/\1.html
+  upload: optofidelity/html/(.*)

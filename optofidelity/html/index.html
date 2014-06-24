@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Latency Tests</title>
+  <style>
+    html {
+        font-family: sans-serif;
+        backround-color: black;
+    }
+    div {
+        width: 50%;
+        font-size: 10mm;
+        float: left;
+        text-align: center;
+        padding: 5mm 0 5mm 0;
+        background-color: blue;
+    }
+    div.tap { background-color: #33B5E5; }
+    div.move { background-color: #FF4444; }
+    div.click { background-color: #99CC00; }
+    div.scroll { background-color: #FFBB33; }
+    div.framerate { background-color: #9933CC; }
+    div.flash { background-color: #AA66CC; }
+    a {
+        color: white;
+        text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <a href="/tap"><div class="tap">Tap</div></a>
+  <a href="/move"><div class="move">Move</div></a>
+  <a href="/click"><div class="click">Click</div></a>
+  <a href="/scroll"><div class="scroll">Scroll</div></a>
+  <a href="/framerate"><div class="framerate">FPS</div></a>
+  <a href="/flash"><div class="flash">Flash</div></a>
+</html>
