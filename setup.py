@@ -7,8 +7,7 @@ setup(
     name='touchbot',
     version='1.0',
     description='Touch robot controls',
-    packages=['gestures', 'roibot', 'roibot.devices', 'touchbotII',
-              'touchbotII.touchbotII', 'quickstep'],
+    packages=['touchbotII', 'touchbotII.touchbotII', 'quickstep'],
     package_data={'touchbotII.touchbotII': ['nest/*', 'detector/*'],
                   'touchbotII': ['device_specs/*']}
 )
