@@ -19,6 +19,7 @@
 
 import serial
 import sys
+import time
 
 # Constants
 RESPONSE_DELAY_S = 0.3
@@ -33,6 +34,9 @@ def send_message(message, ser):
     # The device will only respond if prompted with a '?'.
     if '?' in message:
         return ser.readline()
+
+    # Give the function generator some time to react
+    time.sleep(0.5)
 
 
 def generate_function(form, freq, ampl, ser):
