@@ -17,12 +17,13 @@
 # ----------------------------------------------
 # Mindy Huang (mindyh@google.com)
 
+import glob
 import serial
 import sys
 import time
 
 # Constants
-RESPONSE_DELAY_S = 0.3
+RESPONSE_DELAY_S = 0.5
 HIGH_Z_THRESHOLD = 10
 
 
@@ -34,9 +35,31 @@ def send_message(message, ser):
     # The device will only respond if prompted with a '?'.
     if '?' in message:
         return ser.readline()
+    else:
+        # Give the function generator some time to react
+        time.sleep(RESPONSE_DELAY_S)
 
-    # Give the function generator some time to react
-    time.sleep(0.5)
+
+# Check that the port we're talking is the function generator.
+def find_function_generator():
+    list_of_USB_ports = glob.glob('/dev/ttyUSB*')
+
+    for port_name in list_of_USB_ports:
+        ser = serial.Serial(
+            port=port_name,
+            baudrate=9600,
+            stopbits=serial.STOPBITS_TWO,
+            bytesize=serial.EIGHTBITS,
+            parity=serial.PARITY_NONE,
+            timeout=1
+        )
+        # Query the port to see if it's the generator.
+        # The query asks for the make and model of the generator.
+        # The correct response should contain the company name, Hewlett-Packard.
+        if 'HEWLETT-PACKARD' in send_message('*IDN?', ser):
+            return ser
+
+    return None
 
 
 def generate_function(form, freq, ampl, ser):
@@ -61,15 +84,11 @@ def error_message():
 
 
 def main():
-    # Open a connection to the serial port.
-    ser = serial.Serial(
-        port='/dev/ttyUSB0',
-        baudrate=9600,
-        stopbits=serial.STOPBITS_TWO,
-        bytesize=serial.EIGHTBITS,
-        parity=serial.PARITY_NONE,
-        timeout=1
-    )
+    # Open a connection to the function generator
+    ser = find_function_generator()
+    if not ser:
+        print 'Error: cannot find the function generator. Is it connected?'
+        return 1  # Can't find the generator, exit the script
 
     ser.open()
 
@@ -90,7 +109,8 @@ def main():
         error_message()
 
     ser.close()
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())
