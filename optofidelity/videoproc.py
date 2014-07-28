@@ -23,6 +23,7 @@ import skimage.measure as measure
 import skimage.morphology as morphology
 import skimage.transform as transform
 
+
 class Shape(object):
   """Describes a segmented shape in an image.
 
@@ -221,63 +222,61 @@ class Shape(object):
     match = max(props, key=key_fn)
     return Shape(labels == match.label, match)
 
-class VideoReader(object):
-  """A wrapper around cv2.VideoCapture.
 
-  This class allows for basic seeking in a video file. Note however
-  that seeking backwards is slow, since it has to re-open the video file.
-  """
-  CV_CAP_PROP_FRAME_COUNT = 7
-
-  def __init__(self, filename):
-    self.cap = cv2.VideoCapture(filename)
-    self.filename = filename
-    self.num_frames = self.cap.get(VideoReader.CV_CAP_PROP_FRAME_COUNT)
+class AbstractVideoReader(object):
+  def __init__(self, num_frames):
+    self.current_frame = 0
     self.interactive = False
-    self.current_frame = -1
+    self.num_frames = num_frames
 
-  def Reset(self):
-    self.cap.release()
-    self.cap = cv2.VideoCapture(self.filename)
-    self.current_frame = -1
+  def _SeekTo(self, frame):
+    """Seek to an absolute location in the video.
 
-  def Skip(self, n):
-    """Skip n frames ahead. You can only skip frames forward."""
-    for i in range(int(n)):
-      if not self.cap.grab():
+    This method is for internal use and to be implemented by
+    a subclass. Use the more convenient Seek method."""
+    pass
+
+  def Read(self):
+    """Returns the current frame image.
+
+    This method is to be implemented by a subclass. The image
+    is to be returned as a grayscale float image represented as
+    a numpy array.
+    """
+    pass
+
+  def Seek(self, to=None, forward=None, backward=None):
+    """Seek to a location in the video.
+
+    to: seek to an absolute frame number. Can be negative to
+        seek to a location from the end of the file.
+    forward: seek forward by a number of frames
+    backward: seek backward by a number of frames
+    """
+    if forward:
+      to = self.current_frame + forward
+    if backward:
+      to = self.current_frame - backward
+    if to:
+      if to < 0:
+        to = self.num_frames + to
+      if to > self.num_frames or to < 0:
         return False
-      self.current_frame += 1
+      return self._SeekTo(to)
     return True
 
-  def Seek(self, frame):
-    """Jump to a specific frame number. This method is slow, use with care."""
-    if frame < 0:
-      frame = self.num_frames + frame - 1
-
-    if frame >= self.current_frame:
-      frame -= self.current_frame
-    else:
-      self.Reset()
-
-    self.Skip(frame)
-
   def FrameAt(self, frame):
-    """Return the image at a specific frame number."""
-    self.Seek(frame)
-    return self.NextFrame()
+    """Returns image at a location as a grayscale float image."""
+    self.Seek(to=frame)
+    return self.Read()
 
-  def NextFrame(self):
-    """Read and return next frame."""
-    ret, frame = self.cap.read()
-    if ret:
-      self.current_frame += 1
-      return skimage.img_as_float(frame[:, :, 0])
-    return None
+  def Next(self):
+    """Go to the next frame/"""
+    return self.Seek(forward=1)
 
-  def PrevFrame(self):
-    """Read and return previous frame. This method is slow, use with care."""
-    self.Seek(self.current_frame - 1)
-    return self.NextFrame()
+  def Prev(self):
+    """Go to the previous frame."""
+    return self.Seek(backward=1)
 
   def EnterInteractive(self):
     """Enable interactive mode in Frames().
@@ -290,33 +289,83 @@ class VideoReader(object):
     """
     self.interactive = True
 
-  def Frames(self, frameskip=None):
+  def Frames(self, start=0, stop=None, step=1, frames=None):
     """Yield frames until the video ends.
 
-    This method might block when the interactive mode is used
+    This method might block when the interactive mode is used.
+    start: first frame to yield.
+    stop: last frame to yield.
+    step: step size between frames.
+    frames: Custom array of frame numbers to yield. Overrides all
+            other parameters.
     """
+    if not frames:
+      if stop is None:
+        stop = self.num_frames
+        print start, stop, step
+      frames = range(start, stop, step)
+
+    i = -1
     while True:
       if self.interactive:
         key = cv2.waitKey() & 0xFF
         if key == ord('k'):
-          frame = self.PrevFrame()
+          i -= 1
         elif key == ord('j'):
-          frame = self.NextFrame()
+          i += 1
         elif key == ord('c'):
           self.interactive = False
-          frame = self.NextFrame()
+          i += 1
         else:
           continue
       else:
-        frame = self.NextFrame()
+        i += 1
 
-      if frame is None:
+      if i < 0 or i >= len(frames):
         break
-      yield self.current_frame, frame
+      frame = self.FrameAt(frames[i])
 
-      if frameskip:
-        if not self.Skip(frameskip):
-          break
+      yield frames[i], frame
+
+
+class FileVideoReader(AbstractVideoReader):
+  """Implementation of a VideoReader for reading from files using OpenCV.
+
+  Note, any operation that seeks backwards in a file will be slow since
+  the video has to be re-opened and walked through until the requested
+  frame."""
+  def __init__(self, filename):
+    self.cap = cv2.VideoCapture(filename)
+    self.filename = filename
+    self.frame_cache = None
+
+    num_frames = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
+    AbstractVideoReader.__init__(self, num_frames)
+
+  def _SeekTo(self, frame):
+    if frame < self.current_frame:
+      self.cap.release()
+      self.cap = cv2.VideoCapture(self.filename)
+      self.current_frame = 0
+    else:
+      frame = frame - self.current_frame
+
+    for i in range(frame):
+      if not self.cap.grab():
+        raise Exception("Cannot grab frame")
+
+    self.current_frame += frame
+    self.frame_cache = None
+    return True
+
+  def Read(self):
+    if not self.frame_cache:
+      # cache current frame in case it's requested again.
+      ret, self.frame_cache = self.cap.retrieve()
+      if not ret:
+        raise Exception("Cannot read frame")
+    return skimage.img_as_float(self.frame_cache[:, :, 0])
+
 
 class Filter(object):
   """A collection of commonly used image processing filters."""
@@ -383,6 +432,7 @@ class Filter(object):
     highpass = lowpass - image
     return Filter.Truncate(highpass)
 
+
 class Viewer(object):
   """Helper for viewing image data."""
 
@@ -418,6 +468,7 @@ class Viewer(object):
       plt.imshow(arg[1], cmap=cmap, vmin=0, vmax=1)
       plt.title(arg[0])
     plt.show()
+
 
 class Canvas(object):
   """Helper class for drawing contours, lines and masks.

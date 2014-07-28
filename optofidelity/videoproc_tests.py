@@ -5,12 +5,12 @@
 import numpy as np
 import unittest
 
-from videoproc import VideoReader, Viewer, Filter, Shape
+from videoproc import FileVideoReader, Viewer, Filter, Shape
 
 class TestVideoProc(unittest.TestCase):
 
   def setUp(self):
-    self.video = VideoReader("tap.avi")
+    self.video = FileVideoReader("tap.avi")
 
   @unittest.skip("")
   def test_video_display(self):
@@ -22,7 +22,7 @@ class TestVideoProc(unittest.TestCase):
   @unittest.skip("")
   def test_video_display_with_skip(self):
     print "Displaying video with frameskip=10"
-    for i, frame in self.video.Frames(frameskip=10):
+    for i, frame in self.video.Frames(step=10):
       print "frame", i
       Viewer.VideoFrame(frame)
 
@@ -70,10 +70,10 @@ class TestVideoProc(unittest.TestCase):
         vertical_edges=shape.vertical_edges
     )
 
-  @unittest.skip("")
+  #@unittest.skip("")
   def test_video_playback_control(self):
     for i, frame in self.video.Frames():
-      print i
+      print "frame", i
       key = Viewer.VideoFrame(frame)
       if key == ord('p'):
         self.video.EnterInteractive()

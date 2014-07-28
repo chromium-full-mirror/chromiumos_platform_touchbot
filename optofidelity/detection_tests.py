@@ -6,20 +6,20 @@ import numpy as np
 import unittest
 
 from detection import Frame, Screen, Line, Finger
-from videoproc import VideoReader, Viewer, Shape, Canvas
+from videoproc import FileVideoReader, Viewer, Shape, Canvas
 
 class TestPreProcessing(unittest.TestCase):
 
   @unittest.skip("")
   def test_pre_process(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
     im = video.FrameAt(30)
     frame = Frame(im)
     frame.DebugView()
 
   @unittest.skip("")
   def test_pre_process_masking(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
     im = video.FrameAt(30)
     mask = np.zeros(im.shape).astype(np.bool)
     mask[200:500, 200:500] = 1
@@ -29,33 +29,33 @@ class TestPreProcessing(unittest.TestCase):
 
   @unittest.skip("")
   def test_screen_detection(self):
-    flash_video = VideoReader("screen.avi")
+    flash_video = FileVideoReader("screen.avi")
     screen = Screen()
-    screen.DetectScreen(flash_video.Frames(frameskip=10), debug=True)
+    screen.DetectScreen(flash_video.Frames(step=10), debug=True)
 
 
 class TestsWithScreenDetection(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    flash_video = VideoReader("screen.avi")
-    def MirrorFrames(frameskip):
-      for i, frame in flash_video.Frames(frameskip=frameskip):
+    flash_video = FileVideoReader("screen.avi")
+    def MirrorFrames(step):
+      for i, frame in flash_video.Frames(step=step):
         yield i, np.fliplr(frame)
 
     screen = Screen()
-    screen.DetectScreen(flash_video.Frames(frameskip=10))
+    screen.DetectScreen(flash_video.Frames(step=10))
     cls.screen_shape = screen.shape
 
     flash_video.Seek(0)
     mirrored_screen = Screen()
-    mirrored_screen.DetectScreen(MirrorFrames(frameskip=10))
+    mirrored_screen.DetectScreen(MirrorFrames(step=10))
     cls.mirrored_screen_shape = mirrored_screen.shape
 
   @unittest.skip("")
   def test_screen_draw_detection(self):
     screen = Screen(self.screen_shape)
 
-    video = VideoReader("tap.avi")
+    video = FileVideoReader("tap.avi")
     for i, im in video.Frames():
       frame = Frame(im, screen.shape)
       screen.Update(frame, debug=True)
@@ -72,7 +72,7 @@ class TestsWithScreenDetection(unittest.TestCase):
   def test_line_target_detection(self):
     screen = Screen(self.screen_shape)
 
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
     frame = Frame(video.FrameAt(-1), screen.shape)
 
     line = Line()
@@ -80,7 +80,7 @@ class TestsWithScreenDetection(unittest.TestCase):
 
   @unittest.skip("")
   def test_mirrored_line_draw_detection(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
 
     screen = Screen(self.mirrored_screen_shape)
 
@@ -101,7 +101,7 @@ class TestsWithScreenDetection(unittest.TestCase):
 
   @unittest.skip("")
   def test_finger_detection(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
     screen = Screen(self.screen_shape)
     frame = Frame(video.FrameAt(-1), screen.shape)
 
@@ -117,7 +117,7 @@ class TestsWithScreenDetection(unittest.TestCase):
 
   @unittest.skip("")
   def test_all_detections(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
 
     screen = Screen(self.screen_shape)
     frame = Frame(video.FrameAt(-1), screen.shape)
@@ -146,7 +146,7 @@ class TestsWithScreenDetection(unittest.TestCase):
 
   @unittest.skip("")
   def test_line_draw_fine_tuning(self):
-    video = VideoReader("line.avi")
+    video = FileVideoReader("line.avi")
 
     screen = Screen(self.screen_shape)
     frame = Frame(video.FrameAt(-1), screen.shape)
