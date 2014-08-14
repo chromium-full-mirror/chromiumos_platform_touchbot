@@ -55,23 +55,60 @@ class Shape(object):
               else morphology.binary_erosion)
 
     row_kernel = morphology.rectangle(math.fabs(row_margin), 1)
-    col_kernel = morphology.rectangle(1, math.fabs(row_margin))
+    col_kernel = morphology.rectangle(1, math.fabs(col_margin))
 
     mask = self.mask
-    mask = MorphFn(row_margin)(mask, row_kernel)
-    mask = MorphFn(col_margin)(mask, col_kernel)
+    if row_margin != 0:
+      mask = MorphFn(row_margin)(mask, row_kernel)
+    if col_margin != 0:
+      mask = MorphFn(col_margin)(mask, col_kernel)
     return Shape(mask)
 
-  def RemoveBackground(self, image):
+  def RemoveBackground(self, image, fill=None):
     """Blend out everything that does not belong to this shape."""
-    avg = np.mean(image[self.mask])
+    if fill is None:
+      fill = np.mean(image[self.mask])
     copy = image.copy()
-    copy[~self.mask] = avg
+    copy[~self.mask] = fill
     return copy
 
   def Cropped(self, image):
     """Return a view to the image 'image' that is cropped to this shape."""
     return image[self.top:self.bottom, self.left:self.right]
+
+  def FindExtreme(self, direction):
+    """Find extreme this shape in any direction.
+
+    Direction can be top, bottom, left or right. This method will return
+    the coordinates of the (top, bottom, left, right)-most pixel of the shape.
+    If the extreme consists of multiple pixels, the middle pixel will be picked.
+    """
+    if direction == "top":
+      extreme_axis = 0
+      extreme_func = min
+    elif direction == "bottom":
+      extreme_axis = 0
+      extreme_func = max
+    elif direction == "left":
+      extreme_axis = 1
+      extreme_func = min
+    elif direction == "right":
+      extreme_axis = 1
+      extreme_func = max
+    else:
+      raise ValueError("direction has to be top, bottom, left or right.")
+
+    avg_axis = (extreme_axis + 1) % 2
+
+    coords = self.coords
+    extreme_value = extreme_func(coords[:, extreme_axis])
+    avg_axis_coords = coords[coords[:, extreme_axis] == extreme_value, :]
+    avg_value = avg_axis_coords[:, avg_axis].mean()
+
+    res = [0, 0]
+    res[extreme_axis] = extreme_value
+    res[avg_axis] = avg_value
+    return res
 
   @property
   def bbox(self):
@@ -102,7 +139,8 @@ class Shape(object):
     """The inner contour of this shape.
 
     The contour is a binary image in which only the outer pixels
-    surrounding the shape are True."""
+    surrounding the shape are True.
+    """
     if self._contour is None:
       self._contour = morphology.binary_erosion(self.mask, morphology.disk(1))
       self._contour = self.mask & (~self._contour)
@@ -192,7 +230,7 @@ class Shape(object):
     # handle no matches error
     if not matches:
       if debug and required:
-        Viewer.DebugView(labels=labels)
+        Viewer.DebugView("prism", labels=labels)
       return Exit("Cannot find match for region", required)
 
     # handle too many matches error
@@ -201,7 +239,7 @@ class Shape(object):
         mask = np.zeros(labels.shape)
         for match in matches:
           mask[labels == match.label] = match.label
-        Viewer.DebugView(labels=labels, matches=mask)
+        Viewer.DebugView("prism", labels=labels, matches=mask)
       return Exit("Multiple matches for region", True)
 
     # success
@@ -224,6 +262,10 @@ class Shape(object):
 
 
 class AbstractVideoReader(object):
+  """Abstract base class for Video Reader.
+
+  Provides common functionality for accessing videos.
+  """
   def __init__(self, num_frames):
     self.current_frame = 0
     self.interactive = False
@@ -233,11 +275,12 @@ class AbstractVideoReader(object):
     """Seek to an absolute location in the video.
 
     This method is for internal use and to be implemented by
-    a subclass. Use the more convenient Seek method."""
+    a subclass. Use the more convenient Seek method.
+    """
     pass
 
   def Read(self):
-    """Returns the current frame image.
+    """Return the current frame image.
 
     This method is to be implemented by a subclass. The image
     is to be returned as a grayscale float image represented as
@@ -257,7 +300,7 @@ class AbstractVideoReader(object):
       to = self.current_frame + forward
     if backward:
       to = self.current_frame - backward
-    if to:
+    if to is not None:
       if to < 0:
         to = self.num_frames + to
       if to > self.num_frames or to < 0:
@@ -266,12 +309,12 @@ class AbstractVideoReader(object):
     return True
 
   def FrameAt(self, frame):
-    """Returns image at a location as a grayscale float image."""
+    """Return image at a location as a grayscale float image."""
     self.Seek(to=frame)
     return self.Read()
 
   def Next(self):
-    """Go to the next frame/"""
+    """Go to the next frame."""
     return self.Seek(forward=1)
 
   def Prev(self):
@@ -302,11 +345,15 @@ class AbstractVideoReader(object):
     if not frames:
       if stop is None:
         stop = self.num_frames
-        print start, stop, step
       frames = range(start, stop, step)
-
-    i = -1
+    i = 0
     while True:
+      if i < 0 or i >= len(frames):
+        break
+      frame = self.FrameAt(frames[i])
+
+      yield frames[i], frame
+
       if self.interactive:
         key = cv2.waitKey() & 0xFF
         if key == ord('k'):
@@ -316,24 +363,16 @@ class AbstractVideoReader(object):
         elif key == ord('c'):
           self.interactive = False
           i += 1
-        else:
-          continue
       else:
         i += 1
-
-      if i < 0 or i >= len(frames):
-        break
-      frame = self.FrameAt(frames[i])
-
-      yield frames[i], frame
-
 
 class FileVideoReader(AbstractVideoReader):
   """Implementation of a VideoReader for reading from files using OpenCV.
 
   Note, any operation that seeks backwards in a file will be slow since
   the video has to be re-opened and walked through until the requested
-  frame."""
+  frame.
+  """
   def __init__(self, filename):
     self.cap = cv2.VideoCapture(filename)
     self.filename = filename
@@ -420,7 +459,8 @@ class Filter(object):
 
     An image A can be described as a multiplication of illuminance I
     and reflectance R: A = I * R. We estimate the illuminance part with
-    a strong median rank order filter, then calculate the reflectance."""
+    a strong median rank order filter, then calculate the reflectance.
+    """
     illuminance = Filter.Median(image, disk_size, scale)
     illuminance[illuminance < 1e-5] = 1e-5 # prevent division by 0
     reflectance = image / illuminance
@@ -465,7 +505,10 @@ class Viewer(object):
       if image.dtype == np.bool:
         image = arg[1].astype(np.float)
       plt.subplot(num_rows, num_cols, i)
-      plt.imshow(arg[1], cmap=cmap, vmin=0, vmax=1)
+      if image.dtype == np.float:
+        plt.imshow(arg[1], cmap=cmap, vmin=0, vmax=1)
+      else:
+        plt.imshow(arg[1], cmap=cmap)
       plt.title(arg[0])
     plt.show()
 
@@ -487,6 +530,15 @@ class Canvas(object):
       # note that modifying self.cropped will modify self.image
       self.cropped = crop.Cropped(self.image)
       self.top, self.left = (crop.top, crop.left)
+
+  def Scaled(self, scale):
+    return transform.rescale(self.image, scale)
+
+  def Plot(self, color, plot):
+    height = self.image.shape[0] - 20
+    cols = (height - (plot * height)).astype(np.int) + 10
+    rows = range(len(plot))
+    self.image[cols, rows] = color
 
   def DrawLine(self, color, x=None, y=None):
     for i in (0, 1, 2):

@@ -1,7 +1,12 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+"""Test cases for testing video processing features.
 
+These are manual tests that require a screen.avi file to work.
+Per default all tests are skipped, it is up to the developer to pick which
+test to run and manually validate the results.
+"""
 import numpy as np
 import unittest
 
@@ -10,7 +15,7 @@ from videoproc import FileVideoReader, Viewer, Filter, Shape
 class TestVideoProc(unittest.TestCase):
 
   def setUp(self):
-    self.video = FileVideoReader("tap.avi")
+    self.video = FileVideoReader("screen.avi")
 
   @unittest.skip("")
   def test_video_display(self):
