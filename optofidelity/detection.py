@@ -11,7 +11,6 @@ For the purpose of latency measurements, the line and screen detection also
 accurately detects the frame when an updated frame is being drawn on the
 screen.
 """
-import bisect
 import numpy as np
 import skimage.morphology as morphology
 
@@ -38,36 +37,14 @@ class Event(object):
   def __repr__(self):
     optional = []
     if self.location:
-      optional.append("location=%d" % self.location)
+      optional.append("location=%.1f" % self.location)
     if self.color:
       optional.append("color=%s" % self.color)
 
     optional_str = ""
     if optional:
       optional_str = " (%s)" % (",".join(optional))
-    return "%d %s%s" % (self.time, self.event_type, optional_str)
-
-
-class Trace(object):
-  """Describes a series of events, ordered by time."""
-  def __init__(self):
-    self._events = []
-    self._times = []
-
-  def AddAll(self, events):
-    for event in events:
-      self.Add(event)
-
-  def Add(self, event):
-    i = bisect.bisect_left(self._times, event.time)
-    self._events.insert(i, event)
-    self._times.insert(i, event.time)
-
-  def Events(self, event_type=None):
-    if event_type:
-      return [e for e in self._events if e.event_type == event_type]
-    else:
-      return self._events
+    return "%d\t%s\t%s" % (self.time, self.event_type, optional_str)
 
 
 class Frame(object):
@@ -166,7 +143,7 @@ class Screen(object):
     if self._prev_draw_avg is None:
       self._prev_draw_avg = avg
       self._prev_frame_avg = avg
-      return
+      return events
 
     # calculate diff to last frame and last draw
     draw_diff = self._prev_draw_avg - avg
@@ -525,3 +502,4 @@ class Finger(object):
         return [Event(frame.index, Event.FINGER_MOVED, location=location)]
     else:
       self.found = False
+    return []
