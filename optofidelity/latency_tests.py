@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import pickle
 import unittest
 
-from latency import Trace, LineDrawLatency
+from latency import LineDrawLatency, TraceGenerator, MultithreadedTraceGenerator
 from detection import Event, Screen
 from videoproc import FileVideoReader
 
@@ -76,15 +76,26 @@ class TestTraceGeneration(unittest.TestCase):
   These tests require a screen.avi and line.avi file and write overwrite
   the trace at line_draw.trace.
   """
+  def setUp(self):
+    flash_video = FileVideoReader("screen.avi")
+    self.screen = Screen(flash_video.Frames(step=10))
+    self.video = FileVideoReader("line.avi")
+
   @unittest.skip("")
   def test_line_latency_trace(self):
-    flash_video = FileVideoReader("screen.avi")
-    screen = Screen(flash_video.Frames(step=10))
+    generator = TraceGenerator(self.screen)
+    trace = generator.ProcessVideo(self.video, debug=True)
+    print trace
+    pickle.dump(trace, open("line_draw.trace", "w"))
 
-    video = FileVideoReader("line.avi")
-    latency = LineDrawLatency()
-    trace = latency.ProcessVideo(screen, video, debug=False)
+  #@unittest.skip("")
+  def test_multithreaded_trace_generation(self):
+    generator = MultithreadedTraceGenerator(self.screen)
+    trace = generator.ProcessVideo(self.video, debug=True)
+    print trace
     pickle.dump(trace, open("line_draw.trace", "w"))
 
 if __name__ == '__main__':
+  import cProfile
+  #cProfile.run("unittest.main()")
   unittest.main()

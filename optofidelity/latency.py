@@ -10,9 +10,130 @@ import bisect
 import numpy as np
 import scipy.interpolate as interpolate
 import scipy.signal as signal
+import multiprocessing
 
-from detection import Frame, Line, Finger, Event
-from videoproc import Viewer
+from detection import Frame, Line, Finger, Screen, Event
+from videoproc import Viewer, Canvas
+
+
+class TraceGenerator(object):
+  """Processes and accumulates events from video into a trace."""
+  def __init__(self, screen):
+    self.screen_shape = screen.shape
+    self.finger = None
+    self.line = None
+    self.screen = None
+
+  def Init(self, video, debug=False):
+    end_frame = Frame(video.FrameAt(-1), self.screen_shape)
+    self.finger = Finger()
+    self.line = Line(end_frame, debug=debug)
+    self.screen = Screen(shape=self.screen_shape)
+
+  def Preprocess(self, i, im):
+    frame = Frame(im, self.screen_shape, i)
+    screen_data = self.screen.Preprocess(frame)
+    line_data = self.line.Preprocess(frame)
+    finger_data = self.finger.Preprocess(frame)
+    return (frame.index, screen_data, line_data, finger_data)
+
+  def GenerateEvents(self, trace, i, screen_data, line_data, finger_data):
+    trace.AddAll(self.screen.GenerateEvents(screen_data, i))
+    trace.AddAll(self.finger.GenerateEvents(finger_data, i))
+    trace.AddAll(self.line.GenerateEvents(line_data, i))
+
+  def DebugView(self, im):
+    canvas = Canvas(im, self.screen_shape)
+    canvas.DrawContour([0, 0, 1], self.screen_shape, no_crop=True)
+    if self.finger.found:
+      canvas.DrawContour([1, 0, 0], self.finger.finger_shape)
+      canvas.DrawLine([1, 0, 0], x=self.finger.location)
+
+    canvas.DrawContour([0, 0.5, 0], self.line.target_shape)
+    for segment in self.line.segments:
+      canvas.DrawLine([0, 0.5, 0], x=segment.end)
+    Viewer.VideoFrame(canvas.image)
+
+  def ProcessVideo(self, video, debug=False):
+    """Process video and return a trace of all detected events."""
+    self.Init(video, debug)
+
+    trace = Trace()
+    for i, im in video.Frames():
+      print i, "/", video.num_frames
+      pre_process_data = self.Preprocess(i, im)
+      self.GenerateEvents(trace, *pre_process_data)
+      if debug:
+        self.DebugView(im)
+
+    return trace
+
+
+def PreprocessProcess(generator, frame_queue, data_queue):
+  """Method to be called by subprocesses to run the pre-process step.
+
+  This method reads images from the frame_queue, runs the pre-processing
+  step of the Finger and Line detection code on them and outputs
+  the results into the data_queue.
+
+  See MultithreadedTraceGenerator.ProcessVideo().
+  """
+  while True:
+    i, image = frame_queue.get()
+    if image is None:
+      data_queue.put(None)
+      break
+    data_queue.put(generator.Preprocess(i, image))
+
+
+class MultithreadedTraceGenerator(TraceGenerator):
+  """Processes and accumulates events from video into a trace.
+
+  This implementation uses multiple processes to do the most computational
+  intensive operations in parallel.
+  """
+  def __init__(self, screen, num_processes=None):
+    self.num_processes = num_processes or multiprocessing.cpu_count()
+    TraceGenerator.__init__(self, screen)
+
+  def ProcessVideo(self, video, debug=False):
+    self.Init(video, debug)
+
+    # Start pre-processing processes
+    frame_queue = multiprocessing.Queue()
+    data_queue = multiprocessing.Queue()
+    for i in range(self.num_processes):
+      process_args = (self, frame_queue, data_queue,)
+      process = multiprocessing.Process(target=PreprocessProcess,
+                                        args=process_args)
+      process.start()
+
+    # Read frames and put them into the processing queue
+    for i, frame in video.Frames():
+      print i, "/", video.num_frames
+      frame_queue.put((i, frame))
+    for i in range(self.num_processes):
+      frame_queue.put((None, None))
+    frame_queue.close()
+
+    # Read pre-processing results and order them by frame index
+    ordered_data = []
+    while True:
+      data_entry = data_queue.get()
+      if not data_entry:
+        break
+      ordered_data.append(data_entry)
+    ordered_data.sort(key=lambda e: e[0])
+
+    # Generate events from pre-processing results
+    trace = Trace()
+    for data in ordered_data:
+      self.GenerateEvents(trace, *data)
+      if debug:
+        image = video.FrameAt(data[0])
+        self.DebugView(image)
+    return trace
+
 
 
 class Trace(object):
@@ -139,30 +260,10 @@ class Trace(object):
 class LineDrawLatency(object):
   """Calculates latency from a line draw video."""
 
-  def ProcessVideo(self, screen, video, debug=False):
-    """Process the video into a trace of events.
-
-    Returns a trace object with all events generated.
-    """
-    end_frame = Frame(video.FrameAt(-1), screen.shape)
-
-    finger = Finger()
-    line = Line(end_frame, debug=debug)
-
-    trace = Trace()
-    for i, im in video.Frames():
-      print i, "/", video.num_frames
-      frame = Frame(im, screen.shape, i)
-      trace.AddAll(line.Update(frame, debug=debug))
-      trace.AddAll(finger.Update(frame, debug=debug))
-      if debug:
-        Viewer.VideoFrame(line.debug_canvas.Scaled(4))
-    return trace
-
   def ProcessTrace(self, trace):
     """Process a trace to extract line draw latencies.
 
-    This trace can be generated by LineDrawLatency.ProcessVideo, this
+    This trace can be generated by TraceGenerator, this
     method returns two arrays. One containing the latencies measured
     at the start of a line segment draw, the other the latencies measured
     at the end of a line segment draw.
