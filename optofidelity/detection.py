@@ -101,11 +101,11 @@ class Screen(object):
     self.change_thresh = change_thresh
 
     # Calibration information
+    self.shape = None
     self.on_image = None
     self.on_profile = None
     self.off_image = None
     self.off_profile = None
-    self.shape = None
 
     # Stateful information
     self.color = Screen.UNDEFINED
@@ -118,6 +118,22 @@ class Screen(object):
       self.on_profile = screen.on_profile
       self.off_image = screen.off_image
       self.off_profile = screen.off_profile
+
+  def Save(self, hdf5):
+    hdf5.create_dataset("shape", data=self.shape.mask)
+    hdf5.create_dataset("on_image", data=self.on_image)
+    hdf5.create_dataset("on_profile", data=self.on_profile)
+    hdf5.create_dataset("off_image", data=self.off_image)
+    hdf5.create_dataset("off_profile", data=self.off_profile)
+
+  @classmethod
+  def Load(self, hdf5):
+    screen = Screen()
+    screen.shape = Shape(mask=hdf5["shape"][()])
+    screen.on_image = hdf5["on_image"][()]
+    screen.on_profile = hdf5["on_profile"][()]
+    screen.off_image = hdf5["off_image"][()]
+    screen.off_profile = hdf5["off_profile"][()]
 
   def Mirrored(self):
     """Returns horizontally mirrored Screen object."""
