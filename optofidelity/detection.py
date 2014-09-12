@@ -53,23 +53,33 @@ class Frame(object):
   This class stores a cropped version of the image, enhances it with noise
   filtering and calculates the reflectance.
   """
-  def __init__(self, im, crop_shape=None, index=0):
+  def __init__(self, im, prev_im, screen, index=0):
     self.original = im
     self.cropped = im
+    self.isolated = im
     self.index = index
+    self.screen = screen
 
-    self.crop_shape = crop_shape
-    if crop_shape:
+    if screen:
+      self.crop_shape = screen.shape
       # crop to bounding box of object
-      self.cropped = crop_shape.Cropped(crop_shape.RemoveBackground(im))
+      self.cropped = screen.shape.Cropped(im)
+      self.isolated = screen.shape.cropped_shape.RemoveBackground(
+          self.cropped, 1)
 
     # noise filtered reflectance
-    self.reflectance = Filter.Reflectance(self.cropped, disk_size=15,
-                                          scale=0.2)
+    self.reflectance = Filter.Reflectance(self.isolated, disk_size=40,
+                                          scale=0.5)
     self.reflectance = Filter.Median(self.reflectance, disk_size=1)
+
+    if prev_im is not None:
+      self.delta = im - prev_im
+    else:
+      self.delta = np.zeros(im.shape)
 
   def DebugView(self):
     Viewer.DebugView(cropped=self.cropped,
+                     isolated=self.isolated,
                      reflectance=self.reflectance)
 
 class Screen(object):
@@ -80,44 +90,90 @@ class Screen(object):
 
   Screen.shape is the detected screen shape object.
   """
+  BLACK = 0
+  WHITE = 1
+  UNDEFINED = -1
 
-  def __init__(self, frames=None, shape=None, debug=False):
-    """Initialize by either providing a shape or frames iterator.
+  def __init__(self, screen=None, no_change_thresh=0.02,
+               change_thresh=0.9, debug=False):
+    """Initialize empty or by providing a pre-calculated screen."""
+    self.no_change_thresh = no_change_thresh
+    self.change_thresh = change_thresh
 
-    Providing a shape allows you to reuse a previously computed screen shape.
-    Providing an iterator on frames (i.e. from VideoReader.Frames()) will
-    detect the screen in these video frames.
-    """
-    self._prev_draw_avg = None
-    self._prev_frame_avg = None
-    if frames:
-      self._DetectScreen(frames, debug)
-    elif shape:
-      self.shape = shape
-    else:
-      raise ValueError("Must provide either shape or frames")
+    # Calibration information
+    self.on_image = None
+    self.on_profile = None
+    self.off_image = None
+    self.off_profile = None
+    self.shape = None
 
-  def _DetectScreen(self, frames, debug=False):
+    # Stateful information
+    self.color = Screen.UNDEFINED
+    self.last_no_draw_time = None
+    self.debug_canvas = None
+
+    if screen:
+      self.shape = screen.shape
+      self.on_image = screen.on_image
+      self.on_profile = screen.on_profile
+      self.off_image = screen.off_image
+      self.off_profile = screen.off_profile
+
+  def Mirrored(self):
+    """Returns horizontally mirrored Screen object."""
+    screen_copy = Screen(screen=self)
+    screen_copy.shape = Shape(np.fliplr(self.shape.mask))
+    screen_copy.on_image = np.fliplr(self.on_image)
+    screen_copy.on_profile = self.on_profile[::-1]
+    screen_copy.off_image = np.fliplr(self.off_image)
+    screen_copy.off_profile = self.off_profile[::-1]
+    return screen_copy
+
+  def DetectScreen(self, frames, debug=False):
     """Detect the devices flashing screen.
 
     The frames argument has to be a python iterator that yields
     video frames. Those video frames have to show the device's screen
     flashing black and white.
     """
-    # accumulate difference between camera frames
+    # Extract information from video frames. We need the following information:
+    # Image of the screen off (min average grayscale)
+    # Image of the screen on (max average grayscale)
+    # And the accumulative difference between frames to find the area that
+    # is changing the most.
     i, prev_frame = frames.next()
     delta_accum = np.zeros(prev_frame.shape)
+    on_frame = prev_frame
+    on_frame_mean = np.mean(prev_frame)
+    off_frame = on_frame
+    off_frame_mean = on_frame_mean
+
     for i, frame in frames:
       delta = np.abs(frame - prev_frame)
       delta_accum += delta
+
+      mean = np.mean(frame)
+      if mean > on_frame_mean:
+        on_frame = frame
+        on_frame_mean = mean
+      if mean < off_frame_mean:
+        off_frame = frame
+        off_frame_mean = mean
       prev_frame = frame
     delta_accum = Filter.Equalize(delta_accum)
 
-    # threshold the result. The largest connected component is the screen.
+    # Threshold the delta. The largest connected component is the screen.
     binary = Filter.OtsuSegmentation(delta_accum)
     binary = morphology.binary_closing(binary, morphology.disk(2))
     binary = morphology.binary_erosion(binary, morphology.disk(4))
     self.shape = Shape.FindMax(binary, lambda p: p.area)
+
+    # Calculate profile for screen on and off in cropped space
+    self.on_image = self.shape.Cropped(on_frame)
+    self.off_image = self.shape.Cropped(off_frame)
+    cropped_shape = self.shape.cropped_shape
+    self.on_profile = cropped_shape.ExtractProfile(self.on_image)
+    self.off_profile = cropped_shape.ExtractProfile(self.off_image)
 
     if debug:
       res = Canvas(prev_frame)
@@ -125,13 +181,16 @@ class Screen(object):
       Viewer.DebugView(accum=delta_accum,
                        binary=binary,
                        mask=res.image)
+    return True
 
   def Preprocess(self, frame, debug=False):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
-    return np.mean(frame.cropped)
+    cropped = self.shape.cropped_shape
+    return cropped.ExtractProfile(frame.cropped, self.on_profile,
+                                  self.off_profile)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Generate Screen events from sequential preprocessed data.
@@ -142,29 +201,46 @@ class Screen(object):
     be called with this data from frames in sequential order.
     """
     events = []
-    avg = preprocess_data
+    profile = preprocess_data
 
-    # init at first frame
-    if self._prev_draw_avg is None:
-      self._prev_draw_avg = avg
-      self._prev_frame_avg = avg
-      return events
+    if self.color == Screen.UNDEFINED:
+      self.color = Screen.BLACK if np.mean(profile) < 0.5 else Screen.WHITE
 
-    # calculate diff to last frame and last draw
-    draw_diff = self._prev_draw_avg - avg
-    frame_diff = self._prev_frame_avg - avg
     if debug_frame:
-      print "avg={} draw_diff={} frame_diff={}".format(avg, draw_diff,
-                                                       frame_diff)
+      self.debug_canvas = Canvas(debug_frame.cropped)
 
-    # screen has to have changed enough since last draw,
-    # and only little since last frame to determine if drawing is finished.
-    if abs(draw_diff) > 0.5 and abs(frame_diff) < 0.02:
-      self._prev_draw_avg = avg
-      color = "White" if avg > 0.5 else "Black"
-      events.append(Event(frame_index, Event.SCREEN_DRAW_END, color=color))
+    # we are only looking at first and last 10 pixels of the profile, where the
+    # screen draws start and end.
+    segment = [profile[:10], profile[-10:]]
+    min_level = np.min(segment)
+    max_level = np.max(segment)
 
-    self._prev_frame_avg = avg
+    # Note the last time the profile stays below the no_change threshold. This
+    # is the time index just before the draw starts.
+    # If the threshold exceeds the change threshold we consider the draw
+    # done and generate both the start and end draw event.
+    if self.color == Screen.BLACK:
+      if max_level < self.no_change_thresh:
+        self.last_no_draw_time = frame_index
+      elif min_level > self.change_thresh:
+        self.color = Screen.WHITE
+        events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
+                            color="White"))
+        events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="White"))
+
+    # Analogous to the black logic.
+    elif self.color == Screen.WHITE:
+      if min_level > 1.0 - self.no_change_thresh:
+        self.last_no_draw_time = frame_index
+      elif max_level < 1.0 - self.change_thresh:
+        self.color = Screen.BLACK
+        events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
+                            color="Black"))
+        events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="Black"))
+
+    if debug_frame:
+      self.debug_canvas.Plot([1, 0, 0], profile)
+
     return events
 
 
@@ -211,7 +287,6 @@ class Line(object):
   automatically detects if the direction is reversed and sets self.reverse to
   True.
 
-  frame: A Frame instance of an image showing the target line.
   draw_end_thresh: How much of the target color does a line segment have
                    to reach to be considered fully drawn? (Default: 0.9)
 
@@ -222,90 +297,63 @@ class Line(object):
   Line.debug_canvas: If Update is called with debug=True, this will contain
                     a Canvas object showing debug information.
   """
-  def __init__(self, frame, draw_end_thresh=0.9, debug=False):
-    self.found = False
-    self.target_shape = None
-    self.segments = []
-    self.debug_canvas = None
-    self.reverse = False
-
-    self._line_end = None
-    self._target_profile = None
-    self._target_left = None
-    self._target_right = None
-    self._target_length = None
+  def __init__(self, draw_end_thresh=0.9):
     self._draw_end_thresh = draw_end_thresh
 
-    self._DetectTargetLine(frame, debug)
+    # Calibration Information
+    self.target_shape = None
+    self._target_left = None
+    self._target_right = None
+    self._drawn_profile = None
+    self._clear_profile = None
 
-  def _DetectTargetLine(self, frame, debug=False):
-    """Detect the final line that is to be drawn."""
+    # Stateful Information
+    self.found = False
+    self.segments = []
+    self.reverse = False
+    self._line_end = None
+
+    self.debug_canvas = None
+
+  def DetectTargetLine(self, frame, debug=False):
+    """Detect the final line that is to be drawn.
+
+    The parameter frame has to be a Frame instance from an image showing the
+    non-occluded target line.
+    Returns False if the detection failed.
+    """
     def is_target_line(region, labels, debug=False):
       if debug:
         print region.label, region.area, region.eccentricity, region.orientation
-      return (region.area > 500 and # large size
-              region.eccentricity > 0.99 and # very elongated
-              np.abs(region.orientation) < 0.1) # horizontally oriented
+      return (region.area > 500 and # Large size
+              region.eccentricity > 0.99 and # Very elongated
+              np.abs(region.orientation) < 0.1) # Horizontally oriented
 
-    # find object fitting the is_target_line function
+    # Find object fitting the is_target_line function.
     binary = frame.reflectance < 0.9
-    self.target_shape = Shape.Find(binary, is_target_line, debug=debug,
-                                   required=True)
+    self.target_shape = Shape.Find(binary, is_target_line, debug=debug)
+    if not self.target_shape:
+      return False
+
     self._target_left = self.target_shape.left
     self._target_right = self.target_shape.right
-    self._target_length = self._target_right - self._target_left
 
-    # add margin to account for camera shake
+    # Add margin to account for camera shake.
     self.target_shape = self.target_shape.WithMargin(5, 5)
 
-    # isolate the line in white on black background
-    isolated_line = (1.0 - frame.reflectance) * self.target_shape.mask
-
-    # project the image along the x axis. This profile is later
-    # used for normalization
-    self._target_profile = np.sum(isolated_line, 0)
+    # Calculate profile of drawn line and empty screen as reference.
+    self._drawn_profile = self.target_shape.ExtractProfile(
+        1 - frame.reflectance)
+    self._clear_profile = self.target_shape.ExtractProfile(
+        1 - frame.screen.on_image)
 
     if debug:
       res = Canvas(frame.cropped)
       res.DrawContour([0, 1, 0], self.target_shape)
+      Viewer.DebugView(contour=res.image)
+    return True
 
-      Viewer.DebugView(isolated_line=isolated_line,
-                       contour=res.image)
-
-  def _CalculateNormalizedProfile(self, frame):
-    r"""Calculate a normalized profile of the line.
-
-    To ease calculations this method isolates and projects the line onto
-    the X axis. This turns the line detection from a 2D into a 1D problem.
-
-    The profile of a line roughly looks like this:
-      ____________________
-                          \                       _
-                           \_                    / \
-                             \__________________/   \___
-            ^            |----|        ^          ^
-       fully drawn     transition   no line     robot
-      line segments       area       drawn      finger
-
-    The profile is normalized in relation to the profile of the target line.
-    """
-    # Isolate the line in white on black background and calculate profile
-    isolated_line = (1.0 - frame.reflectance) * self.target_shape.mask
-    profile = np.sum(isolated_line, 0)
-
-    # To normalize, we divide by the target profile. However in areas
-    # of the picture where there is no line, the target profile will be close
-    # to zero which will cause numerical instabilities.
-    # To prevent this we normalize only areas where the line is present and
-    # assume everything else to be zero.
-    normalized = np.zeros(profile.shape)
-    line_area = [self._target_profile > 0.1]
-    normalized[line_area] = (profile[line_area] /
-                             self._target_profile[line_area])
-    normalized = np.clip(normalized, 0, 1)
-    return normalized
-
-  def _FindLine(self, normalized):
+  def _FindLine(self, profile):
     """Search profile for the beginning of a line draw.
 
     Since the robot finger is passing through the same area, we have to
@@ -316,7 +364,7 @@ class Line(object):
     self.reverse if the line is drawn from right to left.
     """
     # segment objects on profile line (1D version of shape detection)
-    segmentation = (normalized > 0.1).astype(np.int)
+    segmentation = (profile > 0.1).astype(np.int)
     segmentation_diff = np.diff(segmentation)
 
     objects = []
@@ -327,15 +375,16 @@ class Line(object):
       elif segmentation_diff[i] < 0:
         objects.append((object_start, i))
 
-    # find leftmost and rightmost objects
-    leftmost_object = min(objects, key=lambda o: o[0])
-    rightmost_object = max(objects, key=lambda o: o[1])
-
     # The first object will be the robot finger.
     if len(objects) <= 1:
       return None
 
+    # find leftmost and rightmost objects
+    leftmost_object = min(objects, key=lambda o: o[0])
+    rightmost_object = max(objects, key=lambda o: o[1])
+
     # check if the object is at the start or end of the target line
+    line = None
     if leftmost_object[0] < self._target_left + 5:
       line = leftmost_object
       self.reverse = False
@@ -346,19 +395,19 @@ class Line(object):
       return None
 
     # check if the line is dark and long enough
-    line_level = np.mean(normalized[line[0]:line[1]])
+    line_level = np.mean(profile[line[0]:line[1]])
     line_length = line[1] - line[0]
     if line_level > 0.5 and line_length > 4:
       return line
     return None
 
-  def _FindTransition(self, normalized):
-    """Find beginnging and end of transition area in the normalized profile."""
+  def _FindTransition(self, profile):
+    """Find beginnging and end of transition area in the profile profile."""
     # Determine directions depending on the direction the line is being drawn
     forward = +1 if not self.reverse else -1
     backward = -1 if not self.reverse else +1
-    front = 0 if not self.reverse else len(normalized)
-    back = len(normalized) if not self.reverse else 0
+    front = 0 if not self.reverse else len(profile)
+    back = len(profile) if not self.reverse else 0
 
     # find transition period around the end of the line
     # the transition starts where the profile starts decreasing from 1 and
@@ -366,16 +415,16 @@ class Line(object):
     transition_start = self._line_end
     transition_end = self._line_end
     for i in range(self._line_end, front, backward):
-      if normalized[i] > 0.99:
+      if profile[i] > 0.99:
         transition_start = i
         break
     for i in range(self._line_end, back, forward):
-      if normalized[i] < 0.01:
+      if profile[i] < 0.01:
         transition_end = i
         break
     return (transition_start, transition_end)
 
-  def _AddNewSegments(self, frame_index, normalized, transition_start,
+  def _AddNewSegments(self, frame_index, profile, transition_start,
                       transition_end):
     """Add new segments to self.segments after they have been fully drawn."""
     forward = +1 if not self.reverse else -1
@@ -392,7 +441,7 @@ class Line(object):
     new_segment = LineSegment(last_segment.end + forward,
                               transition_end + backward,
                               frame_index)
-    new_segment.UpdateLevel(normalized)
+    new_segment.UpdateLevel(profile)
 
     segment_level_diff = np.abs(last_segment.level - new_segment.level)
 
@@ -404,11 +453,24 @@ class Line(object):
       self.segments.append(new_segment)
 
   def Preprocess(self, frame, debug=False):
-    """Preprocessing step to process frame into more compact data.
+    """Preprocessing step to process 2D frames into a 1D profile.
+
+    The profile of a line roughly looks like this:
+      ____________________
+                          \                       _
+                           \_                    / \
+                             \__________________/   \___
+            ^            |----|        ^          ^
+       fully drawn     transition   no line     robot
+      line segments       area       drawn      finger
 
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
-    return self._CalculateNormalizedProfile(frame)
+    if not self.target_shape:
+      return None
+    return self.target_shape.ExtractProfile(1 - frame.reflectance,
+                                            self._drawn_profile,
+                                            self._clear_profile)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Generate Line events from sequential preprocessed data.
@@ -422,11 +484,14 @@ class Line(object):
       self.debug_canvas = Canvas(debug_frame.cropped)
 
     events = []
-    normalized = preprocess_data
+    profile = preprocess_data
+
+    if not self.target_shape:
+      return events
 
     # Search for start of line drawing
     if not self.found:
-      line = self._FindLine(normalized)
+      line = self._FindLine(profile)
       if line:
         self._line_end = line[1] if not self.reverse else line[0]
         self.found = True
@@ -436,7 +501,7 @@ class Line(object):
 
     # Update existing segments and create draw events
     for segment in self.segments:
-      segment.UpdateLevel(normalized)
+      segment.UpdateLevel(profile)
       if segment.draw_end is None and segment.level > self._draw_end_thresh:
         segment.draw_end = frame_index
         events.append(Event(segment.draw_start, Event.LINE_DRAW_START,
@@ -454,13 +519,13 @@ class Line(object):
       return events
 
     # Find transition area and add new line segments to the segment list
-    (transition_start, transition_end) = self._FindTransition(normalized)
-    self._AddNewSegments(frame_index, normalized, transition_start,
+    (transition_start, transition_end) = self._FindTransition(profile)
+    self._AddNewSegments(frame_index, profile, transition_start,
                          transition_end)
     self._line_end = transition_end
 
     if debug_frame:
-      self.debug_canvas.Plot([1, 0, 0], normalized)
+      self.debug_canvas.Plot([1, 0, 0], profile)
       for segment in self.segments:
         self.debug_canvas.DrawLine([0, 0.5, 0], x=segment.end)
 
@@ -477,11 +542,13 @@ class Finger(object):
   Finger.debug_canvas: If Update is called with debug=True, this will
                        contain a canvas object showing debug info.
   """
-  def __init__(self):
+  def __init__(self, screen):
+    self.screen = screen
     self.found = False
     self.finger_shape = None
     self.debug_canvas = None
     self.location = None
+    self.led_switching = False
 
   def Preprocess(self, frame, debug=False):
     """Preprocessing step to process frame into more compact data.
@@ -489,23 +556,34 @@ class Finger(object):
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
     # extend the target area to view the full finger tip
-    binary = (frame.reflectance < 0.9)
+    binary = (frame.reflectance < 0.95)
 
     # we are looking for a big object that is not very elongated
     # (i.e. not the line)
     def is_finger(region, labels, debug=False):
       if debug:
-        print region.label, region.area, region.eccentricity
-      return region.area > 2000 and region.eccentricity < 0.95
+        print (region.label, region.area, region.eccentricity, region.bbox[0],
+              region.bbox[2])
+      return (region.area > 1000 and region.eccentricity < 0.95 and
+              region.bbox[0] < 5 and region.bbox[2] < labels.shape[0] - 5)
     finger_shape = Shape.Find(binary, is_finger, debug=debug)
+    location = None
 
     # the finger location is the bottom tip of the detected shape
     if finger_shape:
       coords = finger_shape.coords
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
-      return (location, finger_shape)
-    return (None, None)
+
+    # Look for a large amount of change outside of the screen area, i.e. a
+    # flashing LED:
+    mask = ~self.screen.shape.WithMargin(10, 10).mask
+    delta = np.abs(frame.delta) * mask
+    # Filter out Noise, the flash should be at least 5 pixels big.
+    delta = Filter.Min(delta, disk_size=5)
+    # Determine on/off state of the LED.
+    led_color = np.mean(frame.original[delta > 0.2])
+    return (location, finger_shape, np.max(delta), led_color)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Search for the current location of the finger.
@@ -513,19 +591,36 @@ class Finger(object):
     This method will return a list of FINGER_MOVED events when the finger
     is moving.
     """
+    events = []
+
     if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.reflectance)
+      self.debug_canvas = Canvas(debug_frame.original, debug_frame.crop_shape)
 
-    (new_location, self.finger_shape) = preprocess_data
-
+    (new_location, self.finger_shape, max_delta, led_color) = preprocess_data
     self.found = new_location is not None
 
-    if new_location is not None and self.location != new_location:
+    # Report new location if location has changed but not changed too much.
+    if (new_location is not None and self.location != new_location and
+        (self.location is None or np.abs(self.location - new_location) < 5)):
       self.location = new_location
-      return [Event(frame_index, Event.FINGER_MOVED, location=new_location)]
+      events.append(Event(frame_index, Event.FINGER_MOVED,
+                          location=new_location))
 
-    if debug_frame and self.finger_shape:
-      self.debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
+    # If there is a strong change we expect it to be the flashing LED
+    if max_delta > 0.2:
+      # Use the led_switching flag to prevent multiple events
+      if not self.led_switching:
+        self.led_switching = True
+        if led_color > 0.5:
+          events.append(Event(frame_index, Event.FINGER_DOWN))
+        else:
+          events.append(Event(frame_index, Event.FINGER_UP))
+    else:
+      self.led_switching = False
+
+    if debug_frame:
+      if self.finger_shape:
+        self.debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
       self.debug_canvas.DrawLine([0, 1, 0], x=self.location)
 
-    return []
+    return events

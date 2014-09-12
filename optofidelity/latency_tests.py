@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 import pickle
 import unittest
 
-from latency import LineDrawLatency, TraceGenerator, MultithreadedTraceGenerator
+from trace import TraceGenerator, MultithreadedTraceGenerator
+from latency import LineDrawLatency
 from detection import Event, Screen
 from videoproc import FileVideoReader
 
@@ -77,23 +78,27 @@ class TestTraceGeneration(unittest.TestCase):
   the trace at line_draw.trace.
   """
   def setUp(self):
-    flash_video = FileVideoReader("screen.avi")
-    self.screen = Screen(flash_video.Frames(step=10))
-    self.video = FileVideoReader("line.avi")
-
-  @unittest.skip("")
-  def test_line_latency_trace(self):
-    generator = TraceGenerator(self.screen)
-    trace = generator.ProcessVideo(self.video, debug=True)
-    print trace
-    pickle.dump(trace, open("line_draw.trace", "w"))
+    flash_video = FileVideoReader("N5_flash.avi")
+    self.screen = Screen()
+    self.screen.DetectScreen(flash_video.Frames(step=10))
 
   #@unittest.skip("")
-  def test_multithreaded_trace_generation(self):
+  def test_line_latency_trace(self):
+    video = FileVideoReader("N5_move.avi")
+    #generator = TraceGenerator(self.screen)
     generator = MultithreadedTraceGenerator(self.screen)
-    trace = generator.ProcessVideo(self.video, debug=True)
+    trace = generator.ProcessVideo(video, debug=True)
     print trace
     pickle.dump(trace, open("line_draw.trace", "w"))
+
+  @unittest.skip("")
+  def test_tap_latency_trace(self):
+    video = FileVideoReader("tap.avi")
+    #generator = MultithreadedTraceGenerator(self.screen)
+    generator = TraceGenerator(self.screen)
+    trace = generator.ProcessVideo(video, debug=True)
+    print trace
+    pickle.dump(trace, open("tap.trace", "w"))
 
 if __name__ == '__main__':
   import cProfile

@@ -64,6 +64,22 @@ class Shape(object):
       mask = MorphFn(col_margin)(mask, col_kernel)
     return Shape(mask)
 
+  def ExtractProfile(self, image, high_ref=None, low_ref=None):
+    isolated = image * self.mask
+    profile = np.sum(isolated, 0)
+
+    if high_ref is not None:
+      if low_ref is not None:
+        profile = profile - low_ref
+        high_ref = high_ref - low_ref
+      normalized = np.zeros(profile.shape)
+      non_zero = [high_ref > 0.1]
+      normalized[non_zero] = (profile[non_zero] / high_ref[non_zero])
+
+      return np.clip(normalized, 0, 1)
+    else:
+      return profile
+
   def RemoveBackground(self, image, fill=None):
     """Blend out everything that does not belong to this shape."""
     if fill is None:
@@ -109,6 +125,10 @@ class Shape(object):
     res[extreme_axis] = extreme_value
     res[avg_axis] = avg_value
     return res
+
+  @property
+  def cropped_shape(self):
+    return Shape(self.Cropped(self.mask))
 
   @property
   def bbox(self):
@@ -215,9 +235,14 @@ class Shape(object):
       elif debug:
         print msg
 
-    # find all region props that match_fn returns True for
     labels = measure.label(binary_im)
+    # hack: the region 0 is ignored by regionprops, but it's a valid region
+    labels[labels == 0] = np.max(labels) + 1
+
+    # find all region props that match_fn returns True for
     for props in measure.regionprops(labels, binary_im):
+      if props.max_intensity < 1.0:
+        continue
       if debug:
         is_match = match_fn(props, labels, debug)
         if is_match:
@@ -230,7 +255,7 @@ class Shape(object):
     # handle no matches error
     if not matches:
       if debug and required:
-        Viewer.DebugView("prism", labels=labels)
+        Viewer.DebugView(labels=labels, binary=binary_im)
       return Exit("Cannot find match for region", required)
 
     # handle too many matches error
@@ -239,7 +264,7 @@ class Shape(object):
         mask = np.zeros(labels.shape)
         for match in matches:
           mask[labels == match.label] = match.label
-        Viewer.DebugView("prism", labels=labels, matches=mask)
+        Viewer.DebugView("prism", labels=labels, matches=mask, binary=binary_im)
       return Exit("Multiple matches for region", True)
 
     # success
@@ -469,7 +494,7 @@ class Filter(object):
   @staticmethod
   def ExtractBlackOnWhite(image, disk_size, scale=1):
     lowpass = Filter.Median(image, disk_size, scale)
-    highpass = lowpass - image
+    highpass = 1.0 - (lowpass - image)
     return Filter.Truncate(highpass)
 
 
