@@ -14,38 +14,8 @@ screen.
 import numpy as np
 import skimage.morphology as morphology
 
+from trace import Event
 from videoproc import Viewer, Filter, Shape, Canvas
-
-
-class Event(object):
-  """Describes an event detected in the camera stream."""
-  LINE_DRAW_START = "LineDrawStart"
-  LINE_DRAW_END = "LineDrawEnd"
-  LINE_RESET = "LineReset"
-  SCREEN_DRAW_START = "ScreenDrawStart"
-  SCREEN_DRAW_END = "ScreenDrawEnd"
-  FINGER_MOVED = "FingerMoved"
-  FINGER_DOWN = "FingerDown"
-  FINGER_UP = "FingerUp"
-
-  def __init__(self, time, event_type, location=None, color=None):
-    self.event_type = event_type
-    self.time = time
-    self.location = location
-    self.color = color
-
-  def __repr__(self):
-    optional = []
-    if self.location:
-      optional.append("location=%.1f" % self.location)
-    if self.color:
-      optional.append("color=%s" % self.color)
-
-    optional_str = ""
-    if optional:
-      optional_str = " (%s)" % (",".join(optional))
-    return "%d\t%s\t%s" % (self.time, self.event_type, optional_str)
-
 
 class Frame(object):
   """This class stores multiple versions and views of a camera frame.

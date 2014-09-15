@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 import pickle
 import unittest
 
-from trace import TraceGenerator, MultithreadedTraceGenerator
-from latency import LineDrawLatency
 from detection import Event, Screen
+from trace_generator import TraceGenerator, MultithreadedTraceGenerator
 from videoproc import FileVideoReader
+
 
 def Plot(*args):
   plt.figure()
@@ -60,6 +60,7 @@ class TestTraceProcessing(unittest.TestCase):
     Plot(trimmed.Times(Event.FINGER_MOVED),
          trimmed.Locations(Event.FINGER_MOVED))
 
+
 class TestTraceGeneration(unittest.TestCase):
   """Manual test cases to generate trace files.
 
@@ -83,13 +84,11 @@ class TestTraceGeneration(unittest.TestCase):
   @unittest.skip("")
   def test_tap_latency_trace(self):
     video = FileVideoReader("tap.avi")
-    #generator = MultithreadedTraceGenerator(self.screen)
-    generator = TraceGenerator(self.screen)
+    generator = MultithreadedTraceGenerator(self.screen)
+    #generator = TraceGenerator(self.screen)
     trace = generator.ProcessVideo(video, debug=True)
     print trace
     pickle.dump(trace, open("tap.trace", "w"))
 
 if __name__ == '__main__':
-  import cProfile
-  #cProfile.run("unittest.main()")
   unittest.main()
