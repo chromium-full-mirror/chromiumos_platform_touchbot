@@ -7,9 +7,9 @@
 from optparse import OptionParser
 import os
 
-from latency import TouchMoveLatencyTest
-from optofidelity import OptofidelityTestSystem
-from test_runner import TestRunner
+from optofidelity.latency import TouchMoveLatencyTest
+from optofidelity.system import OptofidelityTestSystem
+from optofidelity.test_runner import TestRunner
 
 
 usage = """TestRunner usage examples

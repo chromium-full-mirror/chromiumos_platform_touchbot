@@ -15,7 +15,7 @@ stored and read from a file to skip the lengthy calibration process.
 from ConfigParser import SafeConfigParser
 import h5py
 
-from client.TnTClient import TnTClient
+from tnt.TnTClient import TnTClient
 from detection import Screen
 from phantom import Phantom
 

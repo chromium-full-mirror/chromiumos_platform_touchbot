@@ -7,7 +7,7 @@ Provides the TestCase and TestRunner class. The TestRunner can be fed
 with multiple TestCases and execute these on the robot fully automatically while
 handling potential error cases by resetting or recalibrating the device.
 """
-from optofidelity import RetryFunction
+from system import RetryFunction
 from trace_generator import TraceGenerator
 import itertools
 
