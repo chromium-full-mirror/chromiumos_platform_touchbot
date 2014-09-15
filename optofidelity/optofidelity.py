@@ -13,8 +13,11 @@ screen location in the camera space. All this calibration data can then be
 stored and read from a file to skip the lengthy calibration process.
 """
 from ConfigParser import SafeConfigParser
-from detection import Screen
 import h5py
+
+from client.TnTClient import TnTClient
+from detection import Screen
+from phantom import Phantom
 
 class DUTException(Exception):
   """Exceptions in handling a device under test.
@@ -63,9 +66,11 @@ class OptofidelityTestSystem(object):
     >>> system["Nexus7"].Reset()
     >>> system["Nexus7"].EnterApp("Clank")
   """
-  def __init__(self, tnt):
+  def __init__(self, config_file):
     self.duts = {}
-    self.tnt = tnt
+    self.tnt = None
+    self.camera = None
+    self.ReadConfig(config_file)
 
   def __getitem__(self, key):
     if isinstance(key, int):
@@ -88,7 +93,16 @@ class OptofidelityTestSystem(object):
     config = SafeConfigParser()
     config.read([config_file])
 
+    host = config.get("robot", "host")
+    port = config.get("robot", "port")
+    self.tnt = TnTClient(host, port)
+
+    camera_host = config.get("camera", "host")
+    self.camera = Phantom(camera_host)
+
     for dut_name in config.sections():
+      if dut_name in ("robot", "camera"):
+        continue
       dut_type = config.get(dut_name, "type")
       dut_apps = config.get(dut_name, "apps").split(",")
       dut_apps = [a.strip() for a in dut_apps]
@@ -105,10 +119,10 @@ class OptofidelityTestSystem(object):
         dut.RegisterApp(app)
       self.duts[dut.name] = dut
 
-  def Calibrate(self, camera):
+  def Calibrate(self):
     """Run calibration on all DUTs."""
     for dut in self.duts.values():
-      RetryFunction(lambda: dut.Calibrate(camera),
+      RetryFunction(lambda: dut.Calibrate(self.camera),
                     lambda: dut.Reset(),
                     "Calibrate %s" % dut)
 

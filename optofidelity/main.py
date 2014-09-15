@@ -7,10 +7,8 @@
 from optparse import OptionParser
 import os
 
-from client.TnTClient import TnTClient
 from latency import TouchMoveLatencyTest
 from optofidelity import OptofidelityTestSystem
-from phantom import Phantom
 from test_runner import TestRunner
 
 
@@ -23,29 +21,21 @@ $ %prog
 $ %prog --calibrate
 """
 
-phantom_host = "192.168.0.4"
-optofidelity_host = "192.168.0.5"
-optofidelity_port = "8000"
-
 script_dir = os.path.dirname(os.path.realpath(__file__))
 config_file = os.path.join(script_dir, "optofidelity.cfg")
 calibration_file = os.path.join(script_dir, "calibration.hdf5")
 
 
 def RunTests(calibrate, debug):
-  tnt = TnTClient(optofidelity_host, optofidelity_port)
-  system = OptofidelityTestSystem(tnt)
-  system.ReadConfig(config_file)
-
-  camera = Phantom(phantom_host)
+  system = OptofidelityTestSystem(config_file)
 
   if calibrate or not os.path.exists(calibration_file):
-    system.Calibrate(camera)
+    system.Calibrate()
     system.SaveCalibration(calibration_file)
   else:
     system.LoadCalibration(calibration_file)
 
-  runner = TestRunner(camera)
+  runner = TestRunner(system)
   for dut in system:
     for app in dut:
       runner.AddTestCase(TouchMoveLatencyTest(app))

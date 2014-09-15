@@ -53,9 +53,9 @@ class TestRunner(object):
   During execution, the test cases are sorted in a way that involves as little
   app and dut switching as possible.
   """
-  def __init__(self, camera):
+  def __init__(self, system):
     self.test_cases = []
-    self.camera = camera
+    self.camera = system.camera
 
   def AddTestCase(self, case):
     self.test_cases.append(case)
