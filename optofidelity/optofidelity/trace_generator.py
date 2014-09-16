@@ -39,21 +39,22 @@ class TraceGenerator(object):
 
   def DebugView(self, im, debug):
     if debug == "all":
-      canvas = Canvas(im, self.screen.shape)
-      canvas.DrawContour([0, 0, 1], self.screen.shape, no_crop=True)
+      canvas = Canvas(im, self.screen.Unrectify)
+      canvas.DrawContour([0, 0, 1], self.screen.shape)
       if self.finger.found:
         canvas.DrawContour([1, 0, 0], self.finger.finger_shape)
-        canvas.DrawLine([1, 0, 0], x=self.finger.location)
-
+        canvas.DrawHLine([1, 0, 0], self.finger.location,
+                         self.finger.finger_shape.bottom)
       if self.line.found:
         canvas.DrawContour([0, 0.5, 0], self.line.target_shape)
       for segment in self.line.segments:
-        canvas.DrawLine([0, 0.5, 0], x=segment.end)
+        canvas.DrawHLine([0, 0.5, 0], segment.end,
+                          self.line.target_shape.center_y)
       return Viewer.VideoFrame(canvas.image)
     elif debug == "screen":
-      return Viewer.VideoFrame(self.screen)
+      return Viewer.VideoFrame(self.screen.debug_canvas)
     elif debug == "line":
-      return Viewer.VideoFrame(self.line.debug_canvas.Scaled(2))
+      return Viewer.VideoFrame(self.line.debug_canvas)
     elif debug == "finger":
       return Viewer.VideoFrame(self.finger.debug_canvas.image)
 

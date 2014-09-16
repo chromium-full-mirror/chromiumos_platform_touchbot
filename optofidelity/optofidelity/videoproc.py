@@ -64,22 +64,6 @@ class Shape(object):
       mask = MorphFn(col_margin)(mask, col_kernel)
     return Shape(mask)
 
-  def ExtractProfile(self, image, high_ref=None, low_ref=None):
-    isolated = image * self.mask
-    profile = np.sum(isolated, 0)
-
-    if high_ref is not None:
-      if low_ref is not None:
-        profile = profile - low_ref
-        high_ref = high_ref - low_ref
-      normalized = np.zeros(profile.shape)
-      non_zero = [high_ref > 0.1]
-      normalized[non_zero] = (profile[non_zero] / high_ref[non_zero])
-
-      return np.clip(normalized, 0, 1)
-    else:
-      return profile
-
   def RemoveBackground(self, image, fill=None):
     """Blend out everything that does not belong to this shape."""
     if fill is None:
@@ -126,6 +110,64 @@ class Shape(object):
     res[avg_axis] = avg_value
     return res
 
+  def ApproximatePolygon(self, num_verticies):
+    """Return polygon approximation with num_verticies verticies.
+
+    The approximated polygon is assumed to be as regular as possible, meaning
+    that all inner angles in the polygon are approximately the same (i.e. we are
+    looking for a rectangle, not a trapezoid, etc).
+    This method returns the coordinates of each vertex in clockwise order,
+    starting with he top-left-most vertex.
+    """
+    contour = measure.find_contours(self.mask, 0)[0]
+
+    # First pass of approximation, this will calculate a simplified polygon
+    # with an undefined number of verticies.
+    verticies = measure.approximate_polygon(contour, tolerance=10)
+
+    # The last coordinate is often a duplicate of the first.
+    if np.abs(np.linalg.norm(verticies[0, :] - verticies[-1, :])) < 0.01:
+      verticies = verticies[:-1]
+
+    # Assuming all angles are the same, how big should they be?
+    inner_angle_sum = ((num_verticies) - 2) * np.pi / 2
+    target_angle = inner_angle_sum / num_verticies
+
+    # Calculate the angle at each vertex.
+    angle_index_diffs = []
+    for i in range(verticies.shape[0]):
+      # Calculate normalized vector to previous vertex.
+      prev_i = i - 1
+      prev_delta = verticies[prev_i, :] - verticies[i, :]
+      prev_delta = prev_delta / np.linalg.norm(prev_delta)
+
+      # Calculate normalized vector to next vertex.
+      next_i = (i + 1) % verticies.shape[0]
+      next_delta = verticies[next_i, :] - verticies[i, :]
+      next_delta = next_delta / np.linalg.norm(next_delta)
+
+      # Calculate deviation from target angle.
+      angle = np.arccos(np.dot(prev_delta, next_delta))
+      angle_index_diffs.append((i, np.abs(angle - target_angle)))
+
+    # Sort by angle differences and pick right number of verticies
+    angle_index_diffs.sort(key=lambda a: a[1])
+    angle_index_diffs = angle_index_diffs[:num_verticies]
+    angle_index_diffs.sort(key=lambda a: a[0])
+
+    # Return coordinates of picked verticies
+    verticies = verticies[[i for i, d in angle_index_diffs], :]
+
+    # Find top left most vertex
+    dists_from_zero = [np.linalg.norm(coords) for coords in verticies]
+    top_left_idx = np.argmin(dists_from_zero)
+
+    # Reorder to have top left most vertex at index 0
+    res = np.zeros(verticies.shape)
+    res[0:-top_left_idx] = verticies[top_left_idx:]
+    res[-top_left_idx:] = verticies[:top_left_idx]
+    return res
+
   @property
   def cropped_shape(self):
     return Shape(self.Cropped(self.mask))
@@ -149,6 +191,22 @@ class Shape(object):
   @property
   def right(self):
     return self.bbox[3]
+
+  @property
+  def center_x(self):
+    return (self.right - self.left) / 2
+
+  @property
+  def center_y(self):
+    return (self.bottom - self.top) / 2
+
+  @property
+  def width(self):
+    return self.right - self.left
+
+  @property
+  def height(self):
+    return self.bottom - self.top
 
   @property
   def coords(self):
@@ -497,6 +555,20 @@ class Filter(object):
     highpass = 1.0 - (lowpass - image)
     return Filter.Truncate(highpass)
 
+  @staticmethod
+  def ExtractProfile(image, high_ref=None, low_ref=None):
+    profile = np.sum(image, 0)
+
+    if high_ref is not None:
+      if low_ref is not None:
+        profile = profile - low_ref
+        high_ref = high_ref - low_ref
+      normalized = np.zeros(profile.shape)
+      non_zero = [high_ref > 0.1]
+      normalized[non_zero] = (profile[non_zero] / high_ref[non_zero])
+
+      profile = np.clip(normalized, 0, 1)
+    return profile
 
 class Viewer(object):
   """Helper for viewing image data."""
@@ -541,55 +613,53 @@ class Viewer(object):
 class Canvas(object):
   """Helper class for drawing contours, lines and masks.
 
-  This class automatically translates cropped objects when
-  the crop argument is used. This allows calculations to be
-  made in a cropped version of the image, which can then easily
-  be displayed in the uncropped image using this class.
+  Allows the use of a transform function tform_fn that is called as
+  tform_fn(image=) or tform_fn(coords=) to transform an image or coordinates
+  before drawing them. This is used in combination with the Screen.Unrectify
+  method to draw shapes and lines that were calculated on rectified images into
+  full frame images.
   """
-  def __init__(self, image, crop=None):
+  def __init__(self, image, tform_fn=None):
     self.image = skimage.color.gray2rgb(image)
-    self.crop = crop
-    self.cropped = self.image
-    self.top, self.left = (0, 0)
-    if crop:
-      # note that modifying self.cropped will modify self.image
-      self.cropped = crop.Cropped(self.image)
-      self.top, self.left = (crop.top, crop.left)
+    self.tform_fn = tform_fn
 
   def Scaled(self, scale):
     return transform.rescale(self.image, scale)
 
   def Plot(self, color, plot):
+    plot = Filter.Truncate(plot)
+    if len(plot) > self.image.shape[1]:
+      plot = plot[:self.image.shape[1]]
+
     height = self.image.shape[0] - 20
     cols = (height - (plot * height)).astype(np.int) + 10
     rows = range(len(plot))
     self.image[cols, rows] = color
 
-  def DrawLine(self, color, x=None, y=None):
+  def DrawHLine(self, color, x, y):
+    if self.tform_fn:
+      (x, y) = self.tform_fn(coords=(x, y))
     for i in (0, 1, 2):
-      if x is not None:
-        self.image[:, x + self.left, i] = color[i]
-      if y is not None:
-        self.image[y + self.top, :, i] = color[i]
+      self.image[:, x, i] = color[i]
 
-  def Draw(self, color, mask, no_crop=None):
-    if no_crop:
-      self.image[mask] = color
-    else:
-      self.cropped[mask] = color
+  def DrawVLine(self, color, x, y):
+    if self.tform_fn:
+      (x, y) = self.tform_fn(coords=(x, y))
+    for i in (0, 1, 2):
+      self.image[y, :, i] = color[i]
 
-  def DrawContour(self, color, shape, no_crop=None):
+  def Draw(self, color, mask):
+    if self.tform_fn and np.any(self.image.shape != mask.shape):
+      mask = self.tform_fn(image=mask)
+    self.image[mask] = color
+
+  def DrawContour(self, color, shape):
     if shape is None:
       return
-    if no_crop:
-      self.image[shape.contour] = color
-    else:
-      self.cropped[shape.contour] = color
+    self.Draw(color, shape.contour)
 
-  def DrawShape(self, color, shape, no_crop=None):
+  def DrawShape(self, color, shape):
     if shape is None:
       return
-    if no_crop:
-      self.image[shape.mask] = color
-    else:
-      self.cropped[shape.mask] = color
+    self.Draw(color, shape.mask)
+

@@ -35,7 +35,7 @@ class TestPreProcessing(unittest.TestCase):
 class TestsWithScreenDetection(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
-    flash_video = FileVideoReader("screen.avi")
+    flash_video = FileVideoReader("videos/N5_flash.avi")
     cls.screen = Screen()
     cls.screen.DetectScreen(flash_video.Frames(step=10))
 
@@ -94,7 +94,7 @@ class TestsWithScreenDetection(unittest.TestCase):
   @unittest.skip("")
   def test_line_draw_fine_tuning(self):
     mirrored = True
-    video = FileVideoReader("line.avi")
+    video = FileVideoReader("videos/line.avi")
     line = self.detect_line(video, mirrored=mirrored)
 
     def frame_function(frame):
@@ -104,9 +104,9 @@ class TestsWithScreenDetection(unittest.TestCase):
       return line.debug_canvas.Scaled(4), events
     self.iterate_video_test(video, frame_function, start=80, mirrored=mirrored)
 
-  @unittest.skip("")
+  #@unittest.skip("")
   def test_finger_detection(self):
-    video = FileVideoReader("N5_tap.avi")
+    video = FileVideoReader("videos/N5_tap.avi")
 
     finger = Finger(self.get_screen())
     def frame_function(frame):

@@ -13,6 +13,7 @@ screen.
 """
 import numpy as np
 import skimage.morphology as morphology
+import skimage.transform as transform
 
 from trace import Event
 from videoproc import Viewer, Filter, Shape, Canvas
@@ -25,20 +26,16 @@ class Frame(object):
   """
   def __init__(self, im, prev_im, screen, index=0):
     self.original = im
-    self.cropped = im
-    self.isolated = im
+    self.rectified = im
     self.index = index
     self.screen = screen
 
     if screen:
       self.crop_shape = screen.shape
-      # crop to bounding box of object
-      self.cropped = screen.shape.Cropped(im)
-      self.isolated = screen.shape.cropped_shape.RemoveBackground(
-          self.cropped, 1)
+      self.rectified = screen.Rectify(im)
 
     # noise filtered reflectance
-    self.reflectance = Filter.Reflectance(self.isolated, disk_size=40,
+    self.reflectance = Filter.Reflectance(self.rectified, disk_size=40,
                                           scale=0.5)
     self.reflectance = Filter.Median(self.reflectance, disk_size=1)
 
@@ -48,8 +45,8 @@ class Frame(object):
       self.delta = np.zeros(im.shape)
 
   def DebugView(self):
-    Viewer.DebugView(cropped=self.cropped,
-                     isolated=self.isolated,
+    Viewer.DebugView(original=self.original,
+                     rectified=self.rectified,
                      reflectance=self.reflectance)
 
 class Screen(object):
@@ -65,13 +62,15 @@ class Screen(object):
   UNDEFINED = -1
 
   def __init__(self, screen=None, no_change_thresh=0.02,
-               change_thresh=0.9, debug=False):
+               change_thresh=0.9):
     """Initialize empty or by providing a pre-calculated screen."""
     self.no_change_thresh = no_change_thresh
     self.change_thresh = change_thresh
+    self.rect_scaling = 1.2
 
     # Calibration information
     self.shape = None
+    self.rect_transform = None
     self.on_image = None
     self.on_profile = None
     self.off_image = None
@@ -84,6 +83,7 @@ class Screen(object):
 
     if screen:
       self.shape = screen.shape
+      self.rect_transform = screen.rect_transform
       self.on_image = screen.on_image
       self.on_profile = screen.on_profile
       self.off_image = screen.off_image
@@ -104,16 +104,68 @@ class Screen(object):
     screen.on_profile = hdf5["on_profile"][()]
     screen.off_image = hdf5["off_image"][()]
     screen.off_profile = hdf5["off_profile"][()]
+    screen.rect_transform = screen.EstimateRectTransform()
+    return screen
 
   def Mirrored(self):
     """Returns horizontally mirrored Screen object."""
     screen_copy = Screen(screen=self)
     screen_copy.shape = Shape(np.fliplr(self.shape.mask))
+    screen_copy.rect_transform = screen_copy.EstimateRectTransform()
     screen_copy.on_image = np.fliplr(self.on_image)
     screen_copy.on_profile = self.on_profile[::-1]
     screen_copy.off_image = np.fliplr(self.off_image)
     screen_copy.off_profile = self.off_profile[::-1]
     return screen_copy
+
+  def EstimateRectTransform(self):
+    """Estimates transformation from rectified device screen to video frame.
+
+    Since transform.warp is doing inverse transformations, this matrix
+    transform object can be used to rectify the screen in the video frame.
+    """
+    # Approximate rectangle from screen shape.
+    dest_coords = self.shape.ApproximatePolygon(4)
+    # Coords for transforms are x/y, when indexing y/x. So we have to switch.
+    dest_coords = dest_coords[:, ::-1]
+
+    # Coordinates in target image. Slightly inflates size so we are not losing
+    # any information during warping.
+    height = int(self.shape.height * self.rect_scaling)
+    width = int(self.shape.width * self.rect_scaling)
+    source_coords = np.array((
+        (0, 0),
+        (width, 0),
+        (width, height),
+        (0, height)
+    ))
+    tform = transform.ProjectiveTransform()
+    tform.estimate(source_coords, dest_coords)
+    return tform
+
+  def Rectify(self, image):
+    """Rectify the device screen from a video frame.
+
+    The resulting image will show only the screen, warped to be rectangular.
+    """
+    height = int(self.shape.height * self.rect_scaling)
+    width = int(self.shape.width * self.rect_scaling)
+    res = transform.warp(image, self.rect_transform,
+                         output_shape=(height, width))
+    return res.astype(image.dtype)
+
+  def Unrectify(self, image=None, coords=None):
+    """Reverse rectification from device screen image into a video frame.
+
+    The resulting image will show only the screen, warped to be rectangular.
+    """
+    if image is not None:
+      res = transform.warp(image, self.rect_transform.inverse,
+                           output_shape=self.shape.mask.shape)
+      return res.astype(image.dtype)
+    if coords is not None:
+      res = self.rect_transform(coords)
+      return res[0, 0], res[0, 1]
 
   def DetectScreen(self, frames, debug=False):
     """Detect the devices flashing screen.
@@ -154,19 +206,22 @@ class Screen(object):
     binary = morphology.binary_erosion(binary, morphology.disk(4))
     self.shape = Shape.FindMax(binary, lambda p: p.area)
 
+    # Estimate rectification transformation
+    self.rect_transform = self.EstimateRectTransform()
+
     # Calculate profile for screen on and off in cropped space
-    self.on_image = self.shape.Cropped(on_frame)
-    self.off_image = self.shape.Cropped(off_frame)
-    cropped_shape = self.shape.cropped_shape
-    self.on_profile = cropped_shape.ExtractProfile(self.on_image)
-    self.off_profile = cropped_shape.ExtractProfile(self.off_image)
+    self.on_image = self.Rectify(on_frame)
+    self.off_image = self.Rectify(off_frame)
+    self.on_profile = Filter.ExtractProfile(self.on_image)
+    self.off_profile = Filter.ExtractProfile(self.off_image)
 
     if debug:
       res = Canvas(prev_frame)
       res.DrawContour([1, 0, 0], self.shape)
       Viewer.DebugView(accum=delta_accum,
-                       binary=binary,
-                       mask=res.image)
+                       shape=res.image,
+                       rectified_on=self.on_image,
+                       rectified_off=self.off_image)
     return True
 
   def Preprocess(self, frame, debug=False):
@@ -174,9 +229,8 @@ class Screen(object):
 
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
-    cropped = self.shape.cropped_shape
-    return cropped.ExtractProfile(frame.cropped, self.on_profile,
-                                  self.off_profile)
+    return Filter.ExtractProfile(frame.rectified, self.on_profile,
+                                 self.off_profile)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Generate Screen events from sequential preprocessed data.
@@ -193,7 +247,7 @@ class Screen(object):
       self.color = Screen.BLACK if np.mean(profile) < 0.5 else Screen.WHITE
 
     if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.cropped)
+      self.debug_canvas = Canvas(debug_frame.rectified)
 
     # we are only looking at first and last 10 pixels of the profile, where the
     # screen draws start and end.
@@ -248,7 +302,7 @@ class LineSegment(object):
   def UpdateLevel(self, normalized):
     """Update the level of this segment from a normalized profile.
 
-    See Line._CalculateNormalizedProfile for information on this profile.
+    See Line.Preprocess for information on this profile.
     """
     if self.start > self.end:
       idx = range(self.end, self.start)
@@ -291,7 +345,6 @@ class Line(object):
     self._target_left = None
     self._target_right = None
     self._drawn_profile = None
-    self._clear_profile = None
 
     # Stateful Information
     self.found = False
@@ -328,13 +381,11 @@ class Line(object):
     self.target_shape = self.target_shape.WithMargin(5, 5)
 
     # Calculate profile of drawn line and empty screen as reference.
-    self._drawn_profile = self.target_shape.ExtractProfile(
-        1 - frame.reflectance)
-    self._clear_profile = self.target_shape.ExtractProfile(
-        1 - frame.screen.on_image)
+    self._drawn_profile = Filter.ExtractProfile(
+        (1 - frame.reflectance) * self.target_shape.mask)
 
     if debug:
-      res = Canvas(frame.cropped)
+      res = Canvas(frame.rectified)
       res.DrawContour([0, 1, 0], self.target_shape)
       Viewer.DebugView(contour=res.image)
     return True
@@ -454,9 +505,8 @@ class Line(object):
     is stateless and can be called on any frames out of order."""
     if not self.target_shape:
       return None
-    return self.target_shape.ExtractProfile(1 - frame.reflectance,
-                                            self._drawn_profile,
-                                            self._clear_profile)
+    return Filter.ExtractProfile(1 - frame.reflectance,
+                                 self._drawn_profile)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Generate Line events from sequential preprocessed data.
@@ -466,11 +516,12 @@ class Line(object):
     This method is stateful, requires data generated by Preprocess and has to
     be called with this data from frames in sequential order.
     """
-    if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.cropped)
-
     events = []
     profile = preprocess_data
+
+    if debug_frame:
+      self.debug_canvas = Canvas(debug_frame.rectified)
+      self.debug_canvas.Plot([1, 0, 0], profile)
 
     if not self.target_shape:
       return events
@@ -513,10 +564,13 @@ class Line(object):
     if debug_frame:
       self.debug_canvas.Plot([1, 0, 0], profile)
       for segment in self.segments:
-        self.debug_canvas.DrawLine([0, 0.5, 0], x=segment.end)
+        self.debug_canvas.DrawHLine([0, 0.5, 0], segment.end,
+                                    self.target_shape.center_y)
 
-      self.debug_canvas.DrawLine([0.5, 0.5, 0], x=transition_start)
-      self.debug_canvas.DrawLine([0.5, 0.5, 0], x=transition_end)
+      self.debug_canvas.DrawHLine([0.5, 0.5, 0], transition_start,
+                                  self.target_shape.center_y)
+      self.debug_canvas.DrawHLine([0.5, 0.5, 0], transition_end,
+                                  self.target_shape.center_y)
     return events
 
 
@@ -580,7 +634,8 @@ class Finger(object):
     events = []
 
     if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.original, debug_frame.crop_shape)
+      self.debug_canvas = Canvas(debug_frame.original,
+                                 debug_frame.screen.Unrectify)
 
     (new_location, self.finger_shape, max_delta, led_color) = preprocess_data
     self.found = new_location is not None
@@ -607,6 +662,7 @@ class Finger(object):
     if debug_frame:
       if self.finger_shape:
         self.debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
-      self.debug_canvas.DrawLine([0, 1, 0], x=self.location)
+        self.debug_canvas.DrawHLine([0, 1, 0], self.location,
+                                    self.finger_shape.bottom)
 
     return events
