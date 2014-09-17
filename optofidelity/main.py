@@ -38,9 +38,10 @@ def RunTests(options):
     system.LoadCalibration(calibration_file)
 
   runner = TestRunner(system, options.dump_all)
+  runner.AddTestClass(TouchMoveLatencyTest)
   for dut in system:
     for app in dut:
-      runner.AddTestCase(TouchMoveLatencyTest(app))
+      runner.AddApp(app)
 
   if options.debug_video:
     runner.DebugVideo(options.debug_video)

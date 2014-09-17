@@ -2,18 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """This module implements test cases to measure touch latency."""
-from test_runner import TestCase
+from test_runner import TestClass
 from detection import Event
 
 
-class TouchMoveLatencyTest(TestCase):
+class TouchMoveLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
-  def __init__(self, app):
-    TestCase.__init__(self, app)
-    self.name = "TouchMoveLatency"
-    self.required_events = [Event.FINGER_MOVED,
-                            Event.LINE_DRAW_START,
-                            Event.LINE_DRAW_END]
+  name = "TouchMoveLatency"
+  required_events = [Event.FINGER_MOVED,
+                     Event.LINE_DRAW_START,
+                     Event.LINE_DRAW_END]
 
   def ExecuteTest(self, app, dut, camera):
     app.EnterPage("Move")

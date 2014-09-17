@@ -17,7 +17,7 @@ import sys
 import time
 import traceback
 
-class TestCase(object):
+class TestClass(object):
   """Base class for test cases.
 
   A test case has to perform two actions:
@@ -25,13 +25,8 @@ class TestCase(object):
      to perform and record the test.
   2. It has to process the resulting trace, returning the test results.
   """
-  def __init__(self, app):
-    self.app = app
-    self.name = "Unnamed"
-    self.required_events = []
-
-  def __str__(self):
-    return "%s/%s" % (str(self.app), self.name)
+  name = "Unnamed"
+  required_events = []
 
   def ExecuteTest(self, app, dut, camera):
     """Execute test on the robot.
@@ -51,6 +46,14 @@ class TestCase(object):
     """
     raise NotImplementedError()
 
+class TestCase(object):
+  """A test case is defined as a test_class executed on an app."""
+  def __init__(self, app, test_class):
+    self.app = app
+    self.test_class = test_class
+
+  def __str__(self):
+    return "%s/%s" % (self.app, self.test_class.name)
 
 class TestRunner(object):
   """Runs a collection of TestCases and handles potential error cases.
@@ -61,22 +64,25 @@ class TestRunner(object):
   app and dut switching as possible.
   """
   def __init__(self, system, dump_all=False):
-    self.test_cases = {}
-    self.camera = system.camera
+    self.test_classes = {}
+    self.test_apps = {}
+    self.system = system
     self.dump_all = dump_all
 
-  def AddTestCase(self, case):
-    self.test_cases[str(case)] = case
+  def AddTestClass(self, test_class):
+    self.test_classes[test_class.name] = test_class()
 
-  def DebugVideo(self, name):
-    case_name = open(name + ".case").read()
-    case = self.test_cases[case_name]
+  def AddApp(self, app):
+    self.test_apps[str(app)] = app
+
+  def ProcessVideoFromFile(self, name, debug=False):
+    test_class_name = open(name + ".test_class").read()
+    test_class = self.test_classes[test_class_name]
 
     video = FileVideoReader(name + ".mov")
     screen = Screen.Load(h5py.File(name + ".screen", "r"))
 
-    res = self._ProcessVideo(case, video, screen, debug="all")
-    print "%s: Results:" % case
+    res = self._ProcessVideo(test_class, video, screen, debug=debug)
     print res
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
@@ -91,41 +97,38 @@ class TestRunner(object):
     case.app.screen.Save(h5py.File(basename + ".screen", "w"))
 
     # Save name of test case
-    open(basename + ".case", "w").write(str(case))
+    open(basename + ".test_class", "w").write(case.test_class.name)
 
     # Dump error messages
     if dump_last_exception:
       open(basename + ".error", "w").write(traceback.format_exc())
     print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
 
-  def _ProcessVideo(self, case, video, screen, debug=False):
+  def _ProcessVideo(self, test_class, video, screen, debug=False):
     trace_generator = TraceGenerator(screen)
     trace_generator.Initialize(video, debug=debug)
 
-    print "%s: Validating video" % case
+    print "Validating video"
     generated_events = trace_generator.SkimVideo(video, debug=debug)
     if debug:
-      print "%s: Generated event types: %s" % (case, generated_events)
-    for event_type in case.required_events:
+      print "Generated event types: %s" % (generated_events)
+    for event_type in test_class.required_events:
       if event_type not in generated_events:
         msg = "Video did not generate required %s events" % event_type
-        if debug:
-          print msg
-        else:
-          raise VideoException(msg)
+        raise VideoException(msg)
 
-    print "%s: Generating trace" % case
+    print "Generating trace"
     trace = trace_generator.ProcessVideo(video, debug=debug)
-    print "%s: Processing trace" % case
-    return case.ProcessTrace(trace)
-
-    if self.dump_all:
-      self._DumpDebugInfo(case, video, False)
+    print "Processing trace"
+    return test_class.ProcessTrace(trace)
 
   def _RunTest(self, dut, app, case):
-    video = case.ExecuteTest(app, dut, self.camera)
+    video = case.test_class.ExecuteTest(app, dut, self.system.camera)
     try:
-      return self._ProcessVideo(case, video, app.screen)
+      res = self._ProcessVideo(case.test_class, video, app.screen)
+      if self.dump_all:
+        self._DumpDebugInfo(case, video, False)
+      return res
     except VideoException, e:
       print "%s: Video processing failed: %s" % (case, e)
       self._DumpDebugInfo(case, video, True)
@@ -148,7 +151,12 @@ class TestRunner(object):
                     "Running tests: " + str(app))
 
   def RunTests(self):
-    sorted_cases = sorted(self.test_cases.values(), key=lambda c: c.app.dut)
+    test_cases = []
+    for app in self.test_apps.values():
+      for test_class in self.test_classes.values():
+        test_cases.append(TestCase(app, test_class))
+
+    sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
       RetryFunction(lambda: self._RunDUTTests(dut, cases),
                     lambda: dut.Reset(),
