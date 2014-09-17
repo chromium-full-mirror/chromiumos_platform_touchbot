@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 """This module provides classes that generate traces from video files."""
 import multiprocessing
+import sys
 
 from detection import Frame, Line, Finger
 from trace import Trace
@@ -16,14 +17,13 @@ class TraceGenerator(object):
     self.finger = None
     self.line = None
 
-  def Init(self, video, debug=False):
+  def Initialize(self, video, debug=False):
     self.finger = Finger(self.screen)
     self.line = Line()
     for i, im in video.Frames(start=-1, stop=-100, step=-10):
       frame = Frame(im, None, self.screen)
       if self.line.DetectTargetLine(frame, debug=debug):
-        return True
-    return False
+        return
 
   def Preprocess(self, frame, debug=False):
     screen_data = self.screen.Preprocess(frame, debug)
@@ -58,14 +58,22 @@ class TraceGenerator(object):
     elif debug == "finger":
       return Viewer.VideoFrame(self.finger.debug_canvas.image)
 
-  def ProcessVideo(self, video, debug=False):
-    """Process video and return a trace of all detected events."""
-    self.Init(video, debug is not None)
+  def SkimVideo(self, video, debug=False):
+    """Skims through video and return types of Events generated."""
+    trace = self.ProcessVideo(video, step=15, debug=debug)
+    event_types = []
+    for event in trace.Events():
+      if event.event_type not in event_types:
+        event_types.append(event.event_type)
+    return event_types
 
+  def ProcessVideo(self, video, step=1, debug=False):
+    """Process video and return a trace of all detected events."""
     trace = Trace()
     prev_im = None
-    for i, im in video.Frames():
-      print i, "/", video.num_frames
+    for i, im in video.Frames(step=step):
+      sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
+      sys.stdout.flush()
       frame = Frame(im, prev_im, self.screen, i)
       pre_process_data = self.Preprocess(frame, debug)
       self.GenerateEvents(trace, *pre_process_data, debug=debug)
@@ -74,7 +82,7 @@ class TraceGenerator(object):
         if key == ord('p'):
           video.EnterInteractive()
       prev_im = im
-
+    print ""
     return trace
 
 

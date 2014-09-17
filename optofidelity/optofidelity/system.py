@@ -47,11 +47,10 @@ def RetryFunction(function, recover_function, title, max_attempts=3):
       function()
       return
     except DUTException as e:
-      print "%s FAILED" % title
-      print e
-      print "Trying to recover device"
+      print "%s: FAILED" % title
+      print "%s: Exception: %s" % (title, e)
+      print "%s: Trying to recover." % title
       recover_function()
-  raise DUTException("Repeated DUTException in %s" % title)
 
 
 class OptofidelityTestSystem(object):

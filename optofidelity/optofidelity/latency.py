@@ -11,6 +11,9 @@ class TouchMoveLatencyTest(TestCase):
   def __init__(self, app):
     TestCase.__init__(self, app)
     self.name = "TouchMoveLatency"
+    self.required_events = [Event.FINGER_MOVED,
+                            Event.LINE_DRAW_START,
+                            Event.LINE_DRAW_END]
 
   def ExecuteTest(self, app, dut, camera):
     app.EnterPage("Move")

@@ -7,9 +7,15 @@ Provides the TestCase and TestRunner class. The TestRunner can be fed
 with multiple TestCases and execute these on the robot fully automatically while
 handling potential error cases by resetting or recalibrating the device.
 """
-from system import RetryFunction
+from detection import Screen
+from system import RetryFunction, DUTException
 from trace_generator import TraceGenerator
+from videoproc import VideoException, VideoWriter, FileVideoReader
+import h5py
 import itertools
+import sys
+import time
+import traceback
 
 class TestCase(object):
   """Base class for test cases.
@@ -22,6 +28,7 @@ class TestCase(object):
   def __init__(self, app):
     self.app = app
     self.name = "Unnamed"
+    self.required_events = []
 
   def __str__(self):
     return "%s/%s" % (str(self.app), self.name)
@@ -53,19 +60,76 @@ class TestRunner(object):
   During execution, the test cases are sorted in a way that involves as little
   app and dut switching as possible.
   """
-  def __init__(self, system):
-    self.test_cases = []
+  def __init__(self, system, dump_all=False):
+    self.test_cases = {}
     self.camera = system.camera
+    self.dump_all = dump_all
 
   def AddTestCase(self, case):
-    self.test_cases.append(case)
+    self.test_cases[str(case)] = case
+
+  def DebugVideo(self, name):
+    case_name = open(name + ".case").read()
+    case = self.test_cases[case_name]
+
+    video = FileVideoReader(name + ".mov")
+    screen = Screen.Load(h5py.File(name + ".screen", "r"))
+
+    res = self._ProcessVideo(case, video, screen, debug="all")
+    print "%s: Results:" % case
+    print res
+
+  def _DumpDebugInfo(self, case, video, dump_last_exception=False):
+    print "%s: Dumping debug info:" % case
+    basename = str(case).replace("/", "_") + "_" + str(int(time.time()))
+
+    # Save video
+    writer = VideoWriter(basename + ".mov")
+    writer.Write(video)
+
+    # Save screen calibration
+    case.app.screen.Save(h5py.File(basename + ".screen", "w"))
+
+    # Save name of test case
+    open(basename + ".case", "w").write(str(case))
+
+    # Dump error messages
+    if dump_last_exception:
+      open(basename + ".error", "w").write(traceback.format_exc())
+    print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
+
+  def _ProcessVideo(self, case, video, screen, debug=False):
+    trace_generator = TraceGenerator(screen)
+    trace_generator.Initialize(video, debug=debug)
+
+    print "%s: Validating video" % case
+    generated_events = trace_generator.SkimVideo(video, debug=debug)
+    if debug:
+      print "%s: Generated event types: %s" % (case, generated_events)
+    for event_type in case.required_events:
+      if event_type not in generated_events:
+        msg = "Video did not generate required %s events" % event_type
+        if debug:
+          print msg
+        else:
+          raise VideoException(msg)
+
+    print "%s: Generating trace" % case
+    trace = trace_generator.ProcessVideo(video, debug=debug)
+    print "%s: Processing trace" % case
+    return case.ProcessTrace(trace)
+
+    if self.dump_all:
+      self._DumpDebugInfo(case, video, False)
 
   def _RunTest(self, dut, app, case):
-    trace_generator = TraceGenerator(app.screen)
     video = case.ExecuteTest(app, dut, self.camera)
-    trace = trace_generator.ProcessVideo(video)
-    scores = case.ProcessTrace(trace)
-    print scores
+    try:
+      return self._ProcessVideo(case, video, app.screen)
+    except VideoException, e:
+      print "%s: Video processing failed: %s" % (case, e)
+      self._DumpDebugInfo(case, video, True)
+      raise DUTException(dut, "Video processing failure")
 
   def _RunAppTests(self, dut, app, cases):
     dut.EnterApp(app.name)
@@ -84,8 +148,8 @@ class TestRunner(object):
                     "Running tests: " + str(app))
 
   def RunTests(self):
-    sorted_cases = sorted(self.test_cases, key=lambda c: c.app.dut)
+    sorted_cases = sorted(self.test_cases.values(), key=lambda c: c.app.dut)
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
       RetryFunction(lambda: self._RunDUTTests(dut, cases),
-                    lambda: dut.Calibrate(self.camera) and dut.Reset(),
+                    lambda: dut.Reset(),
                     "Running tests: " + str(dut))

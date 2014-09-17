@@ -22,7 +22,34 @@ import skimage.filter.rank as rank_filter
 import skimage.measure as measure
 import skimage.morphology as morphology
 import skimage.transform as transform
+import sys
 
+CODEC = cv2.cv.CV_FOURCC(*"xvid")
+if sys.platform == "darwin":
+  CODEC = cv2.cv.CV_FOURCC(*"mp4v")
+
+class VideoException(Exception):
+  """Exceptions during video processing.
+
+  This exception generally tells the system that the image processing failed
+  and cannot continue. The system can decide wether to retry the test, or to
+  store the associated video for debugging purposes.
+  """
+  def __init__(self, error, frame=None, image=None):
+    Exception.__init__(self)
+    self.error = error
+    self.image = image
+    self.frame = frame
+
+  def DebugView(self):
+    print "Video Processing Error:"
+    print self
+    if self.image:
+      Viewer.DebugView(error=self.image)
+
+  def __str__(self):
+    frame = "Frame %d: " % self.frame if self.frame else ""
+    return frame + self.error
 
 class Shape(object):
   """Describes a segmented shape in an image.
@@ -323,7 +350,7 @@ class Shape(object):
         for match in matches:
           mask[labels == match.label] = match.label
         Viewer.DebugView("prism", labels=labels, matches=mask, binary=binary_im)
-      return Exit("Multiple matches for region", True)
+      return Exit("Multiple matches for region", required)
 
     # success
     match = matches[0]
@@ -488,6 +515,32 @@ class FileVideoReader(AbstractVideoReader):
         raise Exception("Cannot read frame")
     return skimage.img_as_float(self.frame_cache[:, :, 0])
 
+
+class VideoWriter(object):
+  def __init__(self, filename):
+    self.filename = filename
+    self.writer = None
+
+  def WriteFrame(self, frame):
+    frame = skimage.img_as_ubyte(frame)
+    frame = skimage.color.gray2rgb(frame)
+    self.writer.write(frame)
+
+  def Initialize(self, frame):
+      width = frame.shape[1]
+      height = frame.shape[0]
+      self.writer = cv2.VideoWriter(self.filename, CODEC, 15, (width, height))
+
+  def Write(self, reader):
+    if not self.writer:
+      first_frame = reader.FrameAt(0)
+      self.Initialize(first_frame)
+
+    for i, frame in reader.Frames():
+      sys.stdout.write("\rWriting frame %d/%d" % (i, reader.num_frames))
+      sys.stdout.flush()
+      self.WriteFrame(frame)
+    print ""
 
 class Filter(object):
   """A collection of commonly used image processing filters."""

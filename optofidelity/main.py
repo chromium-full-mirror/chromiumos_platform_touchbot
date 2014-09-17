@@ -5,7 +5,9 @@
 """Main module for command line interface to optofidelity latency tests."""
 
 from optparse import OptionParser
+import numpy as np
 import os
+import warnings
 
 from optofidelity.latency import TouchMoveLatencyTest
 from optofidelity.system import OptofidelityTestSystem
@@ -26,20 +28,24 @@ config_file = os.path.join(script_dir, "optofidelity.cfg")
 calibration_file = os.path.join(script_dir, "calibration.hdf5")
 
 
-def RunTests(calibrate, debug):
+def RunTests(options):
   system = OptofidelityTestSystem(config_file)
 
-  if calibrate or not os.path.exists(calibration_file):
+  if options.calibrate or not os.path.exists(calibration_file):
     system.Calibrate()
     system.SaveCalibration(calibration_file)
   else:
     system.LoadCalibration(calibration_file)
 
-  runner = TestRunner(system)
+  runner = TestRunner(system, options.dump_all)
   for dut in system:
     for app in dut:
       runner.AddTestCase(TouchMoveLatencyTest(app))
-  runner.RunTests()
+
+  if options.debug_video:
+    runner.DebugVideo(options.debug_video)
+  else:
+    runner.RunTests()
 
 
 def Main():
@@ -47,12 +53,27 @@ def Main():
   parser.add_option("--calibrate",
                     dest="calibrate", default=False, action="store_true",
                     help="re-calibrate the robot system.")
+  parser.add_option("--dump-all",
+                    dest="dump_all", default=False, action="store_true",
+                    help="Dump debug info for all executed tests.")
   parser.add_option("--debug",
                     dest="debug", default=False, action="store_true",
                     help="Enable debug printouts and images.")
+  parser.add_option("--debug-video",
+                    dest="debug_video", default=None,
+                    help="Debug a previously recorded video.")
   (options, args) = parser.parse_args()
 
-  RunTests(options.calibrate, options.debug)
+  if not options.debug:
+    np.seterr(all='ignore')
+    warnings.filterwarnings('ignore', category=UserWarning)
+    warnings.filterwarnings('ignore', category=RuntimeWarning)
+  else:
+    np.seterr(all='error')
+    warnings.filterwarnings('error', category=UserWarning)
+    warnings.filterwarnings('error', category=RuntimeWarning)
+
+  RunTests(options)
 
 
 if __name__ == "__main__":
