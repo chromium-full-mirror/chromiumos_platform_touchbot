@@ -14,10 +14,12 @@ stored and read from a file to skip the lengthy calibration process.
 """
 from ConfigParser import SafeConfigParser
 import h5py
+import time
 
-from tnt.TnTClient import TnTClient
 from detection import Screen
 from phantom import Phantom
+from tnt.TnTClient import TnTClient
+from videoproc import VideoException, VideoWriter
 
 class DUTException(Exception):
   """Exceptions in handling a device under test.
@@ -118,10 +120,10 @@ class OptofidelityTestSystem(object):
         dut.RegisterApp(app)
       self.duts[dut.name] = dut
 
-  def Calibrate(self):
+  def Calibrate(self, dump=False):
     """Run calibration on all DUTs."""
     for dut in self.duts.values():
-      RetryFunction(lambda: dut.Calibrate(self.camera),
+      RetryFunction(lambda: dut.Calibrate(self.camera, dump),
                     lambda: dut.Reset(),
                     "Calibrate %s" % dut)
 
@@ -164,7 +166,7 @@ class DeviceUnderTest(object):
   def RegisterApp(self, app):
     self.apps[app.name] = app
 
-  def Calibrate(self, camera):
+  def Calibrate(self, camera, dump=False):
     """Calibrate this DUT and all it's apps."""
     self.ExitApp()
 
@@ -173,7 +175,7 @@ class DeviceUnderTest(object):
       if x < 0 or y < 0:
         raise DUTException(self, "Cannot find icon " + app.TEST_APP_ICON)
       self.Tap(x, y)
-      app.Calibrate(x, y, camera)
+      app.Calibrate(x, y, camera, dump)
       self.ExitApp()
 
   def Reset(self):
@@ -305,7 +307,7 @@ class TestApp(object):
       if x < 0 or y < 0:
         raise DUTException(self.dut, "Cannot find button for page " + page)
 
-  def CalibrateScreen(self, camera):
+  def CalibrateScreen(self, camera, dump=False):
     self.EnterPage(self.PAGE_FLASH)
     self.dut.ClearScreen()
     camera.Record(300)
@@ -314,12 +316,22 @@ class TestApp(object):
 
     reader = camera.GetVideoReader()
     self.screen = Screen()
-    self.screen.DetectScreen(reader.Frames(step=10))
+    try:
+      self.screen.DetectScreen(reader.Frames(step=10))
+      if not dump:
+        return
+    except Exception, e:
+      print "Error while detecting screen"
+      print e
+    # Dump screen info
+    name = str(self).replace("/", "_") + "_Screen_" + str(int(time.time()))
+    writer = VideoWriter(name + ".mov")
+    writer.Write(reader)
 
-  def Calibrate(self, x, y, camera):
+  def Calibrate(self, x, y, camera, dump=False):
     self.button_coords = (x, y)
     self.CalibrateButtons()
-    self.CalibrateScreen(camera)
+    self.CalibrateScreen(camera, dump)
 
   def EnterPage(self, page):
     self.dut.Tap(*self.pages[page])

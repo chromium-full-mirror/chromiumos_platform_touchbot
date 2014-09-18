@@ -32,7 +32,7 @@ def RunTests(options):
   system = OptofidelityTestSystem(config_file)
 
   if options.calibrate or not os.path.exists(calibration_file):
-    system.Calibrate()
+    system.Calibrate(options.dump_all)
     system.SaveCalibration(calibration_file)
   else:
     system.LoadCalibration(calibration_file)

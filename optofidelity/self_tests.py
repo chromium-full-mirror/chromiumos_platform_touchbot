@@ -12,6 +12,7 @@ videos in the bad folder are expected to fail and return an error.
 """
 
 import os
+import traceback
 
 from optofidelity.latency import TouchMoveLatencyTest
 from optofidelity.test_runner import TestRunner
@@ -28,7 +29,7 @@ def RunTests():
   runner.AddTestClass(TouchMoveLatencyTest)
 
   results = {}
-  for test_class in runner.test_classes:
+  for test_class in runner.test_classes.keys() + ["ScreenDetection"]:
     for test_name in DiscoverTests("self_tests/%s/bad/" % test_class):
       try:
         runner.ProcessVideoFromFile(test_name)
@@ -37,6 +38,8 @@ def RunTests():
         print "Exception excpected. Success."
         results[test_name] = True
         continue
+      except Exception:
+        traceback.print_exc()
       print "Processing should have failed."
       results[test_name] = False
 
@@ -44,10 +47,13 @@ def RunTests():
       try:
         runner.ProcessVideoFromFile(test_name)
         results[test_name] = True
+        continue
       except VideoException, e:
         print e
         print "Exception unexpected."
-        results[test_name] = False
+      except Exception:
+        traceback.print_exc()
+      results[test_name] = False
 
   print "Self-Test Results:"
   for name, result in results.items():

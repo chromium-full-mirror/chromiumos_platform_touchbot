@@ -7,15 +7,18 @@ Provides the TestCase and TestRunner class. The TestRunner can be fed
 with multiple TestCases and execute these on the robot fully automatically while
 handling potential error cases by resetting or recalibrating the device.
 """
+import h5py
+import itertools
+import os
+import sys
+import time
+import traceback
+
 from detection import Screen
 from system import RetryFunction, DUTException
 from trace_generator import TraceGenerator
 from videoproc import VideoException, VideoWriter, FileVideoReader
-import h5py
-import itertools
-import sys
-import time
-import traceback
+
 
 class TestClass(object):
   """Base class for test cases.
@@ -76,14 +79,21 @@ class TestRunner(object):
     self.test_apps[str(app)] = app
 
   def ProcessVideoFromFile(self, name, debug=False):
-    test_class_name = open(name + ".test_class").read()
-    test_class = self.test_classes[test_class_name]
+    if os.path.exists(name + ".test_class"):
+      test_class_name = open(name + ".test_class").read()
+      test_class = self.test_classes[test_class_name]
 
-    video = FileVideoReader(name + ".mov")
-    screen = Screen.Load(h5py.File(name + ".screen", "r"))
+      video = FileVideoReader(name + ".mov")
+      screen = Screen.Load(h5py.File(name + ".screen", "r"))
 
-    res = self._ProcessVideo(test_class, video, screen, debug=debug)
-    print res
+      res = self._ProcessVideo(test_class, video, screen, debug=debug)
+      print res
+    else:
+      # no test_class, this is a screen detection recording
+      video = FileVideoReader(name + ".mov")
+      print "Detecting Screen in", (name + ".mov")
+      screen = Screen()
+      screen.DetectScreen(video.Frames(step=10))
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
     print "%s: Dumping debug info:" % case
