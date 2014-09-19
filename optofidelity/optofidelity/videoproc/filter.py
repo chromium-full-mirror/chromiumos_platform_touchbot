@@ -1,0 +1,93 @@
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""Filtering algorithms for image analysis and segmentation."""
+import numpy as np
+import skimage
+import skimage.exposure as exposure
+import skimage.filter
+import skimage.filter.rank as rank_filter
+import skimage.morphology as morphology
+import skimage.transform as transform
+
+
+class Filter(object):
+  """A collection of commonly used image processing filters."""
+
+  @staticmethod
+  def Truncate(image, min_val=0.0, max_val=1.0):
+    """Truncate values below 0 or above 1."""
+    image = np.copy(image)
+    image[image < min_val] = 0.0
+    image[image > max_val] = 1.0
+    return image
+
+  @staticmethod
+  def Equalize(image):
+    """Rescale grayscale to range from 0 to 1."""
+    return exposure.rescale_intensity(image)
+
+  @staticmethod
+  def OtsuSegmentation(image):
+    """Return a binary imageage segmented using the Otsu threshold algorithm."""
+    t_otsu = skimage.filter.threshold_otsu(image)
+    return image > t_otsu
+
+  @staticmethod
+  def Median(image, disk_size, scale=1):
+    """Median rank order filter."""
+    return Filter._ScaledRankOrderFilter(rank_filter.median, image, disk_size,
+                                         scale)
+
+  @staticmethod
+  def Min(image, disk_size, scale=1):
+    """Minimageum rank order filter."""
+    return Filter._ScaledRankOrderFilter(rank_filter.minimum, image, disk_size,
+                                         scale)
+
+  @staticmethod
+  def Max(image, disk_size, scale=1):
+    """Maximageum rank order filter."""
+    return Filter._ScaledRankOrderFilter(rank_filter.maximum, image, disk_size,
+                                         scale)
+
+  @staticmethod
+  def _ScaledRankOrderFilter(filter_fn, image, disk_size, scale=1):
+    work_image = transform.rescale(image, (scale, scale))
+    work_image = filter_fn(work_image, morphology.disk(disk_size))
+    work_image = transform.resize(work_image, image.shape)
+    return skimage.img_as_float(work_image)
+
+  @staticmethod
+  def Reflectance(image, disk_size, scale=1):
+    """Return the reflectance part of the image.
+
+    An image A can be described as a multiplication of illuminance I
+    and reflectance R: A = I * R. We estimate the illuminance part with
+    a strong median rank order filter, then calculate the reflectance.
+    """
+    illuminance = Filter.Median(image, disk_size, scale)
+    illuminance[illuminance < 1e-5] = 1e-5 # prevent division by 0
+    reflectance = image / illuminance
+    return Filter.Truncate(reflectance)
+
+  @staticmethod
+  def ExtractBlackOnWhite(image, disk_size, scale=1):
+    lowpass = Filter.Median(image, disk_size, scale)
+    highpass = 1.0 - (lowpass - image)
+    return Filter.Truncate(highpass)
+
+  @staticmethod
+  def ExtractProfile(image, high_ref=None, low_ref=None):
+    profile = np.sum(image, 0)
+
+    if high_ref is not None:
+      if low_ref is not None:
+        profile = profile - low_ref
+        high_ref = high_ref - low_ref
+      normalized = np.zeros(profile.shape)
+      non_zero = [high_ref > 0.1]
+      normalized[non_zero] = (profile[non_zero] / high_ref[non_zero])
+
+      profile = np.clip(normalized, 0, 1)
+    return profile
