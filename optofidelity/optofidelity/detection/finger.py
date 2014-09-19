@@ -5,9 +5,9 @@ import numpy as np
 
 from optofidelity.trace import Event
 from optofidelity.videoproc import Filter, Shape, Canvas
+from optofidelity.detection.detector import Detector
 
-
-class Finger(object):
+class Finger(Detector):
   """Represents the OptoFidelity robot finger.
 
   Finger.found: Is True when the finger has been detected
@@ -15,6 +15,8 @@ class Finger(object):
   Finger.debug_canvas: If Update is called with debug=True, this will
                        contain a canvas object showing debug info.
   """
+  name = "finger"
+
   def __init__(self):
     self.found = False
     self.finger_shape = None
@@ -57,7 +59,7 @@ class Finger(object):
     led_color = np.mean(frame.original[delta > 0.2])
     return (location, finger_shape, np.max(delta), led_color)
 
-  def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
     """Search for the current location of the finger.
 
     This method will return a list of FINGER_MOVED events when the finger
@@ -65,18 +67,14 @@ class Finger(object):
     """
     events = []
 
-    if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.original,
-                                 debug_frame.test_area.Unrectify)
-
-    (new_location, self.finger_shape, max_delta, led_color) = preprocess_data
+    (new_location, self.finger_shape, max_delta, led_color) = preprocessed_data
     self.found = new_location is not None
 
     # Report new location if location has changed but not changed too much.
     if (new_location is not None and self.location != new_location and
         (self.location is None or np.abs(self.location - new_location) < 5)):
       self.location = new_location
-      events.append(Event(frame_index, Event.FINGER_MOVED,
+      events.append(Event(timestamp, Event.FINGER_MOVED,
                           location=new_location))
 
     # If there is a strong change we expect it to be the flashing LED
@@ -85,16 +83,16 @@ class Finger(object):
       if not self.led_switching:
         self.led_switching = True
         if led_color > 0.5:
-          events.append(Event(frame_index, Event.FINGER_DOWN))
+          events.append(Event(timestamp, Event.FINGER_DOWN))
         else:
-          events.append(Event(frame_index, Event.FINGER_UP))
+          events.append(Event(timestamp, Event.FINGER_UP))
     else:
       self.led_switching = False
 
-    if debug_frame:
+    if debug_canvas:
       if self.finger_shape:
-        self.debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
-        self.debug_canvas.DrawHLine([0, 1, 0], self.location,
-                                    self.finger_shape.bottom)
+        debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
+        debug_canvas.DrawHLine([0, 1, 0], self.location,
+                               self.finger_shape.bottom)
 
     return events

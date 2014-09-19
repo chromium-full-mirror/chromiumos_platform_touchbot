@@ -4,7 +4,7 @@
 import numpy as np
 from optofidelity.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
-
+from optofidelity.detection.detector import Detector
 
 class LineSegment(object):
   """Contains information of a line segment detected by the Line class.
@@ -59,6 +59,8 @@ class Line(object):
   Line.debug_canvas: If Update is called with debug=True, this will contain
                     a Canvas object showing debug information.
   """
+  name = "line"
+
   def __init__(self, draw_end_thresh=0.9):
     self._draw_end_thresh = draw_end_thresh
 
@@ -74,7 +76,11 @@ class Line(object):
     self.reverse = False
     self._line_end = None
 
-    self.debug_canvas = None
+  def Initialize(self, video, debug=False):
+    for frame in video.Frames(start=-1, stop=-100, step=-10):
+      if self.DetectTargetLine(frame, debug=debug):
+        return True
+    return False
 
   def DetectTargetLine(self, frame, debug=False):
     """Detect the final line that is to be drawn.
@@ -183,7 +189,7 @@ class Line(object):
         break
     return (transition_start, transition_end)
 
-  def _AddNewSegments(self, frame_index, profile, transition_start,
+  def _AddNewSegments(self, timestamp, profile, transition_start,
                       transition_end):
     """Add new segments to self.segments after they have been fully drawn."""
     forward = +1 if not self.reverse else -1
@@ -193,13 +199,13 @@ class Line(object):
     if not self.segments:
       self.segments.append(LineSegment(transition_start,
                                        transition_end + backward,
-                                       frame_index))
+                                       timestamp))
 
     # Look for potential new segment
     last_segment = self.segments[-1]
     new_segment = LineSegment(last_segment.end + forward,
                               transition_end + backward,
-                              frame_index)
+                              timestamp)
     new_segment.UpdateLevel(profile)
 
     segment_level_diff = np.abs(last_segment.level - new_segment.level)
@@ -230,7 +236,7 @@ class Line(object):
     return Filter.ExtractProfile(1 - frame.reflectance,
                                  self._drawn_profile)
 
-  def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
     """Generate Line events from sequential preprocessed data.
 
     Returns a list of LINE_DRAW_START, LINE_DRAW_END and LINE_RESET events as
@@ -239,11 +245,10 @@ class Line(object):
     be called with this data from frames in sequential order.
     """
     events = []
-    profile = preprocess_data
+    profile = preprocessed_data
 
-    if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.rectified)
-      self.debug_canvas.Plot([1, 0, 0], profile)
+    if debug_canvas:
+      debug_canvas.Plot([1, 0, 0], profile)
 
     if not self.target_shape:
       return events
@@ -262,7 +267,7 @@ class Line(object):
     for segment in self.segments:
       segment.UpdateLevel(profile)
       if segment.draw_end is None and segment.level > self._draw_end_thresh:
-        segment.draw_end = frame_index
+        segment.draw_end = timestamp
         events.append(Event(segment.draw_start, Event.LINE_DRAW_START,
                             location=segment.end))
         events.append(Event(segment.draw_end, Event.LINE_DRAW_END,
@@ -272,25 +277,24 @@ class Line(object):
     average_level = np.mean([s.level for s in self.segments
                                      if s.draw_end is not None])
     if len(self.segments) >= 2 and average_level < 0.1:
-      events.append(Event(frame_index, Event.LINE_RESET))
+      events.append(Event(timestamp, Event.LINE_RESET))
       self.found = False
       self._line_end = None
       return events
 
     # Find transition area and add new line segments to the segment list
     (transition_start, transition_end) = self._FindTransition(profile)
-    self._AddNewSegments(frame_index, profile, transition_start,
+    self._AddNewSegments(timestamp, profile, transition_start,
                          transition_end)
     self._line_end = transition_end
 
-    if debug_frame:
-      self.debug_canvas.Plot([1, 0, 0], profile)
+    if debug_canvas:
       for segment in self.segments:
-        self.debug_canvas.DrawHLine([0, 0.5, 0], segment.end,
+        debug_canvas.DrawHLine([0, 0.5, 0], segment.end,
                                     self.target_shape.center_y)
 
-      self.debug_canvas.DrawHLine([0.5, 0.5, 0], transition_start,
+      debug_canvas.DrawHLine([0.5, 0.5, 0], transition_start,
                                   self.target_shape.center_y)
-      self.debug_canvas.DrawHLine([0.5, 0.5, 0], transition_end,
+      debug_canvas.DrawHLine([0.5, 0.5, 0], transition_end,
                                   self.target_shape.center_y)
     return events

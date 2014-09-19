@@ -7,6 +7,7 @@ import skimage.transform as transform
 
 from optofidelity.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
+from optofidelity.detection.detector import Detector
 
 class TestArea(object):
   """Detects the test area on a device.
@@ -149,7 +150,7 @@ class TestArea(object):
     return True
 
 
-class ScreenFlash(object):
+class ScreenFlash(Detector):
   """Represents the device screen in the video stream.
 
   It detects the screen in a video showing the flashing screen and also
@@ -160,6 +161,7 @@ class ScreenFlash(object):
   BLACK = 0
   WHITE = 1
   UNDEFINED = -1
+  name = "screenflash"
 
   def __init__(self, no_change_thresh=0.02, change_thresh=0.9):
     """Initialize empty or by providing a pre-calculated screen."""
@@ -179,7 +181,7 @@ class ScreenFlash(object):
     return Filter.ExtractProfile(frame.rectified, frame.test_area.on_profile,
                                  frame.test_area.off_profile)
 
-  def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
     """Generate Screen events from sequential preprocessed data.
 
     Returns a list of events that will contain SCREEN_DRAW_START
@@ -188,13 +190,10 @@ class ScreenFlash(object):
     be called with this data from frames in sequential order.
     """
     events = []
-    profile = preprocess_data
+    profile = preprocessed_data
 
     if self.color == self.UNDEFINED:
       self.color = self.BLACK if np.mean(profile) < 0.5 else self.WHITE
-
-    if debug_frame:
-      self.debug_canvas = Canvas(debug_frame.rectified)
 
     # we are only looking at first and last 10 pixels of the profile, where the
     # screen draws start and end.
@@ -208,24 +207,24 @@ class ScreenFlash(object):
     # done and generate both the start and end draw event.
     if self.color == self.BLACK:
       if max_level < self.no_change_thresh:
-        self.last_no_draw_time = frame_index
+        self.last_no_draw_time = timestamp
       elif min_level > self.change_thresh:
         self.color = self.WHITE
         events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
                             color="White"))
-        events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="White"))
+        events.append(Event(timestamp, Event.SCREEN_DRAW_END, color="White"))
 
     # Analogous to the black logic.
     elif self.color == self.WHITE:
       if min_level > 1.0 - self.no_change_thresh:
-        self.last_no_draw_time = frame_index
+        self.last_no_draw_time = timestamp
       elif max_level < 1.0 - self.change_thresh:
         self.color = self.BLACK
         events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
                             color="Black"))
-        events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="Black"))
+        events.append(Event(timestamp, Event.SCREEN_DRAW_END, color="Black"))
 
-    if debug_frame:
-      self.debug_canvas.Plot([1, 0, 0], profile)
+    if debug_canvas:
+      debug_canvas.Plot([1, 0, 0], profile)
 
     return events

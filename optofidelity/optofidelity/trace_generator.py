@@ -5,7 +5,7 @@
 import multiprocessing
 import sys
 
-from detection import Frame, Line, Finger, ScreenFlash
+from detection import Frame, Line, Finger, ScreenFlash, Video
 from trace import Trace
 from videoproc import Viewer, Canvas
 
@@ -18,14 +18,18 @@ class TraceGenerator(object):
     self.line = None
     self.screen = None
 
-  def Initialize(self, video, debug=False):
+  def Initialize(self, video_reader, debug=False):
     self.finger = Finger()
     self.line = Line()
     self.screen = ScreenFlash()
-    for i, im in video.Frames(start=-1, stop=-100, step=-10):
-      frame = Frame(im, None, self.test_area)
-      if self.line.DetectTargetLine(frame, debug=debug):
-        return
+
+    video = Video(video_reader, self.test_area)
+    if not self.finger.Prepare(video):
+      return False
+    if not self.line.Prepare(video):
+      return False
+    if not self.screen.Prepare(video):
+      return False
 
   def Preprocess(self, frame, debug=False):
     screen_data = self.screen.Preprocess(frame, debug)
@@ -40,7 +44,7 @@ class TraceGenerator(object):
     trace.AddAll(self.line.GenerateEvents(line_data, i), debug)
 
   def DebugView(self, im, debug):
-    if debug == "all":
+    if debug:
       canvas = Canvas(im, self.test_area.Unrectify)
       canvas.DrawContour([0, 0, 1], self.test_area.shape)
       if self.finger.found:
@@ -53,12 +57,6 @@ class TraceGenerator(object):
         canvas.DrawHLine([0, 0.5, 0], segment.end,
                           self.line.target_shape.center_y)
       return Viewer.VideoFrame(canvas.image)
-    elif debug == "screen":
-      return Viewer.VideoFrame(self.screen.debug_canvas)
-    elif debug == "line":
-      return Viewer.VideoFrame(self.line.debug_canvas)
-    elif debug == "finger":
-      return Viewer.VideoFrame(self.finger.debug_canvas.image)
 
   def SkimVideo(self, video, debug=False):
     """Skims through video and return types of Events generated."""
