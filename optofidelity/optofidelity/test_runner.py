@@ -14,7 +14,7 @@ import sys
 import time
 import traceback
 
-from detection import Screen
+from detection import TestArea
 from system import RetryFunction, DUTException
 from trace_generator import TraceGenerator
 from videoproc import VideoException, VideoWriter, FileVideoReader
@@ -84,16 +84,16 @@ class TestRunner(object):
       test_class = self.test_classes[test_class_name]
 
       video = FileVideoReader(name + ".mov")
-      screen = Screen.Load(h5py.File(name + ".screen", "r"))
+      test_area = TestArea.Load(h5py.File(name + ".test_area", "r"))
 
-      res = self._ProcessVideo(test_class, video, screen, debug=debug)
+      res = self._ProcessVideo(test_class, video, test_area, debug=debug)
       print res
     else:
       # no test_class, this is a screen detection recording
       video = FileVideoReader(name + ".mov")
       print "Detecting Screen in", (name + ".mov")
-      screen = Screen()
-      screen.DetectScreen(video.Frames(step=10))
+      test_area = TestArea()
+      test_area.Detect(video.Frames(step=10))
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
     print "%s: Dumping debug info:" % case
@@ -104,7 +104,7 @@ class TestRunner(object):
     writer.Write(video)
 
     # Save screen calibration
-    case.app.screen.Save(h5py.File(basename + ".screen", "w"))
+    case.app.test_area.Save(h5py.File(basename + ".test_area", "w"))
 
     # Save name of test case
     open(basename + ".test_class", "w").write(case.test_class.name)
@@ -114,8 +114,8 @@ class TestRunner(object):
       open(basename + ".error", "w").write(traceback.format_exc())
     print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
 
-  def _ProcessVideo(self, test_class, video, screen, debug=False):
-    trace_generator = TraceGenerator(screen)
+  def _ProcessVideo(self, test_class, video, test_area, debug=False):
+    trace_generator = TraceGenerator(test_area)
     trace_generator.Initialize(video, debug=debug)
 
     print "Validating video"
@@ -135,7 +135,7 @@ class TestRunner(object):
   def _RunTest(self, dut, app, case):
     video = case.test_class.ExecuteTest(app, dut, self.system.camera)
     try:
-      res = self._ProcessVideo(case.test_class, video, app.screen)
+      res = self._ProcessVideo(case.test_class, video, app.test_area)
       if self.dump_all:
         self._DumpDebugInfo(case, video, False)
       return res

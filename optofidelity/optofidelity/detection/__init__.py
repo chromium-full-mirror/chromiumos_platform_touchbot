@@ -14,4 +14,4 @@ screen.
 from optofidelity.detection.finger import Finger
 from optofidelity.detection.frame import Frame
 from optofidelity.detection.line import Line
-from optofidelity.detection.screen import Screen
+from optofidelity.detection.screen import ScreenFlash, TestArea

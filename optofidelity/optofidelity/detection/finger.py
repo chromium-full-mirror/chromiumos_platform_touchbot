@@ -15,8 +15,7 @@ class Finger(object):
   Finger.debug_canvas: If Update is called with debug=True, this will
                        contain a canvas object showing debug info.
   """
-  def __init__(self, screen):
-    self.screen = screen
+  def __init__(self):
     self.found = False
     self.finger_shape = None
     self.debug_canvas = None
@@ -48,9 +47,9 @@ class Finger(object):
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
 
-    # Look for a large amount of change outside of the screen area, i.e. a
+    # Look for a large amount of change outside of the test area, i.e. a
     # flashing LED:
-    mask = ~self.screen.shape.WithMargin(10, 10).mask
+    mask = ~frame.test_area.shape.WithMargin(10, 10).mask
     delta = np.abs(frame.delta) * mask
     # Filter out Noise, the flash should be at least 5 pixels big.
     delta = Filter.Min(delta, disk_size=5)
@@ -68,7 +67,7 @@ class Finger(object):
 
     if debug_frame:
       self.debug_canvas = Canvas(debug_frame.original,
-                                 debug_frame.screen.Unrectify)
+                                 debug_frame.test_area.Unrectify)
 
     (new_location, self.finger_shape, max_delta, led_color) = preprocess_data
     self.found = new_location is not None

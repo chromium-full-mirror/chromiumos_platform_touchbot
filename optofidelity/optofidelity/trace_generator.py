@@ -5,23 +5,25 @@
 import multiprocessing
 import sys
 
-from detection import Frame, Line, Finger
+from detection import Frame, Line, Finger, ScreenFlash
 from trace import Trace
 from videoproc import Viewer, Canvas
 
 
 class TraceGenerator(object):
   """Processes and accumulates events from video into a trace."""
-  def __init__(self, screen):
-    self.screen = screen
+  def __init__(self, test_area):
+    self.test_area = test_area
     self.finger = None
     self.line = None
+    self.screen = None
 
   def Initialize(self, video, debug=False):
-    self.finger = Finger(self.screen)
+    self.finger = Finger()
     self.line = Line()
+    self.screen = ScreenFlash()
     for i, im in video.Frames(start=-1, stop=-100, step=-10):
-      frame = Frame(im, None, self.screen)
+      frame = Frame(im, None, self.test_area)
       if self.line.DetectTargetLine(frame, debug=debug):
         return
 
@@ -39,8 +41,8 @@ class TraceGenerator(object):
 
   def DebugView(self, im, debug):
     if debug == "all":
-      canvas = Canvas(im, self.screen.Unrectify)
-      canvas.DrawContour([0, 0, 1], self.screen.shape)
+      canvas = Canvas(im, self.test_area.Unrectify)
+      canvas.DrawContour([0, 0, 1], self.test_area.shape)
       if self.finger.found:
         canvas.DrawContour([1, 0, 0], self.finger.finger_shape)
         canvas.DrawHLine([1, 0, 0], self.finger.location,
@@ -74,7 +76,7 @@ class TraceGenerator(object):
     for i, im in video.Frames(step=step):
       sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
       sys.stdout.flush()
-      frame = Frame(im, prev_im, self.screen, i)
+      frame = Frame(im, prev_im, self.test_area, i)
       pre_process_data = self.Preprocess(frame, debug)
       self.GenerateEvents(trace, *pre_process_data, debug=debug)
       if debug:

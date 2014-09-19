@@ -16,7 +16,7 @@ from ConfigParser import SafeConfigParser
 import h5py
 import time
 
-from detection import Screen
+from detection import TestArea
 from phantom import Phantom
 from tnt.TnTClient import TnTClient
 from videoproc import VideoException, VideoWriter
@@ -279,7 +279,7 @@ class TestApp(object):
         self.PAGE_CLICK: (-1, -1),
         self.PAGE_FLASH: (-1, -1),
     }
-    self.screen = None
+    self.test_area = None
     self.button_coords = (-1, -1)
 
   def SaveCalibration(self, hdf5):
@@ -287,7 +287,7 @@ class TestApp(object):
     hdf5.create_group("pages")
     for page, coords in self.pages.items():
       hdf5["pages"].create_dataset(page, data=coords)
-    self.screen.Save(hdf5.create_group("screen"))
+    self.test_area.Save(hdf5.create_group("screen"))
 
   def LoadCalibration(self, hdf5):
     button_coords = hdf5["button_coords"]
@@ -296,7 +296,7 @@ class TestApp(object):
     for page in self.pages.keys():
       coords = hdf5["pages"][page]
       self.pages[page] = (coords[0], coords[1])
-    self.screen = Screen.Load(hdf5["screen"])
+    self.test_area = TestArea.Load(hdf5["screen"])
 
   def CalibrateButtons(self):
     for text, x, y in self.dut.ReadText():
@@ -315,9 +315,9 @@ class TestApp(object):
     self.ExitPage()
 
     reader = camera.GetVideoReader()
-    self.screen = Screen()
+    self.test_area = TestArea()
     try:
-      self.screen.DetectScreen(reader.Frames(step=10))
+      self.test_area.Detect(reader.Frames(step=10))
       if not dump:
         return
     except Exception, e:

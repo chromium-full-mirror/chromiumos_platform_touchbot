@@ -8,46 +8,21 @@ import skimage.transform as transform
 from optofidelity.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 
+class TestArea(object):
+  """Detects the test area on a device.
 
-class Screen(object):
-  """Represents the device screen in the video stream.
-
-  It detects the screen in a video showing the flashing screen and also
-  allows for detection of screen flashes in any video.
-
-  Screen.shape is the detected screen shape object.
+  This class can detect the flashing test area and can rectify images
+  to show only this area.
   """
-  BLACK = 0
-  WHITE = 1
-  UNDEFINED = -1
-
-  def __init__(self, screen=None, no_change_thresh=0.02,
-               change_thresh=0.9):
-    """Initialize empty or by providing a pre-calculated screen."""
-    self.no_change_thresh = no_change_thresh
-    self.change_thresh = change_thresh
+  def __init__(self):
     self.rect_scaling = 1.2
 
-    # Calibration information
     self.shape = None
     self.rect_transform = None
     self.on_image = None
     self.on_profile = None
     self.off_image = None
     self.off_profile = None
-
-    # Stateful information
-    self.color = Screen.UNDEFINED
-    self.last_no_draw_time = None
-    self.debug_canvas = None
-
-    if screen:
-      self.shape = screen.shape
-      self.rect_transform = screen.rect_transform
-      self.on_image = screen.on_image
-      self.on_profile = screen.on_profile
-      self.off_image = screen.off_image
-      self.off_profile = screen.off_profile
 
   def Save(self, hdf5):
     hdf5.create_dataset("shape", data=self.shape.mask)
@@ -58,25 +33,14 @@ class Screen(object):
 
   @classmethod
   def Load(self, hdf5):
-    screen = Screen()
-    screen.shape = Shape(mask=hdf5["shape"][()])
-    screen.on_image = hdf5["on_image"][()]
-    screen.on_profile = hdf5["on_profile"][()]
-    screen.off_image = hdf5["off_image"][()]
-    screen.off_profile = hdf5["off_profile"][()]
-    screen.rect_transform = screen.EstimateRectTransform()
-    return screen
-
-  def Mirrored(self):
-    """Returns horizontally mirrored Screen object."""
-    screen_copy = Screen(screen=self)
-    screen_copy.shape = Shape(np.fliplr(self.shape.mask))
-    screen_copy.rect_transform = screen_copy.EstimateRectTransform()
-    screen_copy.on_image = np.fliplr(self.on_image)
-    screen_copy.on_profile = self.on_profile[::-1]
-    screen_copy.off_image = np.fliplr(self.off_image)
-    screen_copy.off_profile = self.off_profile[::-1]
-    return screen_copy
+    test_area = TestArea()
+    test_area.shape = Shape(mask=hdf5["shape"][()])
+    test_area.on_image = hdf5["on_image"][()]
+    test_area.on_profile = hdf5["on_profile"][()]
+    test_area.off_image = hdf5["off_image"][()]
+    test_area.off_profile = hdf5["off_profile"][()]
+    test_area.rect_transform = test_area.EstimateRectTransform()
+    return test_area
 
   def EstimateRectTransform(self):
     """Estimates transformation from rectified device screen to video frame.
@@ -127,7 +91,7 @@ class Screen(object):
       res = self.rect_transform(coords)
       return res[0, 0], res[0, 1]
 
-  def DetectScreen(self, frames, debug=False):
+  def Detect(self, frames, debug=False):
     """Detect the devices flashing screen.
 
     The frames argument has to be a python iterator that yields
@@ -184,13 +148,36 @@ class Screen(object):
                        rectified_off=self.off_image)
     return True
 
+
+class ScreenFlash(object):
+  """Represents the device screen in the video stream.
+
+  It detects the screen in a video showing the flashing screen and also
+  allows for detection of screen flashes in any video.
+
+  Screen.shape is the detected screen shape object.
+  """
+  BLACK = 0
+  WHITE = 1
+  UNDEFINED = -1
+
+  def __init__(self, no_change_thresh=0.02, change_thresh=0.9):
+    """Initialize empty or by providing a pre-calculated screen."""
+    self.no_change_thresh = no_change_thresh
+    self.change_thresh = change_thresh
+
+    # Stateful information
+    self.color = self.UNDEFINED
+    self.last_no_draw_time = None
+    self.debug_canvas = None
+
   def Preprocess(self, frame, debug=False):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
-    return Filter.ExtractProfile(frame.rectified, self.on_profile,
-                                 self.off_profile)
+    return Filter.ExtractProfile(frame.rectified, frame.test_area.on_profile,
+                                 frame.test_area.off_profile)
 
   def GenerateEvents(self, preprocess_data, frame_index, debug_frame=None):
     """Generate Screen events from sequential preprocessed data.
@@ -203,8 +190,8 @@ class Screen(object):
     events = []
     profile = preprocess_data
 
-    if self.color == Screen.UNDEFINED:
-      self.color = Screen.BLACK if np.mean(profile) < 0.5 else Screen.WHITE
+    if self.color == self.UNDEFINED:
+      self.color = self.BLACK if np.mean(profile) < 0.5 else self.WHITE
 
     if debug_frame:
       self.debug_canvas = Canvas(debug_frame.rectified)
@@ -219,21 +206,21 @@ class Screen(object):
     # is the time index just before the draw starts.
     # If the threshold exceeds the change threshold we consider the draw
     # done and generate both the start and end draw event.
-    if self.color == Screen.BLACK:
+    if self.color == self.BLACK:
       if max_level < self.no_change_thresh:
         self.last_no_draw_time = frame_index
       elif min_level > self.change_thresh:
-        self.color = Screen.WHITE
+        self.color = self.WHITE
         events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
                             color="White"))
         events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="White"))
 
     # Analogous to the black logic.
-    elif self.color == Screen.WHITE:
+    elif self.color == self.WHITE:
       if min_level > 1.0 - self.no_change_thresh:
         self.last_no_draw_time = frame_index
       elif max_level < 1.0 - self.change_thresh:
-        self.color = Screen.BLACK
+        self.color = self.BLACK
         events.append(Event(self.last_no_draw_time + 1, Event.SCREEN_DRAW_START,
                             color="Black"))
         events.append(Event(frame_index, Event.SCREEN_DRAW_END, color="Black"))

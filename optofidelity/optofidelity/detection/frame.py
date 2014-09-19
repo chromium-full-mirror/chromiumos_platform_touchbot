@@ -10,15 +10,15 @@ class Frame(object):
   This class stores a cropped version of the image, enhances it with noise
   filtering and calculates the reflectance.
   """
-  def __init__(self, im, prev_im, screen, index=0):
+  def __init__(self, im, prev_im, test_area, index=0):
     self.original = im
     self.rectified = im
     self.index = index
-    self.screen = screen
+    self.test_area = test_area
 
-    if screen:
-      self.crop_shape = screen.shape
-      self.rectified = screen.Rectify(im)
+    if test_area:
+      self.crop_shape = test_area.shape
+      self.rectified = test_area.Rectify(im)
 
     # noise filtered reflectance
     self.reflectance = Filter.Reflectance(self.rectified, disk_size=40,
