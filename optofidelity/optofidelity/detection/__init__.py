@@ -12,6 +12,6 @@ accurately detects the frame when an updated frame is being drawn on the
 screen.
 """
 from optofidelity.detection.finger import Finger
-from optofidelity.detection.frame import Frame
+from optofidelity.detection.detector import Frame
 from optofidelity.detection.line import Line
 from optofidelity.detection.screen import ScreenFlash, TestArea
