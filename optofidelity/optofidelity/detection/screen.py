@@ -5,7 +5,7 @@ import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
 
-from optofidelity.trace import Event
+from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 

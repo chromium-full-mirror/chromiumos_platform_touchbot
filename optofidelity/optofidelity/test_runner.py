@@ -14,9 +14,8 @@ import sys
 import time
 import traceback
 
-from detection import TestArea
+from detection import TestArea, VideoProcessor
 from system import RetryFunction, DUTException
-from trace_generator import TraceGenerator
 from videoproc import VideoException, VideoWriter, FileVideoReader
 
 
@@ -115,11 +114,11 @@ class TestRunner(object):
     print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
 
   def _ProcessVideo(self, test_class, video, test_area, debug=False):
-    trace_generator = TraceGenerator(test_area)
-    trace_generator.Initialize(video, debug=debug)
+    processor = VideoProcessor(test_area)
+    processor.Initialize(video, debug=debug)
 
     print "Validating video"
-    generated_events = trace_generator.SkimVideo(video, debug=debug)
+    generated_events = processor.SkimVideo(video, debug=debug)
     if debug:
       print "Generated event types: %s" % (generated_events)
     for event_type in test_class.required_events:
@@ -128,7 +127,7 @@ class TestRunner(object):
         raise VideoException(msg)
 
     print "Generating trace"
-    trace = trace_generator.ProcessVideo(video, debug=debug)
+    trace = processor.ProcessVideo(video, debug=debug)
     print "Processing trace"
     return test_class.ProcessTrace(trace)
 

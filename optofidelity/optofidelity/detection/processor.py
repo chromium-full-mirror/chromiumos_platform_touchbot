@@ -5,12 +5,13 @@
 import multiprocessing
 import sys
 
-from detection import Frame, Line, Finger, ScreenFlash, Video
-from trace import Trace
-from videoproc import Viewer, Canvas
+from optofidelity.detection.detector import Frame, Video
+from optofidelity.videoproc import Viewer, Canvas
+from optofidelity.detection.finger import Finger
+from optofidelity.detection.line import Line
+from optofidelity.detection.screen import ScreenFlash
 
-
-class TraceGenerator(object):
+class VideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
   def __init__(self, test_area):
     self.test_area = test_area
@@ -93,7 +94,7 @@ def PreProcessProcess(generator, frame_queue, data_queue):
   step of the Finger and Line detection code on them and outputs
   the results into the data_queue.
 
-  See MultithreadedTraceGenerator.ProcessVideo().
+  See MultithreadedVideoProcessor.ProcessVideo().
   """
   while True:
     i, image, prev_image = frame_queue.get()
@@ -103,7 +104,7 @@ def PreProcessProcess(generator, frame_queue, data_queue):
     data_queue.put(generator.Preprocess(i, image, prev_image))
 
 
-class MultithreadedTraceGenerator(TraceGenerator):
+class MultithreadedVideoProcessor(VideoProcessor):
   """Processes and accumulates events from video into a trace.
 
   This implementation uses multiple processes to do the most computational
@@ -111,7 +112,7 @@ class MultithreadedTraceGenerator(TraceGenerator):
   """
   def __init__(self, screen, num_processes=None):
     self.num_processes = num_processes or multiprocessing.cpu_count()
-    TraceGenerator.__init__(self, screen)
+    VideoProcessor.__init__(self, screen)
 
   def ProcessVideo(self, video, debug=None):
     self.Init(video, debug)

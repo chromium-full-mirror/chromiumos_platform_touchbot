@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 import numpy as np
 
-from optofidelity.trace import Event
+from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 

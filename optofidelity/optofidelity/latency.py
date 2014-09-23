@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """This module implements test cases to measure touch latency."""
 from test_runner import TestClass
-from trace import Event
+from optofidelity.detection import Event
 
 
 class TouchMoveLatencyTest(TestClass):

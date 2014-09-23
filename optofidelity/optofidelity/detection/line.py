@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import numpy as np
-from optofidelity.trace import Event
+from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
