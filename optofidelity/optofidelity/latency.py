@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """This module implements test cases to measure touch latency."""
 from test_runner import TestClass
-from optofidelity.detection import Event
+from optofidelity.detection import Event, Line, Finger
 
 
 class TouchMoveLatencyTest(TestClass):
@@ -12,6 +12,10 @@ class TouchMoveLatencyTest(TestClass):
   required_events = [Event.FINGER_MOVED,
                      Event.LINE_DRAW_START,
                      Event.LINE_DRAW_END]
+
+  def InitializeProcessor(self, processor):
+    processor.AddDetector(Line())
+    processor.AddDetector(Finger())
 
   def ExecuteTest(self, app, dut, camera):
     app.EnterPage("Move")

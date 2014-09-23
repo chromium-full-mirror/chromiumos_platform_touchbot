@@ -6,43 +6,39 @@ import multiprocessing
 import sys
 
 from optofidelity.detection.detector import Frame, Video
-from optofidelity.videoproc import Viewer, Canvas
-from optofidelity.detection.finger import Finger
-from optofidelity.detection.line import Line
-from optofidelity.detection.screen import ScreenFlash
+from optofidelity.detection.trace import Trace
+from optofidelity.videoproc import Viewer, Canvas, VideoException
+
 
 class VideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
   def __init__(self, test_area):
     self.test_area = test_area
-    self.finger = None
-    self.line = None
-    self.screen = None
+    self.detectors = {}
+
+  def AddDetector(self, detector):
+    self.detectors[detector.name] = detector
 
   def Initialize(self, video_reader, debug=False):
-    self.finger = Finger()
-    self.line = Line()
-    self.screen = ScreenFlash()
-
     video = Video(video_reader, self.test_area)
-    if not self.finger.Prepare(video):
-      return False
-    if not self.line.Prepare(video):
-      return False
-    if not self.screen.Prepare(video):
-      return False
+    for detector in self.detectors.itervalues():
+      if not detector.Initialize(video):
+        raise VideoException("Processor %s failed to initialize"
+                             % detector.name)
 
   def Preprocess(self, frame, debug=False):
-    screen_data = self.screen.Preprocess(frame, debug)
-    line_data = self.line.Preprocess(frame, debug)
-    finger_data = self.finger.Preprocess(frame, debug)
-    return (frame.index, screen_data, line_data, finger_data)
+    preprocessed_data = {}
+    for detector in self.detectors.itervalues():
+      debug_flag = debug and (detector.name in debug)
+      data = detector.Preprocess(frame, debug_flag)
+      preprocessed_data[detector.name] = data
+    return (frame.index, preprocessed_data)
 
-  def GenerateEvents(self, trace, i, screen_data, line_data, finger_data,
-                     debug):
-    trace.AddAll(self.screen.GenerateEvents(screen_data, i), debug)
-    trace.AddAll(self.finger.GenerateEvents(finger_data, i), debug)
-    trace.AddAll(self.line.GenerateEvents(line_data, i), debug)
+  def GenerateEvents(self, trace, i, preprocessed_data, debug=False):
+    for detector in self.detectors.itervalues():
+      data = preprocessed_data[detector.name]
+      events = detector.GenerateEvents(data, i)
+      trace.AddAll(events)
 
   def DebugView(self, im, debug):
     if debug:
@@ -76,8 +72,8 @@ class VideoProcessor(object):
       sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
       sys.stdout.flush()
       frame = Frame(im, prev_im, self.test_area, i)
-      pre_process_data = self.Preprocess(frame, debug)
-      self.GenerateEvents(trace, *pre_process_data, debug=debug)
+      i, preprocessed_data = self.Preprocess(frame, debug)
+      self.GenerateEvents(trace, i, preprocessed_data, debug=debug)
       if debug:
         key = self.DebugView(im, debug)
         if key == ord('p'):
@@ -148,9 +144,9 @@ class MultithreadedVideoProcessor(VideoProcessor):
 
     # Generate events from pre-processing results
     trace = Trace()
-    for data in ordered_data:
-      self.GenerateEvents(trace, *data, debug=debug)
+    for i, preprocessed_data in ordered_data:
+      self.GenerateEvents(trace, i, preprocessed_data, debug=debug)
       if debug is not None:
-        image = video.FrameAt(data[0])
+        image = video.FrameAt(i)
         self.DebugView(image, debug)
     return trace

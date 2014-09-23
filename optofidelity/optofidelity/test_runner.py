@@ -30,6 +30,10 @@ class TestClass(object):
   name = "Unnamed"
   required_events = []
 
+  def InitializeProcessor(self, processor):
+    """Configure and add detectors to the processor."""
+    pass
+
   def ExecuteTest(self, app, dut, camera):
     """Execute test on the robot.
 
@@ -115,6 +119,8 @@ class TestRunner(object):
 
   def _ProcessVideo(self, test_class, video, test_area, debug=False):
     processor = VideoProcessor(test_area)
+
+    test_class.InitializeProcessor(processor)
     processor.Initialize(video, debug=debug)
 
     print "Validating video"

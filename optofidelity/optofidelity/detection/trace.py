@@ -50,9 +50,7 @@ class Trace(object):
     self._events = events or []
     self._times = [event.time for event in self._events]
 
-  def AddAll(self, events, debug):
-    if events and debug:
-      print "Events generated:", events
+  def AddAll(self, events):
     for event in events:
       self.Add(event)
 
