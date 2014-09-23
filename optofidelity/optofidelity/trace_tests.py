@@ -61,34 +61,5 @@ class TestTraceProcessing(unittest.TestCase):
          trimmed.Locations(Event.FINGER_MOVED))
 
 
-class TestTraceGeneration(unittest.TestCase):
-  """Manual test cases to generate trace files.
-
-  These tests require a screen.avi and line.avi file and write overwrite
-  the trace at line_draw.trace.
-  """
-  def setUp(self):
-    flash_video = FileVideoReader("N5_flash.avi")
-    self.screen = Screen()
-    self.screen.DetectScreen(flash_video.Frames(step=10))
-
-  #@unittest.skip("")
-  def test_line_latency_trace(self):
-    video = FileVideoReader("N5_move.avi")
-    #generator = TraceGenerator(self.screen)
-    generator = MultithreadedTraceGenerator(self.screen)
-    trace = generator.ProcessVideo(video, debug=True)
-    print trace
-    pickle.dump(trace, open("line_draw.trace", "w"))
-
-  @unittest.skip("")
-  def test_tap_latency_trace(self):
-    video = FileVideoReader("tap.avi")
-    generator = MultithreadedTraceGenerator(self.screen)
-    #generator = TraceGenerator(self.screen)
-    trace = generator.ProcessVideo(video, debug=True)
-    print trace
-    pickle.dump(trace, open("tap.trace", "w"))
-
 if __name__ == '__main__':
   unittest.main()

@@ -16,4 +16,5 @@ from optofidelity.detection.detector import Frame, Video
 from optofidelity.detection.line import Line
 from optofidelity.detection.screen import ScreenFlash, TestArea
 from optofidelity.detection.trace import Trace, Event
-from optofidelity.detection.processor import VideoProcessor
+from optofidelity.detection.processor import (VideoProcessor,
+                                              MultithreadedVideoProcessor)

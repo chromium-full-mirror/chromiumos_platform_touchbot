@@ -27,8 +27,14 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 config_file = os.path.join(script_dir, "optofidelity.cfg")
 calibration_file = os.path.join(script_dir, "calibration.hdf5")
 
+def RegisterTestClasses(runner):
+  runner.AddTestClass(TouchMoveLatencyTest)
 
 def RunTests(options):
+  debug = []
+  if options.debug:
+    debug = options.debug.split(",")
+
   system = OptofidelityTestSystem(config_file)
 
   if options.calibrate or not os.path.exists(calibration_file):
@@ -38,15 +44,15 @@ def RunTests(options):
     system.LoadCalibration(calibration_file)
 
   runner = TestRunner(system, options.dump_all)
-  runner.AddTestClass(TouchMoveLatencyTest)
+  RegisterTestClasses(runner)
   for dut in system:
     for app in dut:
       runner.AddApp(app)
 
   if options.debug_video:
-    runner.DebugVideo(options.debug_video)
+    runner.ProcessVideoFromFile(options.debug_video, debug)
   else:
-    runner.RunTests()
+    runner.RunTests(debug)
 
 
 def Main():
@@ -58,7 +64,7 @@ def Main():
                     dest="dump_all", default=False, action="store_true",
                     help="Dump debug info for all executed tests.")
   parser.add_option("--debug",
-                    dest="debug", default=False, action="store_true",
+                    dest="debug", default=None,
                     help="Enable debug printouts and images.")
   parser.add_option("--debug-video",
                     dest="debug_video", default=None,
@@ -68,11 +74,9 @@ def Main():
   if not options.debug:
     np.seterr(all='ignore')
     warnings.filterwarnings('ignore', category=UserWarning)
-    warnings.filterwarnings('ignore', category=RuntimeWarning)
   else:
     np.seterr(all='error')
     warnings.filterwarnings('error', category=UserWarning)
-    warnings.filterwarnings('error', category=RuntimeWarning)
 
   RunTests(options)
 

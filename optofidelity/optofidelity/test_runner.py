@@ -14,7 +14,8 @@ import sys
 import time
 import traceback
 
-from detection import TestArea, VideoProcessor
+from detection import TestArea
+from detection import MultithreadedVideoProcessor as VideoProcessor
 from system import RetryFunction, DUTException
 from videoproc import VideoException, VideoWriter, FileVideoReader
 
@@ -81,7 +82,7 @@ class TestRunner(object):
   def AddApp(self, app):
     self.test_apps[str(app)] = app
 
-  def ProcessVideoFromFile(self, name, debug=False):
+  def ProcessVideoFromFile(self, name, debug=[]):
     if os.path.exists(name + ".test_class"):
       test_class_name = open(name + ".test_class").read()
       test_class = self.test_classes[test_class_name]
@@ -96,7 +97,8 @@ class TestRunner(object):
       video = FileVideoReader(name + ".mov")
       print "Detecting Screen in", (name + ".mov")
       test_area = TestArea()
-      test_area.Detect(video.Frames(step=10))
+      debug_flag = debug and ("screen" in debug or "all" in debug)
+      test_area.Detect(video.Frames(step=10), debug=debug_flag)
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
     print "%s: Dumping debug info:" % case
@@ -117,7 +119,7 @@ class TestRunner(object):
       open(basename + ".error", "w").write(traceback.format_exc())
     print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
 
-  def _ProcessVideo(self, test_class, video, test_area, debug=False):
+  def _ProcessVideo(self, test_class, video, test_area, debug=[]):
     processor = VideoProcessor(test_area)
 
     test_class.InitializeProcessor(processor)
@@ -137,10 +139,10 @@ class TestRunner(object):
     print "Processing trace"
     return test_class.ProcessTrace(trace)
 
-  def _RunTest(self, dut, app, case):
+  def _RunTest(self, dut, app, case, debug=[]):
     video = case.test_class.ExecuteTest(app, dut, self.system.camera)
     try:
-      res = self._ProcessVideo(case.test_class, video, app.test_area)
+      res = self._ProcessVideo(case.test_class, video, app.test_area, debug)
       if self.dump_all:
         self._DumpDebugInfo(case, video, False)
       return res
@@ -149,23 +151,23 @@ class TestRunner(object):
       self._DumpDebugInfo(case, video, True)
       raise DUTException(dut, "Video processing failure")
 
-  def _RunAppTests(self, dut, app, cases):
+  def _RunAppTests(self, dut, app, cases, debug=[]):
     dut.EnterApp(app.name)
     for case in cases:
-      RetryFunction(lambda: self._RunTest(dut, app, case),
+      RetryFunction(lambda: self._RunTest(dut, app, case, debug),
                     app.Reset,
                     "Running test: " + str(case))
     dut.ExitApp()
 
-  def _RunDUTTests(self, dut, cases):
+  def _RunDUTTests(self, dut, cases, debug=[]):
     dut.ExitApp()
     sorted_cases = sorted(cases, key=lambda c: c.app)
     for app, cases in itertools.groupby(sorted_cases, key=lambda c: c.app):
-      RetryFunction(lambda: self._RunAppTests(dut, app, cases),
+      RetryFunction(lambda: self._RunAppTests(dut, app, cases, debug),
                     dut.Reset,
                     "Running tests: " + str(app))
 
-  def RunTests(self):
+  def RunTests(self, debug=[]):
     test_cases = []
     for app in self.test_apps.values():
       for test_class in self.test_classes.values():
@@ -173,6 +175,6 @@ class TestRunner(object):
 
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
-      RetryFunction(lambda: self._RunDUTTests(dut, cases),
+      RetryFunction(lambda: self._RunDUTTests(dut, cases, debug),
                     lambda: dut.Reset(),
                     "Running tests: " + str(dut))

@@ -11,49 +11,104 @@ Videos in the good folder require the test to successfully process, while
 videos in the bad folder are expected to fail and return an error.
 """
 
+from fnmatch import fnmatch
+from optparse import OptionParser
 import os
 import traceback
 
 from optofidelity.latency import TouchMoveLatencyTest
 from optofidelity.test_runner import TestRunner
 from optofidelity.videoproc import VideoException
+from main import RegisterTestClasses
 
-def DiscoverTests(folder):
-  for filename in os.listdir(folder):
-    if filename.endswith(".mov"):
-      test_name = folder + filename[:-4]
-      yield test_name
 
-def RunTests():
+script_dir = os.path.dirname(os.path.realpath(__file__))
+tests_dir = os.path.join(script_dir, "self_tests")
+
+
+class TestCase(object):
+  def __init__(self, name, expect_success):
+    self.name = name
+    self.expect_success = expect_success
+
+  @staticmethod
+  def DiscoverAll(runner):
+    for test_class in runner.test_classes.keys() + ["ScreenDetection"]:
+      good_folder = os.path.join(test_class, "good")
+      for name in TestCase.DiscoverTestNamesInFolder(good_folder):
+        yield TestCase(name, True)
+
+      bad_folder = os.path.join(test_class, "bad")
+      for name in TestCase.DiscoverTestNamesInFolder(bad_folder):
+        yield TestCase(name, False)
+
+  @staticmethod
+  def DiscoverTestNamesInFolder(folder):
+    abs_dir = os.path.join(tests_dir, folder)
+    for filename in os.listdir(abs_dir):
+      if filename.endswith(".mov"):
+        test_name = os.path.join(folder, filename[:-4])
+        yield test_name
+
+def RunTests(glob, debug):
   runner = TestRunner(None)
-  runner.AddTestClass(TouchMoveLatencyTest)
+  RegisterTestClasses(runner)
+
+  cases = TestCase.DiscoverAll(runner)
+  if glob:
+    cases = [c for c in cases if fnmatch(c.name, glob)]
 
   results = {}
-  for test_class in runner.test_classes.keys() + ["ScreenDetection"]:
-    for test_name in DiscoverTests("self_tests/%s/bad/" % test_class):
-      try:
-        runner.ProcessVideoFromFile(test_name)
-      except VideoException, e:
-        print e
-        print "Exception excpected. Success."
-        results[test_name] = True
-        continue
-      except Exception:
+  for case in cases:
+    print "Running test", case.name
+    results[case.name] = False
+    try:
+      path = os.path.join(tests_dir, case.name)
+      runner.ProcessVideoFromFile(path, debug)
+      results[case.name] = True
+    except VideoException, e:
+      if case.expect_success:
         traceback.print_exc()
-      print "Processing should have failed."
-      results[test_name] = False
+        results[case.name] = False
+      else:
+        print "Expected exception:", e
+        results[case.name] = True
+      continue
+    except Exception:
+      traceback.print_exc()
+  return results
 
-    for test_name in DiscoverTests("self_tests/%s/good/" % test_class):
-      try:
-        runner.ProcessVideoFromFile(test_name)
-        results[test_name] = True
-        continue
-      except VideoException, e:
-        print e
-        print "Exception unexpected."
-      except Exception:
-        traceback.print_exc()
-      results[test_name] = False
+usage = """Self-Tests usage examples
+
+Run all tests:
+$ %prog
+
+Run a selected list of tests:
+$ %prog ScreenDetection/*
+
+Debug a tests:
+$ %prog TestName --debug=all
+
+View reflectance and line debugging:
+$ %prog TestName --debug=reflectance,line
+"""
+
+def Main():
+  parser = OptionParser(usage=usage)
+  parser.add_option("--debug",
+                    dest="debug", default=None,
+                    help="Enable debug printouts and images.")
+  (options, args) = parser.parse_args()
+
+  glob = None
+  if args:
+    glob = args[0]
+
+  debug = []
+  if options.debug:
+    debug = options.debug.split(",")
+
+  results = RunTests(glob, debug)
 
   print "Self-Test Results:"
   for name, result in results.items():
@@ -61,4 +116,4 @@ def RunTests():
     print "\t", msg, name
 
 if __name__ == "__main__":
-  RunTests()
+  Main()

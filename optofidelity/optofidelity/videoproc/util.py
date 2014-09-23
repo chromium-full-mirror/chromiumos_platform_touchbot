@@ -12,6 +12,7 @@ matplotlib.use('TkAgg')
 
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import skimage.color
 
 
@@ -95,7 +96,8 @@ class Canvas(object):
     return transform.rescale(self.image, scale)
 
   def Plot(self, color, plot):
-    plot = Filter.Truncate(plot)
+    plot[plot > 1] = 1
+    plot[plot < 0] = 0
     if len(plot) > self.image.shape[1]:
       plot = plot[:self.image.shape[1]]
 
