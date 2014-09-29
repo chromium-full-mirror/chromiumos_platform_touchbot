@@ -65,16 +65,27 @@ class Trace(object):
   def __repr__(self):
     return str(self)
 
-  def Events(self, event_type=None):
+  def Events(self, event_type=None, color=None):
     """Return list of events of event_type."""
     if event_type is None:
       return self._events
     else:
-      return [e for e in self._events if e.event_type == event_type]
+      return [e for e in self._events
+              if (not event_type or e.event_type == event_type) and
+                 (not color or e.color == color)]
 
-  def Times(self, event_type=None):
+  def Times(self, event_type=None, color=None):
     """Return numpy array of times of event_type."""
-    return np.asarray([e.time for e in self.Events(event_type)])
+    return np.asarray([e.time for e in self.Events(event_type, color)])
+
+  def Time(self, event_type=None, color=None):
+    """Return numpy array of times of event_type."""
+    times = self.Times(event_type, color)
+    if not times:
+      raise Exception("No event of type " + event_type)
+    if len(times) > 1:
+      raise Exception("Multiple events of type " + event_type)
+    return times[0]
 
   def Locations(self, event_type=None):
     """Return numpy array of locations of event_type."""

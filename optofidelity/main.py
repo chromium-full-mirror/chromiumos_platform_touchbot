@@ -9,7 +9,7 @@ import numpy as np
 import os
 import warnings
 
-from optofidelity.latency import TouchMoveLatencyTest
+from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest
 from optofidelity.system import OptofidelityTestSystem
 from optofidelity.test_runner import TestRunner
 
@@ -29,6 +29,7 @@ calibration_file = os.path.join(script_dir, "calibration.hdf5")
 
 def RegisterTestClasses(runner):
   runner.AddTestClass(TouchMoveLatencyTest)
+  runner.AddTestClass(TapLatencyTest)
 
 def RunTests(options):
   debug = []
