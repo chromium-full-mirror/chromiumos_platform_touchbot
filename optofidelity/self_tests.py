@@ -25,6 +25,7 @@ from main import RegisterTestClasses
 script_dir = os.path.dirname(os.path.realpath(__file__))
 tests_dir = os.path.join(script_dir, "self_tests")
 
+gs_path = "gs://touchbot/optofidelity/self_tests"
 
 class TestCase(object):
   def __init__(self, name, expect_success):
@@ -80,6 +81,14 @@ def RunTests(glob, debug):
 
 usage = """Self-Tests usage examples
 
+The self-test requires test videos in the self_tests folder, which are not
+included in the git repository. Instead they have to be downloaded from
+cloud storage by running:
+
+$ %prog --download
+
+After that you can:
+
 Run all tests:
 $ %prog
 
@@ -98,6 +107,14 @@ def Main():
   parser.add_option("--debug",
                     dest="debug", default=None,
                     help="Enable debug printouts and images.")
+  parser.add_option("--upload", "-u",
+                    dest="upload", default=False, action="store_true",
+                    help="Upload local self test videos to cloud storage. "+
+                         "Note: You need write access to gs://touchbot, "+
+                         "contact denniskempin@google.com.")
+  parser.add_option("--download", "-d",
+                    dest="download", default=False, action="store_true",
+                    help="Download self test videos from cloud storage.")
   (options, args) = parser.parse_args()
 
   glob = None
@@ -107,6 +124,14 @@ def Main():
   debug = []
   if options.debug:
     debug = options.debug.split(",")
+
+  if options.upload:
+    os.system("gsutil -m rsync -r %s %s" % (tests_dir, gs_path))
+    os.system("gsutil -m acl -r set public-read %s" % gs_path)
+    return
+
+  if options.download:
+    os.system("gsutil rsync -r %s %s" % (gs_path, tests_dir))
 
   results = RunTests(glob, debug)
 
