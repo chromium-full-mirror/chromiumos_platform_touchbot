@@ -42,6 +42,8 @@ class VideoProcessor(object):
       data = preprocessed_data[detector.name]
       canvas = debug_canvas if debug_flag else None
       events = detector.GenerateEvents(data, i, canvas)
+      if debug_flag and events:
+        print events
       trace.AddAll(events)
 
   def SkimVideo(self, video, debug=[]):
@@ -59,10 +61,13 @@ class VideoProcessor(object):
         return Canvas(frame.reflectance)
       elif "rectified" in debug:
         return Canvas(frame.rectified)
-      elif "delta" in debug:
-        return Canvas(frame.delta, self.test_area.Unrectify)
       else:
-        return Canvas(frame.original, self.test_area.Unrectify)
+        if "delta" in debug:
+          canvas = Canvas(frame.delta, self.test_area.Unrectify)
+        else:
+          canvas = Canvas(frame.original, self.test_area.Unrectify)
+        canvas.DrawContour([0, 0.6, 0], self.test_area.shape)
+        return canvas
     return None
 
   def DisplayDebugCanvas(self, debug_canvas, video):

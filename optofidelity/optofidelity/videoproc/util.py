@@ -119,7 +119,8 @@ class Canvas(object):
       self.image[y, :, i] = color[i]
 
   def Draw(self, color, mask):
-    if self.tform_fn and np.any(self.image.shape != mask.shape):
+    if self.tform_fn and (self.image.shape[0] != mask.shape[0] or
+                          self.image.shape[1] != mask.shape[1]):
       mask = self.tform_fn(image=mask)
     self.image[mask] = color
 

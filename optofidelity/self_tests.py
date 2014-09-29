@@ -66,7 +66,10 @@ def RunTests(glob, debug):
     try:
       path = os.path.join(tests_dir, case.name)
       runner.ProcessVideoFromFile(path, debug)
-      results[case.name] = True
+      if case.expect_success:
+        results[case.name] = True
+      else:
+        print "Expected detection failure."
     except VideoException, e:
       if case.expect_success:
         traceback.print_exc()

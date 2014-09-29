@@ -75,9 +75,6 @@ def Main():
   if not options.debug:
     np.seterr(all='ignore')
     warnings.filterwarnings('ignore', category=UserWarning)
-  else:
-    np.seterr(all='error')
-    warnings.filterwarnings('error', category=UserWarning)
 
   glob=None
   if args:

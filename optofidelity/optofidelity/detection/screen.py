@@ -170,7 +170,7 @@ class ScreenFlash(Detector):
 
     # Stateful information
     self.color = self.UNDEFINED
-    self.last_no_draw_time = None
+    self.last_no_draw_time = 0
     self.debug_canvas = None
 
   def Preprocess(self, frame, debug=False):

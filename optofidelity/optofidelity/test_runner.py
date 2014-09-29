@@ -126,14 +126,15 @@ class TestRunner(object):
     test_class.InitializeProcessor(processor)
     processor.Initialize(video, debug=debug)
 
-    print "Validating video"
-    generated_events = processor.SkimVideo(video, debug=debug)
-    if debug:
-      print "Generated event types: %s" % (generated_events)
-    for event_type in test_class.required_events:
-      if event_type not in generated_events:
-        msg = "Video did not generate required %s events" % event_type
-        raise VideoException(msg)
+    if test_class.required_events:
+      print "Validating video"
+      generated_events = processor.SkimVideo(video, debug=debug)
+      if debug:
+        print "Generated event types: %s" % (generated_events)
+      for event_type in test_class.required_events:
+        if event_type not in generated_events:
+          msg = "Video did not generate required %s events" % event_type
+          raise VideoException(msg)
 
     print "Generating trace"
     trace = processor.ProcessVideo(video, debug=debug)
@@ -143,9 +144,11 @@ class TestRunner(object):
   def _RunTest(self, dut, app, case, debug=[]):
     video = case.test_class.ExecuteTest(app, dut, self.system.camera)
     try:
-      res = self._ProcessVideo(case.test_class, video, app.test_area, debug)
       if self.dump_all:
         self._DumpDebugInfo(case, video, False)
+        return {}
+      else:
+        res = self._ProcessVideo(case.test_class, video, app.test_area, debug)
       return res
     except VideoException, e:
       print "%s: Video processing failed: %s" % (case, e)
