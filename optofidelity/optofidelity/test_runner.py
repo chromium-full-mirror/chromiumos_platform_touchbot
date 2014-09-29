@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import traceback
+from fnmatch import fnmatch
 
 from detection import TestArea
 from detection import MultithreadedVideoProcessor as VideoProcessor
@@ -167,11 +168,14 @@ class TestRunner(object):
                     dut.Reset,
                     "Running tests: " + str(app))
 
-  def RunTests(self, debug=[]):
+  def RunTests(self, glob=None, debug=[]):
     test_cases = []
     for app in self.test_apps.values():
       for test_class in self.test_classes.values():
         test_cases.append(TestCase(app, test_class))
+
+    if glob:
+      test_cases = [c for c in test_cases if fnmatch(str(c), glob)]
 
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):

@@ -31,7 +31,7 @@ def RegisterTestClasses(runner):
   runner.AddTestClass(TouchMoveLatencyTest)
   runner.AddTestClass(TapLatencyTest)
 
-def RunTests(options):
+def RunTests(glob, options):
   debug = []
   if options.debug:
     debug = options.debug.split(",")
@@ -53,7 +53,7 @@ def RunTests(options):
   if options.debug_video:
     runner.ProcessVideoFromFile(options.debug_video, debug)
   else:
-    runner.RunTests(debug)
+    runner.RunTests(glob, debug)
 
 
 def Main():
@@ -79,7 +79,11 @@ def Main():
     np.seterr(all='error')
     warnings.filterwarnings('error', category=UserWarning)
 
-  RunTests(options)
+  glob=None
+  if args:
+    glob = args[0]
+
+  RunTests(glob, options)
 
 
 if __name__ == "__main__":
