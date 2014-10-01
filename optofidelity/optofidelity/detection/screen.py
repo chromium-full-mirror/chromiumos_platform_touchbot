@@ -180,18 +180,62 @@ class ScreenFlash(Detector):
   """
   BLACK = 0
   WHITE = 1
-  UNDEFINED = -1
   name = "screenflash"
 
-  def __init__(self, no_change_thresh=0.02, change_thresh=0.9):
+  def __init__(self, no_change_thresh=0.05, change_thresh=0.9):
     """Initialize empty or by providing a pre-calculated screen."""
     self.no_change_thresh = no_change_thresh
     self.change_thresh = change_thresh
 
     # Stateful information
-    self.color = self.UNDEFINED
+    self.color = None
     self.last_no_draw_time = 0
     self.debug_canvas = None
+
+  def Initialize(self, video, debug=False):
+    """Run sanity checks on the first frame of the video."""
+    error_msg = None
+
+    # Calculate profile of the first frame. It should look roughly like this:
+    # (Or horizontally mirrored)
+    # 1 ____________      ___________________
+    #               \   _/
+    #                \_/
+    #               robot
+    #               finger
+    # 0
+    frame = video.FrameAt(0)
+    profile = self.Preprocess(frame, debug)
+
+    # Determine color of the screen via the median of the profile. The median
+    # roughly gets rid of the influence of the finger and returns the color
+    # level of the screen.
+    # The thresholds are very strict to catch any inconsistencies at this point.
+    median = np.median(profile)
+    if median < 1.0 - self.no_change_thresh:
+      self.color = self.BLACK
+    elif median > self.no_change_thresh:
+      self.color = self.WHITE
+    else:
+      error_msg = "Inconsistent profile."
+
+    # In GenerateEvents we are only processing the edges of the profile, make
+    # sure that those values match up with the color we just determined.
+    # This is not the case if the camera shifted slightly or the robot is in the
+    # wrong app.
+    edge_mean = np.mean([profile[:10], profile[-10:]])
+    if ((self.color == self.BLACK and edge_mean > self.no_change_thresh) or
+        (self.color == self.WHITE and edge_mean < 1.0 - self.no_change_thresh)):
+      error_msg = "Inconsistent edge profile."
+
+    if error_msg:
+      if debug:
+        print "ERROR:", error_msg
+        canvas = Canvas(frame.rectified)
+        canvas.Plot([1, 0, 0], profile)
+        Viewer.DebugView(profile=canvas.image)
+      raise VideoException(error_msg)
+    return True
 
   def Preprocess(self, frame, debug=False):
     """Preprocessing step to process frame into more compact data.
@@ -211,9 +255,6 @@ class ScreenFlash(Detector):
     """
     events = []
     profile = preprocessed_data
-
-    if self.color == self.UNDEFINED:
-      self.color = self.BLACK if np.mean(profile) < 0.5 else self.WHITE
 
     # we are only looking at first and last 10 pixels of the profile, where the
     # screen draws start and end.

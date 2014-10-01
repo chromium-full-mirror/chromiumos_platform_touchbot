@@ -53,11 +53,20 @@ class Finger(Detector):
     # flashing LED:
     mask = ~frame.test_area.shape.WithMargin(10, 10).mask
     delta = np.abs(frame.delta) * mask
-    # Filter out Noise, the flash should be at least 5 pixels big.
     delta = Filter.Min(delta, disk_size=5)
+    binary = delta > 0.2
+
+    def is_led(region, labels, debug=False):
+      if debug:
+        print (region.label, region.area, region.eccentricity)
+      return (region.area > 50 and region.eccentricity < 0.9)
+    led_shape = Shape.Find(binary, is_led, debug=debug)
+
     # Determine on/off state of the LED.
-    led_color = np.mean(frame.original[delta > 0.2])
-    return (location, finger_shape, np.max(delta), led_color)
+    led_color = 0
+    if led_shape:
+      led_color = np.mean(frame.original[led_shape.mask])
+    return (location, finger_shape, led_color, led_shape)
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
     """Search for the current location of the finger.
@@ -67,7 +76,7 @@ class Finger(Detector):
     """
     events = []
 
-    (new_location, self.finger_shape, max_delta, led_color) = preprocessed_data
+    (new_location, self.finger_shape, led_color, led_shape) = preprocessed_data
     self.found = new_location is not None
 
     # Report new location if location has changed but not changed too much.
@@ -78,7 +87,7 @@ class Finger(Detector):
                           location=new_location))
 
     # If there is a strong change we expect it to be the flashing LED
-    if max_delta > 0.2:
+    if led_shape:
       # Use the led_switching flag to prevent multiple events
       if not self.led_switching:
         self.led_switching = True
@@ -92,6 +101,7 @@ class Finger(Detector):
     if debug_canvas:
       if self.finger_shape:
         debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
+        debug_canvas.DrawContour([1, 0, 0], led_shape)
         debug_canvas.DrawHLine([0, 1, 0], self.location,
                                self.finger_shape.bottom)
 
