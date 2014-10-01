@@ -308,7 +308,7 @@ class Shape(object):
 
     # handle too many matches error
     if len(matches) > 1:
-      if debug:
+      if debug and required:
         mask = np.zeros(labels.shape)
         for match in matches:
           mask[labels == match.label] = match.label

@@ -11,6 +11,9 @@ import numpy as np
 import scipy.interpolate as interpolate
 import scipy.signal as signal
 
+from optofidelity.videoproc import VideoException
+
+
 class Event(object):
   """Describes an event detected in the camera stream."""
   LINE_DRAW_START = "LineDrawStart"
@@ -81,10 +84,10 @@ class Trace(object):
   def Time(self, event_type=None, color=None):
     """Return numpy array of times of event_type."""
     times = self.Times(event_type, color)
-    if not times:
-      raise Exception("No event of type " + event_type)
+    if len(times) == 0:
+      raise VideoException("No event of type " + event_type)
     if len(times) > 1:
-      raise Exception("Multiple events of type " + event_type)
+      raise VideoException("Multiple events of type " + event_type)
     return times[0]
 
   def Locations(self, event_type=None):

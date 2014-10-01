@@ -54,6 +54,9 @@ class Filter(object):
   @staticmethod
   def _ScaledRankOrderFilter(filter_fn, image, disk_size, scale=1):
     work_image = transform.rescale(image, (scale, scale))
+    # transform.rescale always returns a float64 image, however rank order
+    # filter functions such as rank_filter.median need a uint8 image.
+    work_image = (work_image * 255).astype(np.uint8)
     work_image = filter_fn(work_image, morphology.disk(disk_size))
     work_image = transform.resize(work_image, image.shape)
     return skimage.img_as_float(work_image)

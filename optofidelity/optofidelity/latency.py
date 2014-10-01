@@ -48,7 +48,7 @@ class TouchMoveLatencyTest(TestClass):
 class TapLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TapLatency"
-  required_events = [Event.SCREEN_DRAW_START, Event.SCREEN_DRAW_END]
+  required_events = []
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
@@ -69,11 +69,11 @@ class TapLatencyTest(TestClass):
     finger_down = trace.Time(Event.FINGER_DOWN)
     finger_up = trace.Time(Event.FINGER_UP)
 
-    screen_off_start = trace.Time(Event.SCREEN_DRAWN_START, color="Black")
-    screen_off_end = trace.Time(Event.SCREEN_DRAWN_END, color="Black")
+    screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
+    screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
 
-    screen_on_start = trace.Time(Event.SCREEN_DRAWN_START, color="White")
-    screen_on_end = trace.Time(Event.SCREEN_DRAWN_END, color="White")
+    screen_on_start = trace.Time(Event.SCREEN_DRAW_START, color="White")
+    screen_on_end = trace.Time(Event.SCREEN_DRAW_END, color="White")
 
     return {
         "DownStartLatency": screen_off_start - finger_down,

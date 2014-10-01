@@ -15,6 +15,8 @@ from fnmatch import fnmatch
 from optparse import OptionParser
 import os
 import traceback
+import numpy as np
+import warnings
 
 from optofidelity.latency import TouchMoveLatencyTest
 from optofidelity.test_runner import TestRunner
@@ -135,6 +137,9 @@ def Main():
 
   if options.download:
     os.system("gsutil rsync -r %s %s" % (gs_path, tests_dir))
+
+  np.seterr(all='raise')
+  warnings.filterwarnings('error', category=UserWarning)
 
   results = RunTests(glob, debug)
 

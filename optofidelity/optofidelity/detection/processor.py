@@ -63,7 +63,7 @@ class VideoProcessor(object):
         return Canvas(frame.rectified)
       else:
         if "delta" in debug:
-          canvas = Canvas(frame.delta, self.test_area.Unrectify)
+          canvas = Canvas(0.5 + frame.delta, self.test_area.Unrectify)
         else:
           canvas = Canvas(frame.original, self.test_area.Unrectify)
         canvas.DrawContour([0, 0.6, 0], self.test_area.shape)
@@ -72,7 +72,10 @@ class VideoProcessor(object):
 
   def DisplayDebugCanvas(self, debug_canvas, video):
     if debug_canvas:
-      key = Viewer.VideoFrame(debug_canvas.image)
+      image = debug_canvas.image
+      if debug_canvas.image.shape[0] < 500:
+        image = debug_canvas.Scaled(2)
+      key = Viewer.VideoFrame(image)
       if key == ord('p'):
         video.EnterInteractive()
 

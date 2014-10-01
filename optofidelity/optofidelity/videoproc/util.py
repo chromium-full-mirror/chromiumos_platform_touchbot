@@ -14,6 +14,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage.color
+import skimage.transform as transform
 
 
 class VideoException(Exception):
