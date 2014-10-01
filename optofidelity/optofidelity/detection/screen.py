@@ -6,7 +6,7 @@ import skimage.morphology as morphology
 import skimage.transform as transform
 
 from optofidelity.detection.trace import Event
-from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
+from optofidelity.videoproc import Canvas, Filter, Shape, VideoException, Viewer
 from optofidelity.detection.detector import Detector
 
 class TestArea(object):
@@ -92,6 +92,25 @@ class TestArea(object):
       res = self.rect_transform(coords)
       return res[0, 0], res[0, 1]
 
+  def FindOnOffFrames(self, frames):
+    """Search for brightest and darkest frames in a frames iterator."""
+    i, prev_frame = frames.next()
+    on_frame = prev_frame
+    on_frame_mean = np.mean(on_frame)
+    off_frame = on_frame
+    off_frame_mean = np.mean(off_frame)
+
+    for i, frame in frames:
+      mean = np.mean(frame)
+      if mean > on_frame_mean:
+        on_frame = frame
+        on_frame_mean = mean
+      if mean < off_frame_mean:
+        off_frame = frame
+        off_frame_mean = mean
+      prev_frame = frame
+    return on_frame, off_frame
+
   def Detect(self, frames, debug=False):
     """Detect the devices flashing screen.
 
@@ -104,32 +123,33 @@ class TestArea(object):
     # Image of the screen on (max average grayscale)
     # And the accumulative difference between frames to find the area that
     # is changing the most.
-    i, prev_frame = frames.next()
-    delta_accum = np.zeros(prev_frame.shape)
-    on_frame = prev_frame
-    on_frame_mean = np.mean(prev_frame)
-    off_frame = on_frame
-    off_frame_mean = on_frame_mean
+    on_frame, off_frame = self.FindOnOffFrames(frames)
+    delta = Filter.Truncate(on_frame - off_frame)
 
-    for i, frame in frames:
-      delta = np.abs(frame - prev_frame)
-      delta_accum += delta
-
-      mean = np.mean(frame)
-      if mean > on_frame_mean:
-        on_frame = frame
-        on_frame_mean = mean
-      if mean < off_frame_mean:
-        off_frame = frame
-        off_frame_mean = mean
-      prev_frame = frame
-    delta_accum = Filter.Equalize(delta_accum)
-
-    # Threshold the delta. The largest connected component is the screen.
-    binary = Filter.OtsuSegmentation(delta_accum)
+    # Find screen shape
+    def is_screen(region, labels, debug=False):
+      if debug:
+        print region.label, region.area, region.solidity
+      return (region.area > 10000 and # Large enough size
+              region.solidity > 0.9) # No holes
+    binary = delta > 0.5
     binary = morphology.binary_closing(binary, morphology.disk(2))
     binary = morphology.binary_erosion(binary, morphology.disk(4))
-    self.shape = Shape.FindMax(binary, lambda p: p.area)
+    self.shape = Shape.Find(binary, is_screen, required=True, debug=debug)
+
+    # create a 1px rectangle mask along the edge of the video frame
+    # if the screen mask overlaps in too many pixels with this rectangle,
+    # the screen is probably outside the viewport of the camera.
+    width, height = self.shape.mask.shape
+    frame_border = np.zeros((width, height), dtype=np.bool)
+    frame_border[:, 0] = True
+    frame_border[:, height - 1] = True
+    frame_border[0, :] = True
+    frame_border[width - 1, :] = True
+    border_overlap = np.sum(frame_border * self.shape.mask)
+
+    if border_overlap > 10:
+      raise VideoException("Screen out of camera view")
 
     # Estimate rectification transformation
     self.rect_transform = self.EstimateRectTransform()
@@ -141,9 +161,9 @@ class TestArea(object):
     self.off_profile = Filter.ExtractProfile(self.off_image)
 
     if debug:
-      res = Canvas(prev_frame)
+      res = Canvas(on_frame)
       res.DrawContour([1, 0, 0], self.shape)
-      Viewer.DebugView(accum=delta_accum,
+      Viewer.DebugView(delta=delta,
                        shape=res.image,
                        rectified_on=self.on_image,
                        rectified_off=self.off_image)

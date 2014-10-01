@@ -12,6 +12,7 @@ import numpy as np
 import skimage.measure as measure
 import skimage.morphology as morphology
 
+from optofidelity.videoproc.util import Viewer, VideoException
 
 class Shape(object):
   """Describes a segmented shape in an image.
@@ -278,7 +279,7 @@ class Shape(object):
     matches = []
     def Exit(msg, fatal):
       if fatal:
-        raise Exception(msg)
+        raise VideoException(msg)
       elif debug:
         print msg
 
