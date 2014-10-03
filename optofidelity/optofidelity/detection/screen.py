@@ -169,6 +169,51 @@ class TestArea(object):
                        rectified_off=self.off_image)
     return True
 
+  def NormalizedBrightness(self, rectified_frame, slice_or_mask=None):
+    """Returns normalized average brightness of frame.
+
+    The brightness is normalized to 0 being the average brightness of the
+    screen being black and 1 the average brightness of a fully white screen.
+    """
+    if slice_or_mask is not None:
+      mean = np.mean(rectified_frame[slice_or_mask])
+      on_mean = np.mean(self.on_image[slice_or_mask])
+      off_mean = np.mean(self.off_image[slice_or_mask])
+    else:
+      mean = np.mean(rectified_frame[:])
+      on_mean = np.mean(self.on_image[:])
+      off_mean = np.mean(self.off_image[:])
+    return (mean - off_mean) / (on_mean - off_mean)
+
+  def VerifyFrame(self, frame, debug=False):
+    """Check frame for camera shifts or lighting changes."""
+    rectified = self.Rectify(frame)
+    width, height = rectified.shape
+
+    # calculate overall mean and mean along screen edges
+    mean = self.NormalizedBrightness(rectified)
+    top_mean = self.NormalizedBrightness(rectified, np.s_[:, 0])
+    left_mean = self.NormalizedBrightness(rectified, np.s_[0, :])
+    bottom_mean = self.NormalizedBrightness(rectified, np.s_[:, height - 1])
+    right_mean = self.NormalizedBrightness(rectified, np.s_[width - 1, :])
+    edge_means = [top_mean, left_mean, bottom_mean, right_mean]
+
+    if debug:
+      print "Overall mean:", mean
+      print "Edge means:", edge_means
+
+    # The brightness is normalized to the black screen being 0 and the white
+    # screen being 1. If the lighting changed, the normalized brightness will
+    # be outside the [0, 1] range.
+    if mean > 1.1 or mean < -0.1:
+      raise VideoException("Lighting changed.")
+
+    # If the bezel shifted into the screen the deviation of the edge means
+    # from the overall mean will be strong.
+    deviations = np.abs(edge_means - mean)
+    if np.any(deviations > 0.5):
+      raise VideoException("Camera shifted.")
+
 
 class ScreenFlash(Detector):
   """Represents the device screen in the video stream.

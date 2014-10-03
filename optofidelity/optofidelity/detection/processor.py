@@ -20,6 +20,12 @@ class VideoProcessor(object):
     self.detectors[detector.name] = detector
 
   def Initialize(self, video_reader, debug=[]):
+    # verify in the first frame that the test area is still valid
+    first_frame = video_reader.FrameAt(0)
+    self.test_area.VerifyFrame(first_frame,
+                               "verification" in debug or "all" in debug)
+
+    # initialize all detectors
     video = Video(video_reader, self.test_area)
     for detector in self.detectors.itervalues():
       debug_flag = debug and (detector.name in debug or "all" in debug)
