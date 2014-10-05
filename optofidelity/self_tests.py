@@ -103,8 +103,8 @@ $ %prog ScreenDetection/*
 Debug a tests:
 $ %prog TestName --debug=all
 
-View reflectance and line debugging:
-$ %prog TestName --debug=reflectance,line
+View normalized image and line debugging:
+$ %prog TestName --debug=normalized,line
 """
 
 def Main():

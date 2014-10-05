@@ -169,6 +169,9 @@ class TestArea(object):
                        rectified_off=self.off_image)
     return True
 
+  def NormalizeFrame(self, rectified_frame):
+    return (rectified_frame - self.off_image) / (self.on_image - self.off_image)
+
   def NormalizedBrightness(self, rectified_frame, slice_or_mask=None):
     """Returns normalized average brightness of frame.
 

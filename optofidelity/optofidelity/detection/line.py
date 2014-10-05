@@ -97,7 +97,7 @@ class Line(object):
               np.abs(region.orientation) < 0.1) # Horizontally oriented
 
     # Find object fitting the is_target_line function.
-    binary = frame.reflectance < 0.9
+    binary = frame.normalized < 0.9
     self.target_shape = Shape.Find(binary, is_target_line, debug=debug)
     if not self.target_shape:
       return False
@@ -110,7 +110,7 @@ class Line(object):
 
     # Calculate profile of drawn line and empty screen as reference.
     self._drawn_profile = Filter.ExtractProfile(
-        (1 - frame.reflectance) * self.target_shape.mask)
+        (1 - frame.normalized) * self.target_shape.mask)
 
     if debug:
       res = Canvas(frame.rectified)
@@ -233,7 +233,7 @@ class Line(object):
     is stateless and can be called on any frames out of order."""
     if not self.target_shape:
       return None
-    return Filter.ExtractProfile(1 - frame.reflectance,
+    return Filter.ExtractProfile(1 - frame.normalized,
                                  self._drawn_profile)
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):

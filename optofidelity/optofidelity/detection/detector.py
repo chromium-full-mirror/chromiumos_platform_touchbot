@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import numpy as np
-from optofidelity.videoproc import Viewer, Filter
+from optofidelity.videoproc import Viewer, Filter, VideoException
 
 class Frame(object):
   """This class stores multiple versions and views of a camera frame.
@@ -13,18 +13,17 @@ class Frame(object):
   def __init__(self, im, prev_im, test_area, index=0):
     self.original = im
     self.rectified = im
+    self.normalized = im
     self.index = index
     self.test_area = test_area
 
     if test_area:
       self.crop_shape = test_area.shape
       self.rectified = test_area.Rectify(im)
-
-    # noise filtered reflectance
-    self.reflectance = Filter.Reflectance(self.rectified, disk_size=40,
-                                          scale=0.5)
-    self.reflectance = Filter.Median(self.reflectance, disk_size=1)
-
+      self.normalized = test_area.NormalizeFrame(self.rectified)
+      if np.any(self.normalized > 1.1) or np.any(self.normalized < -0.1):
+        raise VideoException("Lighting changed.")
+      self.normalized = Filter.Truncate(self.normalized)
     if prev_im is not None:
       self.delta = im - prev_im
     else:

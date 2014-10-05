@@ -30,7 +30,7 @@ class Finger(Detector):
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
     # extend the target area to view the full finger tip
-    binary = (frame.reflectance < 0.95)
+    binary = (frame.normalized < 0.95)
 
     # we are looking for a big object that is not very elongated
     # (i.e. not the line)

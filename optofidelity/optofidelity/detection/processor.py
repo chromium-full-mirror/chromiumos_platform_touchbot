@@ -63,8 +63,8 @@ class VideoProcessor(object):
 
   def MakeDebugCanvas(self, debug, frame):
     if debug:
-      if "reflectance" in debug:
-        return Canvas(frame.reflectance)
+      if "normalized" in debug:
+        return Canvas(frame.normalized)
       elif "rectified" in debug:
         return Canvas(frame.rectified)
       else:
