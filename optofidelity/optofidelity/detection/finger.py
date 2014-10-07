@@ -141,9 +141,9 @@ class Finger(Detector):
 
     if debug_canvas:
       if self.finger_shape:
-        debug_canvas.DrawContour([0, 1, 0], self.finger_shape)
-        debug_canvas.DrawContour([1, 0, 0], led_shape)
-        debug_canvas.DrawHLine([0, 1, 0], self.location,
+        debug_canvas.DrawContour(Canvas.GREEN, self.finger_shape)
+        debug_canvas.DrawContour(Canvas.BLUE, led_shape)
+        debug_canvas.DrawHLine(Canvas.GREEN, self.location,
                                self.finger_shape.bottom)
 
     return events

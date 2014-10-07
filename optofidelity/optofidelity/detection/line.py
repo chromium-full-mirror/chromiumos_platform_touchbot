@@ -297,7 +297,7 @@ class Line(object):
     profile = preprocessed_data
 
     if debug_canvas:
-      debug_canvas.Plot([1, 0, 0], profile)
+      debug_canvas.Plot(Canvas.BLUE, profile)
 
     if not self.target_shape:
       return events
@@ -330,11 +330,11 @@ class Line(object):
 
     if debug_canvas:
       for segment in self.segments:
-        debug_canvas.DrawHLine([0, 0.5, 0], segment.end,
+        debug_canvas.DrawHLine(Canvas.GREEN, segment.end,
                                     self.target_shape.center_y)
 
-      debug_canvas.DrawHLine([0.5, 0.5, 0], transition_start,
+      debug_canvas.DrawHLine(Canvas.YELLOW, transition_start,
                                   self.target_shape.center_y)
-      debug_canvas.DrawHLine([0.5, 0.5, 0], transition_end,
+      debug_canvas.DrawHLine(Canvas.YELLOW, transition_end,
                                   self.target_shape.center_y)
     return events

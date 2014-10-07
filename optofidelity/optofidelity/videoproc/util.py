@@ -93,6 +93,15 @@ class Canvas(object):
   plot_padding = 10
   """Padding at top and bottom of plots in pixels."""
 
+  # A collection of colors for drawing. Chosen to be clearly visible on black
+  # and white video streams. Colors are denoted in [blue, green, red].
+  WHITE = [1, 1, 1]
+  BLUE = [1, 0, 0]
+  GREEN = [0, 0.7, 0]
+  RED = [0, 0, 1]
+  YELLOW = [0.7, 0.7, 0]
+  BLACK = [0, 0, 0]
+
   def __init__(self, image, tform_fn=None):
     self.image = skimage.color.gray2rgb(image)
     self.tform_fn = tform_fn

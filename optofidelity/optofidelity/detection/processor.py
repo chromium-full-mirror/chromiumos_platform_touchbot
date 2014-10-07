@@ -72,7 +72,7 @@ class VideoProcessor(object):
           canvas = Canvas(0.5 + frame.delta, self.test_area.Unrectify)
         else:
           canvas = Canvas(frame.original, self.test_area.Unrectify)
-        canvas.DrawContour([0, 0.6, 0], self.test_area.shape)
+        canvas.DrawContour(Canvas.GREEN, self.test_area.shape)
         return canvas
     return None
 

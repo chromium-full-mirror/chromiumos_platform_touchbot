@@ -198,7 +198,7 @@ class TestArea(object):
 
     if debug:
       res = Canvas(on_frame)
-      res.DrawContour([1, 0, 0], self.shape)
+      res.DrawContour(Canvas.BLUE, self.shape)
       Viewer.DebugView(delta=delta,
                        shape=res.image,
                        rectified_on=self.on_image,
@@ -324,7 +324,7 @@ class ScreenFlash(Detector):
       if debug:
         print "ERROR:", error_msg
         canvas = Canvas(frame.rectified)
-        canvas.Plot([1, 0, 0], profile)
+        canvas.Plot(Canvas.BLUE, profile)
         Viewer.DebugView(profile=canvas.image)
       raise VideoException(error_msg)
     return True
@@ -378,6 +378,6 @@ class ScreenFlash(Detector):
         events.append(Event(timestamp, Event.SCREEN_DRAW_END, color="Black"))
 
     if debug_canvas:
-      debug_canvas.Plot([1, 0, 0], profile)
+      debug_canvas.Plot(Canvas.BLUE, profile)
 
     return events
