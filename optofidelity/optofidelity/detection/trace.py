@@ -1,6 +1,7 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contracts import contract, new_contract
 import bisect
 import numpy as np
 import scipy.interpolate as interpolate
@@ -37,7 +38,7 @@ class Event(object):
     if optional:
       optional_str = " (%s)" % (",".join(optional))
     return "%d\t%s\t%s" % (self.time, self.event_type, optional_str)
-
+new_contract('Event', Event)
 
 class Trace(object):
   """Contains a list of events ordered by time.
@@ -52,14 +53,17 @@ class Trace(object):
   """How much can the speed deviate from the target speed to be considered
      part of the linear motion area."""
 
+  @contract(events="list(Event)|None")
   def __init__(self, events=None):
     self._events = events or []
     self._times = [event.time for event in self._events]
 
+  @contract(events="list(Event)")
   def AddAll(self, events):
     for event in events:
       self.Add(event)
 
+  @contract(event=Event)
   def Add(self, event):
     i = bisect.bisect_left(self._times, event.time)
     self._events.insert(i, event)

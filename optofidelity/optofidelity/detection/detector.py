@@ -1,8 +1,12 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contracts import contract
 import numpy as np
-from optofidelity.videoproc import Viewer, Filter, VideoException
+
+from optofidelity.videoproc import Viewer, Filter, VideoException, VideoReader
+from optofidelity.system import TestArea
+
 
 class Frame(object):
   """This class stores multiple versions and views of a camera frame."""
@@ -15,6 +19,7 @@ class Frame(object):
   """Everything below this threshold is considered to be the foreground
      objects on the screen."""
 
+  @contract(im="image", prev_im="image|None", test_area=TestArea, index='>=0')
   def __init__(self, im, prev_im, test_area, index=0):
     self.original = im
     self.rectified = im
@@ -26,7 +31,7 @@ class Frame(object):
       self.crop_shape = test_area.shape
       self.rectified = test_area.Rectify(im)
       self.normalized = test_area.NormalizeFrame(self.rectified)
-
+      self.normalized = Filter.Median(self.normalized, 5)
       thresh = self.brightness_out_of_range_thresh
       if (np.any(self.normalized > 1 + thresh) or
           np.any(self.normalized < -thresh)):
@@ -43,6 +48,8 @@ class Frame(object):
 
 class Video(object):
   """Wraps around a video_reader and yields Frame instances."""
+
+  @contract(video_reader=VideoReader, test_area=TestArea)
   def __init__(self, video_reader, test_area):
     self.video_reader = video_reader
     self.test_area = test_area

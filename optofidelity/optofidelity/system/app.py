@@ -1,8 +1,10 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contracts import contract
 import time
 
+from optofidelity.system.dut import DeviceUnderTest
 from optofidelity.system.test_area import TestArea
 from optofidelity.videoproc import VideoWriter
 
@@ -15,6 +17,7 @@ class TestApp(object):
   PAGE_FLASH = "Flash"
   TEST_APP_ICON = None
 
+  @contract(dut=DeviceUnderTest, name=str)
   def __init__(self, dut, name):
     self.dut = dut
     self.name = name

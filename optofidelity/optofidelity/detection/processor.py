@@ -2,20 +2,24 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """This module provides classes that generate traces from video files."""
+from contracts import contract
 import multiprocessing
 import sys
 
-from optofidelity.detection.detector import Frame, Video
+from optofidelity.detection.detector import Frame, Video, Detector
 from optofidelity.detection.trace import Trace
+from optofidelity.system import TestArea
 from optofidelity.videoproc import Viewer, Canvas, VideoException
 
 
 class VideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
+  @contract(test_area=TestArea)
   def __init__(self, test_area):
     self.test_area = test_area
     self.detectors = {}
 
+  @contract(detector=Detector)
   def AddDetector(self, detector):
     self.detectors[detector.name] = detector
 
@@ -127,9 +131,10 @@ class MultithreadedVideoProcessor(VideoProcessor):
   This implementation uses multiple processes to do the most computational
   intensive operations in parallel.
   """
-  def __init__(self, screen, num_processes=None):
+  @contract(test_area=TestArea, num_processes=">=0|None")
+  def __init__(self, test_area, num_processes=None):
     self.num_processes = num_processes or multiprocessing.cpu_count()
-    VideoProcessor.__init__(self, screen)
+    VideoProcessor.__init__(self, test_area)
 
   def ProcessVideo(self, video, step=1, debug=[]):
     # Start pre-processing processes

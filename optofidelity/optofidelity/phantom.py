@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 import skimage
 
-from optofidelity.videoproc.io import AbstractVideoReader
+from optofidelity.videoproc.io import VideoReader
 
 
 class Phantom(object):
@@ -326,7 +326,7 @@ class Phantom(object):
     cv2.destroyAllWindows()
 
 
-class PhantomVideoReader(AbstractVideoReader):
+class PhantomVideoReader(VideoReader):
   """Implementation of a VideoReader streaming from a Phantom camera.
 
   This class works as a fully functional VideoReader, streaming frames
@@ -335,7 +335,7 @@ class PhantomVideoReader(AbstractVideoReader):
   def __init__(self, phantom, cine_number=Phantom.DEFAULT_CINE):
     self.phantom = phantom
     self.cine_number = cine_number
-    AbstractVideoReader.__init__(self, phantom.GetNumFrames(cine_number))
+    VideoReader.__init__(self, phantom.GetNumFrames(cine_number))
 
   def _SeekTo(self, frame):
     self.current_frame = frame

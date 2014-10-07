@@ -7,6 +7,7 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
+from contracts import contract
 import math
 import numpy as np
 import skimage.measure as measure
@@ -21,8 +22,8 @@ class Shape(object):
   The shape is represented by a binary image aka mask, in which pixels
   that are part of the shape are True, all others are False.
   """
+  @contract(mask="binary_image")
   def __init__(self, mask, props=None):
-    mask = mask.astype(np.bool)
     if props is None:
       # Use the mask as a label image, since we only have one region,
       # with label=1.
@@ -53,7 +54,7 @@ class Shape(object):
       mask = MorphFn(row_margin)(mask, row_kernel)
     if col_margin != 0:
       mask = MorphFn(col_margin)(mask, col_kernel)
-    return Shape(mask)
+    return Shape(mask.astype(np.bool))
 
   def RemoveBackground(self, image, fill=None):
     """Blend out everything that does not belong to this shape."""

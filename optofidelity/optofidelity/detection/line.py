@@ -1,6 +1,7 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contracts import contract
 import numpy as np
 
 from optofidelity.detection.trace import Event
@@ -15,6 +16,7 @@ class LineSegment(object):
   the average grayscale value of the line normalized to the final grayscale
   value of the segment when it is finished drawing.
   """
+  @contract(start=">=0", end=">=0", draw_start=">=0")
   def __init__(self, start, end, draw_start):
     self.start = start
     self.end = end

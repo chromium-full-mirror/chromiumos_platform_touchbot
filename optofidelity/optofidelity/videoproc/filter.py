@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Filtering algorithms for image analysis and segmentation."""
+from contracts import contract
 import numpy as np
 import skimage
 import skimage.exposure as exposure
@@ -18,6 +19,7 @@ class Filter(object):
   """Everything below epsilon is considered to zero."""
 
   @staticmethod
+  @contract(image="image", min_val="number", max_val="number")
   def Truncate(image, min_val=0.0, max_val=1.0):
     """Truncate values below 0 or above 1."""
     image = np.copy(image)
@@ -26,11 +28,13 @@ class Filter(object):
     return image
 
   @staticmethod
+  @contract(image="image")
   def Equalize(image):
     """Rescale grayscale to range from 0 to 1."""
     return exposure.rescale_intensity(image)
 
   @staticmethod
+  @contract(image="image", returns="binary_image")
   def OtsuSegmentation(image):
     """Return a binary imageage segmented using the Otsu threshold algorithm."""
     t_otsu = skimage.filter.threshold_otsu(image)
@@ -55,6 +59,7 @@ class Filter(object):
                                          scale)
 
   @staticmethod
+  @contract(image="image", disk_size="int,>0", scale="int,>0")
   def _ScaledRankOrderFilter(filter_fn, image, disk_size, scale=1):
     work_image = transform.rescale(image, (scale, scale))
     # transform.rescale always returns a float64 image, however rank order
@@ -62,9 +67,10 @@ class Filter(object):
     work_image = (work_image * 255).astype(np.uint8)
     work_image = filter_fn(work_image, morphology.disk(disk_size))
     work_image = transform.resize(work_image, image.shape)
-    return skimage.img_as_float(work_image)
+    return work_image
 
   @staticmethod
+  @contract(image="image", disk_size="int,>0", scale="int,>0")
   def Reflectance(image, disk_size, scale=1):
     """Return the reflectance part of the image.
 
@@ -78,12 +84,16 @@ class Filter(object):
     return Filter.Truncate(reflectance)
 
   @staticmethod
+  @contract(image="image", disk_size="int,>0", scale="int,>0")
   def ExtractBlackOnWhite(image, disk_size, scale=1):
     lowpass = Filter.Median(image, disk_size, scale)
     highpass = 1.0 - (lowpass - image)
     return Filter.Truncate(highpass)
 
   @staticmethod
+  @contract(image="array[NxM](float), N>0, M>0",
+            high_ref="array[M](float)|None", low_ref="array[M](float)|None",
+            returns="array[M](float)")
   def ExtractProfile(image, high_ref=None, low_ref=None):
     profile = np.sum(image, 0)
 

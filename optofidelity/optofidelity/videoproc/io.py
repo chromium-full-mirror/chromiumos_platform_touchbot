@@ -18,7 +18,7 @@ if sys.platform == "darwin":
   CODEC = cv2.cv.CV_FOURCC(*"mp4v")
 
 
-class AbstractVideoReader(object):
+class VideoReader(object):
   """Abstract base class for Video Reader.
 
   Provides common functionality for accessing videos.
@@ -123,7 +123,7 @@ class AbstractVideoReader(object):
       else:
         i += 1
 
-class FileVideoReader(AbstractVideoReader):
+class FileVideoReader(VideoReader):
   """Implementation of a VideoReader for reading from files using OpenCV.
 
   Note, any operation that seeks backwards in a file will be slow since
@@ -136,7 +136,7 @@ class FileVideoReader(AbstractVideoReader):
     self.frame_cache = None
 
     num_frames = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-    AbstractVideoReader.__init__(self, num_frames)
+    VideoReader.__init__(self, num_frames)
 
   def _SeekTo(self, frame):
     if frame < self.current_frame:

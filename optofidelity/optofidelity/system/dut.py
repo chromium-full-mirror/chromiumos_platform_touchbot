@@ -1,6 +1,9 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contracts import contract
+
+from optofidelity.tnt.TnTClient import TnTClient
 from optofidelity.videoproc import VideoException, VideoWriter
 
 class DeviceUnderTest(object):
@@ -9,6 +12,7 @@ class DeviceUnderTest(object):
   It provides methods to navigate different apps on the device and execute
   basic movements and robot commands.
   """
+  @contract(tnt=TnTClient, name=str)
   def __init__(self, tnt, name):
     self.name = name
     self.apps = {}

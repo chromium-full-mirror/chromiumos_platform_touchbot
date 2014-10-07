@@ -7,15 +7,16 @@ Provides the TestCase and TestRunner class. The TestRunner can be fed
 with multiple TestCases and execute these on the robot fully automatically while
 handling potential error cases by resetting or recalibrating the device.
 """
+from contracts import contract
+from fnmatch import fnmatch
 import h5py
 import itertools
 import os
 import sys
 import time
 import traceback
-from fnmatch import fnmatch
 
-from optofidelity.system.test_area import TestArea
+from optofidelity.system import TestApp, TestArea
 from optofidelity.detection import MultithreadedVideoProcessor as VideoProcessor
 from optofidelity.system import RetryFunction, DUTException
 from optofidelity.videoproc import VideoException, VideoWriter, FileVideoReader
@@ -56,6 +57,7 @@ class TestClass(object):
 
 class TestCase(object):
   """A test case is defined as a test_class executed on an app."""
+  @contract(app=TestApp, test_class=TestClass)
   def __init__(self, app, test_class):
     self.app = app
     self.test_class = test_class
@@ -77,9 +79,11 @@ class TestRunner(object):
     self.system = system
     self.dump_all = dump_all
 
+  @contract(test_class=type)
   def AddTestClass(self, test_class):
     self.test_classes[test_class.name] = test_class()
 
+  @contract(app=TestApp)
   def AddApp(self, app):
     self.test_apps[str(app)] = app
 
