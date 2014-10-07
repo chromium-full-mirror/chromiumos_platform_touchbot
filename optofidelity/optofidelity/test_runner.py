@@ -15,7 +15,7 @@ import time
 import traceback
 from fnmatch import fnmatch
 
-from detection import TestArea
+from optofidelity.system.test_area import TestArea
 from detection import MultithreadedVideoProcessor as VideoProcessor
 from system import RetryFunction, DUTException
 from videoproc import VideoException, VideoWriter, FileVideoReader

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 import time
 
-from optofidelity.detection import TestArea
+from optofidelity.system.test_area import TestArea
 from optofidelity.videoproc import VideoWriter
 
 
