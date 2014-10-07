@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 import numpy as np
+
 from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
@@ -41,22 +42,13 @@ class LineSegment(object):
 
 
 class Line(object):
-  """Represents a straight horizontal line drawn on the devices screen.
+  """Detects line draw events.
 
-  It detects line segments being drawn. For initialization it requires an image
-  of the fully drawn, non occluded line, which will be called target line. Per
-  default the line is expected to be drawn from left to right, but it
+  For initialization it requires an image of the fully drawn, non occluded line,
+  which will be called target line.
+  Per default the line is expected to be drawn from left to right, but it
   automatically detects if the direction is reversed and sets self.reverse to
   True.
-
-  draw_end_thresh:
-
-  Line.found: True if the line has been found.
-  Line.target_shape: The shape object of the target line.
-  Line.segments: An array of all line segments that have been detected so far.
-  Line.reverse: True if the line is being drawn from right to left.
-  Line.debug_canvas: If Update is called with debug=True, this will contain
-                    a Canvas object showing debug information.
   """
   name = "line"
 

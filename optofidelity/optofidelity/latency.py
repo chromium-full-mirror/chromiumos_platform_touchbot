@@ -4,7 +4,7 @@
 """This module implements test cases to measure touch latency."""
 import time
 
-from test_runner import TestClass
+from optofidelity.test_runner import TestClass
 from optofidelity.detection import Event, Line, Finger, ScreenFlash
 
 

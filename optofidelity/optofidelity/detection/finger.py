@@ -8,13 +8,7 @@ from optofidelity.videoproc import Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
 class Finger(Detector):
-  """Represents the OptoFidelity robot finger.
-
-  Finger.found: Is True when the finger has been detected
-  Finger.finger_shape: Is the segmented shape of the finger
-  Finger.debug_canvas: If Update is called with debug=True, this will
-                       contain a canvas object showing debug info.
-  """
+  """Detects finger events, such as FingerDown, FingerUp and FingerMoved."""
   name = "finger"
 
   finger_min_area = 1000
@@ -51,7 +45,6 @@ class Finger(Detector):
   def __init__(self):
     self.found = False
     self.finger_shape = None
-    self.debug_canvas = None
     self.location = None
     self.led_switching = False
 

@@ -3,13 +3,11 @@
 # found in the LICENSE file.
 """Classes for detecting objects in video streams of the OptoFidelity robot.
 
-This module is to be used on a video recording from the OptoFidelity robot
-working on a touchscreen. It allows the detection of the touchscreen, the
-robot finger as well as the detection of a line being drawn on the screen.
+The basis for this package is the Detector class from which multiple detectors
+derive. Each detector's  purpose is to process video frames and extract Events
+which are consolidated in a Trace class.
 
-For the purpose of latency measurements, the line and screen detection also
-accurately detects the frame when an updated frame is being drawn on the
-screen.
+These traces can then later be processed to calculate latencies.
 """
 from optofidelity.detection.finger import Finger
 from optofidelity.detection.detector import Frame, Video

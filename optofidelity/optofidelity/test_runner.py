@@ -16,9 +16,9 @@ import traceback
 from fnmatch import fnmatch
 
 from optofidelity.system.test_area import TestArea
-from detection import MultithreadedVideoProcessor as VideoProcessor
-from system import RetryFunction, DUTException
-from videoproc import VideoException, VideoWriter, FileVideoReader
+from optofidelity.detection import MultithreadedVideoProcessor as VideoProcessor
+from optofidelity.system import RetryFunction, DUTException
+from optofidelity.videoproc import VideoException, VideoWriter, FileVideoReader
 
 
 class TestClass(object):

@@ -5,11 +5,7 @@ import numpy as np
 from optofidelity.videoproc import Viewer, Filter, VideoException
 
 class Frame(object):
-  """This class stores multiple versions and views of a camera frame.
-
-  This class stores a cropped version of the image, enhances it with noise
-  filtering and calculates the reflectance.
-  """
+  """This class stores multiple versions and views of a camera frame."""
 
   brightness_out_of_range_thresh = 0.1
   """Brightness that is out of range by this threshold amout will raise an

@@ -1,11 +1,6 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""This module provides classes for measuring different touch latencies.
-
-This file depends on the detection module to run video processing to generate
-traces which are then processed to determine the latencies.
-"""
 import bisect
 import numpy as np
 import scipy.interpolate as interpolate

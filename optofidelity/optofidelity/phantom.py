@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 import skimage
 
-from videoproc.io import AbstractVideoReader
+from optofidelity.videoproc.io import AbstractVideoReader
 
 
 class Phantom(object):
