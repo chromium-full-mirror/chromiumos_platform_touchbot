@@ -89,6 +89,10 @@ class Canvas(object):
   method to draw shapes and lines that were calculated on rectified images into
   full frame images.
   """
+
+  plot_padding = 10
+  """Padding at top and bottom of plots in pixels."""
+
   def __init__(self, image, tform_fn=None):
     self.image = skimage.color.gray2rgb(image)
     self.tform_fn = tform_fn
@@ -102,8 +106,8 @@ class Canvas(object):
     if len(plot) > self.image.shape[1]:
       plot = plot[:self.image.shape[1]]
 
-    height = self.image.shape[0] - 20
-    cols = (height - (plot * height)).astype(np.int) + 10
+    height = self.image.shape[0] - self.plot_padding * 2
+    cols = (height - (plot * height)).astype(np.int) + self.plot_padding
     rows = range(len(plot))
     self.image[cols, rows] = color
 

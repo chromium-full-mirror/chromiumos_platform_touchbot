@@ -10,6 +10,15 @@ class Frame(object):
   This class stores a cropped version of the image, enhances it with noise
   filtering and calculates the reflectance.
   """
+
+  brightness_out_of_range_thresh = 0.1
+  """Brightness that is out of range by this threshold amout will raise an
+     exception."""
+
+  foreground_max_brightness = 0.95
+  """Everything below this threshold is considered to be the foreground
+     objects on the screen."""
+
   def __init__(self, im, prev_im, test_area, index=0):
     self.original = im
     self.rectified = im
@@ -21,9 +30,15 @@ class Frame(object):
       self.crop_shape = test_area.shape
       self.rectified = test_area.Rectify(im)
       self.normalized = test_area.NormalizeFrame(self.rectified)
-      if np.any(self.normalized > 1.1) or np.any(self.normalized < -0.1):
-        raise VideoException("Lighting changed.")
+
+      thresh = self.brightness_out_of_range_thresh
+      if (np.any(self.normalized > 1 + thresh) or
+          np.any(self.normalized < -thresh)):
+        raise VideoException("Brightness is out of calibrated range.")
+
       self.normalized = Filter.Truncate(self.normalized)
+    self.foreground = self.normalized < self.foreground_max_brightness
+
     if prev_im is not None:
       self.delta = im - prev_im
     else:

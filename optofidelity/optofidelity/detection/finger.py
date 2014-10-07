@@ -17,6 +17,37 @@ class Finger(Detector):
   """
   name = "finger"
 
+  finger_min_area = 1000
+  """Minimal area of the robot finger in square pixels."""
+
+  finger_max_eccentricity = 0.95
+  """Maximal eccentricity of the robot finger. The eccentricity is close to 1
+     for very elongated objects, and 0 for a square-ish object."""
+
+  finger_max_move_speed = 5
+  """Maximum movement speed of the finger in pixels per frame."""
+
+  border_max_touching_distance = 5
+  """Any object that's closer to the border than this threshold is considered
+     to touch the border."""
+
+  led_test_area_margin = 10
+  """Margin around the test area when blacking out the screen for LED
+     detection."""
+
+  led_min_filter_kernel_size = 5
+  """Kernel size of the minimum rank order filter applied for LED detection."""
+
+  led_diff_strength_treshold = 0.2
+  """Pixels that have changed by at least this amount from the last frame are
+     candidates for a blinking LED."""
+
+  led_min_size = 50
+  """Minimum size of an LED in the min filtered and thresholded picture."""
+
+  led_max_eccentricity = 0.9
+  """Maximum eccentricity of an LED object."""
+
   def __init__(self):
     self.found = False
     self.finger_shape = None
@@ -28,18 +59,25 @@ class Finger(Detector):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. This method
-    is stateless and can be called on any frames out of order."""
-    # extend the target area to view the full finger tip
-    binary = (frame.normalized < 0.95)
+    is stateless and can be called on any frames out of order.
+    """
+    binary = frame.foreground
 
     # we are looking for a big object that is not very elongated
-    # (i.e. not the line)
+    # (i.e. not the line). It is also expected to touch the top of the image,
+    # but not the bottom of the image.
     def is_finger(region, labels, debug=False):
       if debug:
         print (region.label, region.area, region.eccentricity, region.bbox[0],
-              region.bbox[2])
-      return (region.area > 1000 and region.eccentricity < 0.95 and
-              region.bbox[0] < 5 and region.bbox[2] < labels.shape[0] - 5)
+               region.bbox[2])
+
+      top = region.bbox[0]
+      bottom = region.bbox[2]
+      image_bottom = labels.shape[0]
+      return (region.area > self.finger_min_area and
+              region.eccentricity < self.finger_max_eccentricity and
+              top < self.border_max_touching_distance and
+              bottom < image_bottom - self.border_max_touching_distance)
     finger_shape = Shape.Find(binary, is_finger, debug=debug)
     location = None
 
@@ -51,15 +89,17 @@ class Finger(Detector):
 
     # Look for a large amount of change outside of the test area, i.e. a
     # flashing LED:
-    mask = ~frame.test_area.shape.WithMargin(10, 10).mask
+    margin = self.led_test_area_margin
+    mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
     delta = np.abs(frame.delta) * mask
-    delta = Filter.Min(delta, disk_size=5)
-    binary = delta > 0.2
+    delta = Filter.Min(delta, disk_size=self.led_min_filter_kernel_size)
+    binary = delta > self.led_diff_strength_treshold
 
     def is_led(region, labels, debug=False):
       if debug:
         print (region.label, region.area, region.eccentricity)
-      return (region.area > 50 and region.eccentricity < 0.9)
+      return (region.area > self.led_min_size and
+              region.eccentricity < self.led_max_eccentricity)
     led_shape = Shape.Find(binary, is_led, debug=debug)
 
     # Determine on/off state of the LED.
@@ -81,7 +121,8 @@ class Finger(Detector):
 
     # Report new location if location has changed but not changed too much.
     if (new_location is not None and self.location != new_location and
-        (self.location is None or np.abs(self.location - new_location) < 5)):
+        (self.location is None or
+         np.abs(self.location - new_location) < self.finger_max_move_speed)):
       self.location = new_location
       events.append(Event(timestamp, Event.FINGER_MOVED,
                           location=new_location))

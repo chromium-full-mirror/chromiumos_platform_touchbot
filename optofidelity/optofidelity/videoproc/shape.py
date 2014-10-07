@@ -13,6 +13,7 @@ import skimage.measure as measure
 import skimage.morphology as morphology
 
 from optofidelity.videoproc.util import Viewer, VideoException
+from optofidelity.videoproc.filter import Filter
 
 class Shape(object):
   """Describes a segmented shape in an image.
@@ -116,7 +117,8 @@ class Shape(object):
     verticies = measure.approximate_polygon(contour, tolerance=10)
 
     # The last coordinate is often a duplicate of the first.
-    if np.abs(np.linalg.norm(verticies[0, :] - verticies[-1, :])) < 0.01:
+    if (np.abs(np.linalg.norm(verticies[0, :] - verticies[-1, :]))
+        < Filter.epsilon):
       verticies = verticies[:-1]
 
     # Assuming all angles are the same, how big should they be?

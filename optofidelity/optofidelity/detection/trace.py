@@ -49,6 +49,14 @@ class Trace(object):
 
   Allows the trace to be modified or information to be extracted from it.
   """
+
+  linear_motion_smoothing_kernel = 9
+  """Kernel size for smoothing the movement in linear motion detection."""
+
+  linear_motion_max_speed_deviation = 0.2
+  """How much can the speed deviate from the target speed to be considered
+     part of the linear motion area."""
+
   def __init__(self, events=None):
     self._events = events or []
     self._times = [event.time for event in self._events]
@@ -137,20 +145,20 @@ class Trace(object):
     tuple of events indicating the range in which this motion is linear
     at this speed.
     """
-    SMOOTHING_KERNEL = 9
-
     events = self.Events(event_type)
     locations = [e.location for e in events]
 
     # Calculated smoothed first derivative
     def MovingAvg(f, N):
       return signal.convolve(f, np.ones(N,) / N, "valid")
-    smoothed = MovingAvg(locations, SMOOTHING_KERNEL)
-    speed = np.abs(MovingAvg(np.diff(smoothed), SMOOTHING_KERNEL))
+    smoothing_kernel = self.linear_motion_smoothing_kernel
+    smoothed = MovingAvg(locations, smoothing_kernel)
+    speed = np.abs(MovingAvg(np.diff(smoothed), smoothing_kernel))
 
     # Allow 20% variation of the maximum speed in linear range.
     max_speed_idx = np.argmax(speed)
-    min_speed = speed[max_speed_idx] * 0.8
+    min_speed_factor = (1 - self.linear_motion_max_speed_deviation)
+    min_speed = speed[max_speed_idx] * min_speed_factor
 
     # Find area in which the robot continuously has this speed.
     start = 0

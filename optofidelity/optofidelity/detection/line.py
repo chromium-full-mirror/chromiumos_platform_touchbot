@@ -49,8 +49,7 @@ class Line(object):
   automatically detects if the direction is reversed and sets self.reverse to
   True.
 
-  draw_end_thresh: How much of the target color does a line segment have
-                   to reach to be considered fully drawn? (Default: 0.9)
+  draw_end_thresh:
 
   Line.found: True if the line has been found.
   Line.target_shape: The shape object of the target line.
@@ -61,9 +60,54 @@ class Line(object):
   """
   name = "line"
 
-  def __init__(self, draw_end_thresh=0.9):
-    self._draw_end_thresh = draw_end_thresh
+  draw_end_thresh = 0.9
+  """How much of the target color a line segment has to reach to be considered
+     fully drawn."""
 
+  target_line_min_area = 500
+  """Minimum size of the target line shape, in square pixels."""
+
+  target_line_min_eccentricity = 0.99
+  """Minimum eccentricity of the target line shape."""
+
+  target_line_max_orientation = 0.1
+  """Maximum orientation of the target line shape in radians from horizontal."""
+
+  target_line_search_step = 10
+  """When searching for the target line, look only at every Nth frame."""
+
+  target_line_search_max_steps = 10
+  """How many frames to look at when looking for a target line."""
+
+  target_line_padding = 5
+  """How many pixels of padding around the target line to account for camera
+     shake?"""
+
+  profile_object_threshold = 0.1
+  """Areas above this threshold are considered to be an object in the
+     image profile."""
+
+  border_touching_threshold = 5
+  """Any object that's closer to the border than this threshold is considered
+     to touch the border."""
+
+  minimum_line_length = 4
+  """Minimum length of a newly detected line."""
+
+  minimum_line_level = 0.5
+  """Minimum brightness level of a newly detected line."""
+
+  transition_epsilon = 0.01
+  """Near-zero epsilon to detect when the transition area hits zero."""
+
+  segment_merge_level = 0.3
+  """Line segments with an level difference lower than this threshold will be
+     merged."""
+
+  segment_min_length = 2
+  """Minimum length of a line segment."""
+
+  def __init__(self):
     # Calibration Information
     self.target_shape = None
     self._target_left = None
@@ -77,7 +121,9 @@ class Line(object):
     self._line_end = None
 
   def Initialize(self, video, debug=False):
-    for frame in video.Frames(start=-1, stop=-100, step=-10):
+    step = -self.target_line_search_step
+    stop = -step * self.target_line_search_max_steps
+    for frame in video.Frames(start=-1, stop=stop, step=step):
       if self.DetectTargetLine(frame, debug=debug):
         return True
     return False
@@ -92,12 +138,12 @@ class Line(object):
     def is_target_line(region, labels, debug=False):
       if debug:
         print region.label, region.area, region.eccentricity, region.orientation
-      return (region.area > 500 and # Large size
-              region.eccentricity > 0.99 and # Very elongated
-              np.abs(region.orientation) < 0.1) # Horizontally oriented
+      return (region.area > self.target_line_min_area and
+              region.eccentricity > self.target_line_min_eccentricity and
+              np.abs(region.orientation) < self.target_line_max_orientation)
 
     # Find object fitting the is_target_line function.
-    binary = frame.normalized < 0.9
+    binary = frame.foreground
     self.target_shape = Shape.Find(binary, is_target_line, debug=debug)
     if not self.target_shape:
       return False
@@ -106,7 +152,8 @@ class Line(object):
     self._target_right = self.target_shape.right
 
     # Add margin to account for camera shake.
-    self.target_shape = self.target_shape.WithMargin(5, 5)
+    padding = self.target_line_padding
+    self.target_shape = self.target_shape.WithMargin(padding, padding)
 
     # Calculate profile of drawn line and empty screen as reference.
     self._drawn_profile = Filter.ExtractProfile(
@@ -129,7 +176,7 @@ class Line(object):
     self.reverse if the line is drawn from right to left.
     """
     # segment objects on profile line (1D version of shape detection)
-    segmentation = (profile > 0.1).astype(np.int)
+    segmentation = (profile > self.profile_object_threshold).astype(np.int)
     segmentation_diff = np.diff(segmentation)
 
     objects = []
@@ -150,10 +197,11 @@ class Line(object):
 
     # check if the object is at the start or end of the target line
     line = None
-    if leftmost_object[0] < self._target_left + 5:
+    border_threshold = self.border_touching_threshold
+    if leftmost_object[0] < self._target_left + border_threshold:
       line = leftmost_object
       self.reverse = False
-    elif rightmost_object[1] > self._target_right - 5:
+    elif rightmost_object[1] > self._target_right - border_threshold:
       line = rightmost_object
       self.reverse = True
     if not line:
@@ -162,7 +210,8 @@ class Line(object):
     # check if the line is dark and long enough
     line_level = np.mean(profile[line[0]:line[1]])
     line_length = line[1] - line[0]
-    if line_level > 0.5 and line_length > 4:
+    if (line_level > self.minimum_line_level and
+        line_length > self.minimum_line_length):
       return line
     return None
 
@@ -180,11 +229,11 @@ class Line(object):
     transition_start = self._line_end
     transition_end = self._line_end
     for i in range(self._line_end, front, backward):
-      if profile[i] > 0.99:
+      if profile[i] > 1 - self.transition_epsilon:
         transition_start = i
         break
     for i in range(self._line_end, back, forward):
-      if profile[i] < 0.01:
+      if profile[i] < self.transition_epsilon:
         transition_end = i
         break
     return (transition_start, transition_end)
@@ -210,10 +259,10 @@ class Line(object):
 
     segment_level_diff = np.abs(last_segment.level - new_segment.level)
 
-    if segment_level_diff < 0.3:
+    if segment_level_diff < self.segment_merge_level:
       # segments colors are very close to each other, merge them.
       last_segment.end = new_segment.end
-    elif new_segment.length > 2:
+    elif new_segment.length > self.segment_min_length:
       # segment is big enough, append as new segment
       self.segments.append(new_segment)
 
@@ -266,21 +315,12 @@ class Line(object):
     # Update existing segments and create draw events
     for segment in self.segments:
       segment.UpdateLevel(profile)
-      if segment.draw_end is None and segment.level > self._draw_end_thresh:
+      if segment.draw_end is None and segment.level > self.draw_end_thresh:
         segment.draw_end = timestamp
         events.append(Event(segment.draw_start, Event.LINE_DRAW_START,
                             location=segment.end))
         events.append(Event(segment.draw_end, Event.LINE_DRAW_END,
                             location=segment.end))
-
-    # Have all segments disappeared? Line has been reset.
-    average_level = np.mean([s.level for s in self.segments
-                                     if s.draw_end is not None])
-    if len(self.segments) >= 2 and average_level < 0.1:
-      events.append(Event(timestamp, Event.LINE_RESET))
-      self.found = False
-      self._line_end = None
-      return events
 
     # Find transition area and add new line segments to the segment list
     (transition_start, transition_end) = self._FindTransition(profile)

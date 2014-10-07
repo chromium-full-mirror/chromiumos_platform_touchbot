@@ -15,9 +15,43 @@ class TestArea(object):
   This class can detect the flashing test area and can rectify images
   to show only this area.
   """
-  def __init__(self):
-    self.rect_scaling = 1.2
 
+  rect_scaling = 1.2
+  """Factor by which the rectified image will be enlarged to make sure we are
+     not losing any information due to interpolation."""
+
+  test_area_min_area = 10000
+  """Minimum area of a test area in square pixels."""
+
+  test_area_min_solidity = 0.9
+  """Minimum solidity of the test_area."""
+
+  test_area_closing_kernel = morphology.disk(2)
+  """Size of the disk shaped kernel used for the closing operation to close
+     any holes in the detected shapes that might be caused by noise."""
+
+  test_area_margin = 4
+  """The test area is reduced in size by this margin to account for potential
+     camera shake."""
+
+  diff_threshold = 0.5
+  """Threshold used on the difference between the on and off image to find
+     the test area."""
+
+  out_of_view_edge_pixels = 10
+  """How many pixels of the test_area have to be at the edge of the screen
+     to consider it being out of view?"""
+
+  brightness_error_margin = 0.1
+  """If the normalized brightness exceeds this threshold above 1 or below 0,
+     the brightness is considered to be out of range and will cause an error."""
+
+  max_edge_deviation = 0.5
+  """When the bezel enters the test_area, the brightness along this edge will
+     deviate from others. This threshold describes by how much it can deviate
+     before causing an error."""
+
+  def __init__(self):
     self.shape = None
     self.rect_transform = None
     self.on_image = None
@@ -130,11 +164,13 @@ class TestArea(object):
     def is_screen(region, labels, debug=False):
       if debug:
         print region.label, region.area, region.solidity
-      return (region.area > 10000 and # Large enough size
-              region.solidity > 0.9) # No holes
-    binary = delta > 0.5
-    binary = morphology.binary_closing(binary, morphology.disk(2))
-    binary = morphology.binary_erosion(binary, morphology.disk(4))
+      return (region.area > self.test_area_min_area and
+              region.solidity > self.test_area_min_solidity)
+    binary = delta > self.diff_threshold
+
+    margin_kernel = morphology.disk(self.test_area_margin)
+    binary = morphology.binary_closing(binary, self.test_area_closing_kernel)
+    binary = morphology.binary_erosion(binary, margin_kernel)
     self.shape = Shape.Find(binary, is_screen, required=True, debug=debug)
 
     # create a 1px rectangle mask along the edge of the video frame
@@ -148,7 +184,7 @@ class TestArea(object):
     frame_border[width - 1, :] = True
     border_overlap = np.sum(frame_border * self.shape.mask)
 
-    if border_overlap > 10:
+    if border_overlap > self.out_of_view_edge_pixels:
       raise VideoException("Screen out of camera view")
 
     # Estimate rectification transformation
@@ -208,13 +244,14 @@ class TestArea(object):
     # The brightness is normalized to the black screen being 0 and the white
     # screen being 1. If the lighting changed, the normalized brightness will
     # be outside the [0, 1] range.
-    if mean > 1.1 or mean < -0.1:
+    error_margin = self.brightness_error_margin
+    if mean > 1 + error_margin or mean < -error_margin:
       raise VideoException("Lighting changed.")
 
     # If the bezel shifted into the screen the deviation of the edge means
     # from the overall mean will be strong.
     deviations = np.abs(edge_means - mean)
-    if np.any(deviations > 0.5):
+    if np.any(deviations > self.max_edge_deviation):
       raise VideoException("Camera shifted.")
 
 
@@ -230,12 +267,19 @@ class ScreenFlash(Detector):
   WHITE = 1
   name = "screenflash"
 
-  def __init__(self, no_change_thresh=0.05, change_thresh=0.9):
-    """Initialize empty or by providing a pre-calculated screen."""
-    self.no_change_thresh = no_change_thresh
-    self.change_thresh = change_thresh
+  change_thresh = 0.9
+  """How much of the target color has to be reached for the screen to be
+     be considered fully changed."""
 
-    # Stateful information
+  no_change_thresh = 0.05
+  """How much can the color deviate from it's supposed color to be considered
+     unchanged."""
+
+  edge_width = 10
+  """Width of edges on the sides of the screen we analyse for screen flashes."""
+
+
+  def __init__(self):
     self.color = None
     self.last_no_draw_time = 0
     self.debug_canvas = None
@@ -271,7 +315,7 @@ class ScreenFlash(Detector):
     # sure that those values match up with the color we just determined.
     # This is not the case if the camera shifted slightly or the robot is in the
     # wrong app.
-    edge_mean = np.mean([profile[:10], profile[-10:]])
+    edge_mean = np.mean([profile[:self.edge_width], profile[-self.edge_width:]])
     if ((self.color == self.BLACK and edge_mean > self.no_change_thresh) or
         (self.color == self.WHITE and edge_mean < 1.0 - self.no_change_thresh)):
       error_msg = "Inconsistent edge profile."
@@ -304,9 +348,9 @@ class ScreenFlash(Detector):
     events = []
     profile = preprocessed_data
 
-    # we are only looking at first and last 10 pixels of the profile, where the
+    # we are only looking at first and last N pixels of the profile, where the
     # screen draws start and end.
-    segment = [profile[:10], profile[-10:]]
+    segment = [profile[:self.edge_width], profile[-self.edge_width:]]
     min_level = np.min(segment)
     max_level = np.max(segment)
 

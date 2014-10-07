@@ -14,6 +14,9 @@ import skimage.transform as transform
 class Filter(object):
   """A collection of commonly used image processing filters."""
 
+  epsilon = 1e-5
+  """Everything below epsilon is considered to zero."""
+
   @staticmethod
   def Truncate(image, min_val=0.0, max_val=1.0):
     """Truncate values below 0 or above 1."""
@@ -70,7 +73,7 @@ class Filter(object):
     a strong median rank order filter, then calculate the reflectance.
     """
     illuminance = Filter.Median(image, disk_size, scale)
-    illuminance[illuminance < 1e-5] = 1e-5 # prevent division by 0
+    illuminance[illuminance < Filter.epsilon] = Filter.epsilon
     reflectance = image / illuminance
     return Filter.Truncate(reflectance)
 
@@ -89,7 +92,7 @@ class Filter(object):
         profile = profile - low_ref
         high_ref = high_ref - low_ref
       normalized = np.zeros(profile.shape)
-      non_zero = [high_ref > 0.1]
+      non_zero = [high_ref > Filter.epsilon]
       normalized[non_zero] = (profile[non_zero] / high_ref[non_zero])
 
       profile = np.clip(normalized, 0, 1)
