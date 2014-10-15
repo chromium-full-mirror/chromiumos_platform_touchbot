@@ -103,7 +103,7 @@ class TestRunner(object):
       print "Detecting Screen in", (name + ".mov")
       test_area = TestArea()
       debug_flag = debug and ("screen" in debug or "all" in debug)
-      test_area.Detect(video.Frames(step=10), debug=debug_flag)
+      test_area.Detect(video.Frames(stop=60), debug=debug_flag)
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
     print "%s: Dumping debug info:" % case
@@ -161,6 +161,7 @@ class TestRunner(object):
 
   def _RunAppTests(self, dut, app, cases, debug=[]):
     dut.EnterApp(app.name)
+    app.CalibrateScreen(self.system.camera, dump=self.dump_all)
     for case in cases:
       RetryFunction(lambda: self._RunTest(dut, app, case, debug),
                     app.Reset,

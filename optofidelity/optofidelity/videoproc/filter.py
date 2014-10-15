@@ -18,6 +18,31 @@ class Filter(object):
   epsilon = 1e-5
   """Everything below epsilon is considered to zero."""
 
+  stable_extreme_number_of_elements = 50
+  """Number of maximum elements to pick for stable min/maximum."""
+
+  @staticmethod
+  @contract(image="image")
+  def StableMax(image):
+    """Return the noise-immune maximum value of the image."""
+    k = Filter.stable_extreme_number_of_elements
+    k_max = np.sort(image.flat)[-k:]
+    return np.mean(k_max)
+
+  @staticmethod
+  @contract(image="image")
+  def StableMin(image):
+    """Return the noise-immune minimum value of the image."""
+    k = Filter.stable_extreme_number_of_elements
+    k_min = np.sort(image.flat)[:k]
+    return np.mean(k_min)
+
+  @staticmethod
+  @contract(image="image")
+  def StableMidRange(image):
+    """Return the noise-immune min-range of the image."""
+    return (Filter.StableMax(image) + Filter.StableMin(image)) / 2
+
   @staticmethod
   @contract(image="image", min_val="number", max_val="number")
   def Truncate(image, min_val=0.0, max_val=1.0):

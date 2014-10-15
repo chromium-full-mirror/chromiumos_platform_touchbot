@@ -58,14 +58,14 @@ class TestApp(object):
   def CalibrateScreen(self, camera, dump=False):
     self.EnterPage(self.PAGE_FLASH)
     self.dut.ClearScreen()
-    camera.Record(300)
+    camera.Record(60)
     camera.WaitUntilReady()
     self.ExitPage()
 
     reader = camera.GetVideoReader()
     self.test_area = TestArea()
     try:
-      self.test_area.Detect(reader.Frames(step=10))
+      self.test_area.Detect(reader)
       if not dump:
         return
     except Exception, e:

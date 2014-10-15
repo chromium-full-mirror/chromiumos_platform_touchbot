@@ -49,6 +49,13 @@ class TestArea(object):
      deviate from others. This threshold describes by how much it can deviate
      before causing an error."""
 
+  diff_unchanged_max_mid_range = 0.01
+  """If the mid-range value of a diff image exceeds this value it is considered
+     to show no change."""
+
+  reference_min_num_frames = 6
+  """Minimum number of frames to use for building a reference frame."""
+
   def __init__(self):
     self.shape = None
     self.rect_transform = None
@@ -124,26 +131,64 @@ class TestArea(object):
       res = self.rect_transform(coords)
       return res[0, 0], res[0, 1]
 
-  def FindOnOffFrames(self, frames):
-    """Search for brightest and darkest frames in a frames iterator."""
+  def FindReferenceFrames(self, video_reader, debug=False):
+    """Find black and white reference frames in a video of the flashing screen.
+
+    This method averages multiple frames of the video showing the black and
+    white screen, returning a black and white reference frame.
+
+    Args:
+      video_reader: A VideoReader instance.
+      debug: A ProcessorDebugger instance.
+    """
+    ref_images = []
+    frames = video_reader.Frames()
+
+    # Accumulator to calculate mean images.
     i, prev_frame = frames.next()
-    on_frame = prev_frame
-    on_frame_mean = np.mean(on_frame)
-    off_frame = on_frame
-    off_frame_mean = np.mean(off_frame)
+    mean_accum = np.zeros(prev_frame.shape)
+    mean_accum_num = 0
 
     for i, frame in frames:
-      mean = np.mean(frame)
-      if mean > on_frame_mean:
-        on_frame = frame
-        on_frame_mean = mean
-      if mean < off_frame_mean:
-        off_frame = frame
-        off_frame_mean = mean
-      prev_frame = frame
-    return on_frame, off_frame
+      # Calculate the mid-range value of the inter-frame difference.
+      # This reliably describes the general direction of change.
+      diff = frame - prev_frame
+      midrange = Filter.StableMidRange(diff)
 
-  def Detect(self, frames, debug=False):
+      if np.abs(midrange) < self.diff_unchanged_max_mid_range:
+        # Add frame to accumulator
+        mean_accum += frame
+        mean_accum_num += 1
+      else:
+        # The screen is in the process of switching colors.
+        if mean_accum_num > self.reference_min_num_frames:
+          # We collected enough samples for a solid reference image.
+          ref_images.append(mean_accum / mean_accum_num)
+          if len(ref_images) >= 2:
+            break
+        # Reset mean accumulator
+        mean_accum_num = 0
+        mean_accum = np.zeros(prev_frame.shape)
+
+      if debug:
+        print i, midrange, mean_accum_num
+        Viewer.VideoFrame(0.5 + diff)
+      prev_frame = frame
+
+    # Add the last accumulation in case we don't have enough reference images
+    if mean_accum_num > self.reference_min_num_frames and len(ref_images) < 2:
+      ref_images.append(mean_accum / mean_accum_num)
+
+    if len(ref_images) < 2:
+      raise VideoException("Cannot find flashing screen")
+
+    # Return (white_ref, black_ref)
+    if np.mean(ref_images[0]) > np.mean(ref_images[1]):
+      return ref_images[0], ref_images[1]
+    else:
+      return ref_images[1], ref_images[0]
+
+  def Detect(self, video_reader, debug=False):
     """Detect the devices flashing screen.
 
     The frames argument has to be a python iterator that yields
@@ -155,7 +200,7 @@ class TestArea(object):
     # Image of the screen on (max average grayscale)
     # And the accumulative difference between frames to find the area that
     # is changing the most.
-    on_frame, off_frame = self.FindOnOffFrames(frames)
+    on_frame, off_frame = self.FindReferenceFrames(video_reader, debug=debug)
     delta = Filter.Truncate(on_frame - off_frame)
 
     # Find screen shape
