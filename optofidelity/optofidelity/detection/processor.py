@@ -4,16 +4,31 @@
 """This module provides classes that generate traces from video files."""
 from contracts import contract
 import multiprocessing
+import numpy as np
 import sys
 
 from optofidelity.detection.detector import Frame, Video, Detector
 from optofidelity.detection.trace import Trace
 from optofidelity.system import TestArea
-from optofidelity.videoproc import Viewer, Canvas, VideoException
+from optofidelity.videoproc import (Canvas, Filter, VideoException, VideoReader,
+                                    Viewer)
 
 
 class VideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
+
+  inter_frame_unchanged_max_diff = 0.05
+  """Maximum frame difference between two adjacent frames for them to be
+     considered as not showing any relevant difference."""
+
+  peek_frame_unchanged_max_diff = 0.2
+  """Maximum frame difference between a frame and a distance reference frame
+     for them to be considered as not showing any relevant difference."""
+
+  peek_distances = (128, 64, 32, 16, 8)
+  """Distances from the current frame to peek at when looking for frames to
+     skip."""
+
   @contract(test_area=TestArea)
   def __init__(self, test_area):
     self.test_area = test_area
@@ -89,22 +104,69 @@ class VideoProcessor(object):
       if key == ord('p'):
         video.EnterInteractive()
 
+  @contract(video=VideoReader)
+  def ReadRelevantFrames(self, video, step=1):
+    """Yield frames from video while omitting unecesssary frames.
+
+    This method omits frames that show no change to the previous frame, thus
+    reducing the number of frames that need to be read.
+
+    Yields tuples (i, image) with i being the frame index and image the
+    image data as a numpy array.
+    """
+    prev_image = None
+    i = 0
+    dont_peek_before = None
+    while i < video.num_frames:
+      # Read frame and calculate inter-frame difference
+      image = video.FrameAt(i)
+      diff = np.ones((1, 1))
+      if prev_image is not None:
+        diff = np.abs(prev_image - image)
+
+      inter_max_diff = self.inter_frame_unchanged_max_diff
+      if Filter.StableMax(diff) < inter_max_diff and i >= dont_peek_before:
+        # This frame shows very little inter-frame difference, thus could be
+        # omitted. Peek ahead a decreasing distance away from the previous
+        # frame, looking for one that still shows little difference.
+        for peek_ahead in self.peek_distances:
+          peek_i = i + peek_ahead - 1
+          if peek_i >= video.num_frames:
+            continue
+          peek_image = video.FrameAt(peek_i)
+          diff = np.abs(prev_image - peek_image)
+          peek_max_diff = self.peek_frame_unchanged_max_diff
+          if Filter.StableMax(diff) < peek_max_diff:
+            # The peeked at frame shows little difference, jump ahead.
+            print ""
+            print "skipped", peek_i - i, "frames"
+            i = peek_i
+            image = peek_image
+            last_peek = peek_ahead
+            break
+        # Don't peek again for a while.
+        dont_peek_before = i + min(self.peek_distances)
+
+      # Yield next frame
+      sys.stdout.write("\rReading frame %d/%d" % (i, video.num_frames))
+      sys.stdout.flush()
+      yield i, image
+      prev_image = image
+      i += 1
+    print ""
+
   def ProcessVideo(self, video, step=1, debug=[]):
     """Process video and return a trace of all detected events."""
     trace = Trace()
-    prev_im = None
-    for i, im in video.Frames(step=step):
-      sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
-      sys.stdout.flush()
-
-      frame = Frame(im, prev_im, self.test_area, i)
+    prev_image = None
+    for i, image in self.ReadRelevantFrames(video):
+      frame = Frame(image, prev_image, self.test_area, i)
       i, preprocessed_data = self.Preprocess(frame, debug)
 
       debug_canvas = self.MakeDebugCanvas(debug, frame)
       self.GenerateEvents(trace, i, preprocessed_data, debug, debug_canvas)
       self.DisplayDebugCanvas(debug_canvas, video)
-      prev_im = im
-    print ""
+      prev_image = image
     return trace
 
 
@@ -151,9 +213,7 @@ class MultithreadedVideoProcessor(VideoProcessor):
     # Read frames and put them into the processing queue
     prev_image = None
     num_frames = 0
-    for i, frame in video.Frames(step=step):
-      sys.stdout.write("\rPreprocessing frame %d/%d" % (i, video.num_frames))
-      sys.stdout.flush()
+    for i, frame in self.ReadRelevantFrames(video, step=1):
       num_frames += 1
       frame_queue.put((i, frame, prev_image))
       prev_image = frame
@@ -178,17 +238,18 @@ class MultithreadedVideoProcessor(VideoProcessor):
       preprocessed_data = data_map[i]
       self.GenerateEvents(trace, i, preprocessed_data, debug, debug_canvas)
 
-    if not debug:
-      # Process frames in order
-      for i in sorted(data_map.keys()):
+    # Process frames in order
+    prev_image = None
+    for i in sorted(data_map.keys()):
+      if not debug:
         ProcessFrame(i)
-    else:
-      # Load frames from video again for debugging view
-      prev_image = None
-      for i, image in video.Frames(step=step):
+      else:
+        # Load frames from video again for debugging view
+        image = video.FrameAt(i)
         frame = Frame(image, prev_image, self.test_area, i)
         debug_canvas = self.MakeDebugCanvas(debug, frame)
         ProcessFrame(i, debug, debug_canvas)
         self.DisplayDebugCanvas(debug_canvas, video)
+        prev_image = image
 
     return trace
