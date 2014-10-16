@@ -56,6 +56,9 @@ class TestArea(object):
   reference_min_num_frames = 6
   """Minimum number of frames to use for building a reference frame."""
 
+  min_dynamic_range = 0.5
+  """Minimum range between black and white."""
+
   def __init__(self):
     self.shape = None
     self.rect_transform = None
@@ -238,6 +241,12 @@ class TestArea(object):
     self.off_image = self.Rectify(off_frame)
     self.on_profile = Filter.ExtractProfile(self.on_image)
     self.off_profile = Filter.ExtractProfile(self.off_image)
+
+    # Check dynamic range. We need enough resolution to distinguish shades
+    # between black and white during later processing.
+    dynamic_range = np.mean(self.on_image - self.off_image)
+    if dynamic_range <  self.min_dynamic_range:
+      raise VideoException("Not enough dynamic range.")
 
     if debug:
       res = Canvas(on_frame)
