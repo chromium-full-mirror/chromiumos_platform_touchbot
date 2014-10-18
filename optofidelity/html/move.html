@@ -40,15 +40,17 @@
       var touch = event.changedTouches[0];
 
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 200;
       ctx.lineCap = 'butt'
 
       ctx.beginPath();
-      ctx.moveTo(prev_x, prev_y);
-      ctx.lineTo(touch.clientX, touch.clientY);
+      delta_x = touch.clientX - prev_x
+      delta_y = touch.clientY - prev_y
+      ctx.moveTo(prev_x, prev_y - delta_y * 2);
+      ctx.lineTo(prev_x, touch.clientY);
       ctx.stroke();
 
-      prev_x = touch.clientX;
+      //prev_x = touch.clientX;
       prev_y = touch.clientY;
     }
 
