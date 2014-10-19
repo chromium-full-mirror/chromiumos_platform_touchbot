@@ -75,6 +75,19 @@ class Trace(object):
   def __repr__(self):
     return str(self)
 
+  def Split(self, event_type):
+    """Split trace before each occurence of event_type."""
+    events = None
+    for event in self._events:
+      if event.event_type == event_type:
+        if events:
+          yield Trace(events)
+        events = []
+      if events is not None:
+        events.append(event)
+    if events:
+      yield Trace(events)
+
   def Events(self, event_type=None, color=None):
     """Return list of events of event_type."""
     if event_type is None:

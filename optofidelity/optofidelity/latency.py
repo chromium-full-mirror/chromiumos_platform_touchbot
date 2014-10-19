@@ -50,35 +50,47 @@ class TapLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TapLatency"
   required_events = []
+  num_measurements = 6
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
     processor.AddDetector(FingerLED())
 
   def ExecuteTest(self, app, dut, camera):
+    camera.PrepareRecording(300 + 200 * self.num_measurements)
     app.EnterPage("Tap")
     dut.Move(dut.test_plane, dut.height/2, 10)
-    camera.Record(300)
-    time.sleep(0.8)
-    dut.Tap(dut.test_plane, dut.height/2)
+    camera.Trigger()
+    dut.Tap(dut.test_plane, dut.height/2, count=self.num_measurements)
     camera.WaitUntilReady()
     app.ExitPage()
     return camera.GetVideoReader()
 
   def ProcessTrace(self, trace):
-    # find linear motion range and trim draw events to this range.
-    finger_down = trace.Time(Event.FINGER_DOWN)
-    finger_up = trace.Time(Event.FINGER_UP)
+    traces = trace.Split(Event.FINGER_DOWN)
 
-    screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
-    screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
+    down_start = []
+    down_end = []
+    up_start = []
+    up_end = []
+    for trace in traces:
+      finger_down = trace.Time(Event.FINGER_DOWN)
+      finger_up = trace.Time(Event.FINGER_UP)
 
-    screen_on_start = trace.Time(Event.SCREEN_DRAW_START, color="White")
-    screen_on_end = trace.Time(Event.SCREEN_DRAW_END, color="White")
+      screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
+      screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
+
+      screen_on_start = trace.Time(Event.SCREEN_DRAW_START, color="White")
+      screen_on_end = trace.Time(Event.SCREEN_DRAW_END, color="White")
+
+      down_start.append(screen_off_start - finger_down)
+      down_end.append(screen_off_end - finger_down)
+      up_start.append(screen_on_start - finger_up)
+      up_end.append(screen_on_end - finger_up)
 
     return {
-        "DownStartLatency": screen_off_start - finger_down,
-        "DownEndLatency": screen_off_end - finger_down,
-        "UpStartLatency": screen_on_start - finger_up,
-        "UpEndLatency": screen_on_end - finger_up,
+        "DownStartLatency": down_start,
+        "DownEndLatency": down_end,
+        "UpStartLatency": up_start,
+        "UpEndLatency": up_end,
     }

@@ -175,6 +175,13 @@ class Phantom(object):
       time.sleep(0.1)
 
   def Record(self, num_frames=MAX_PTFRAMES, cine_number=DEFAULT_CINE):
+    self.PrepareRecording(num_frames, cine_number)
+    self.Trigger(cine_number)
+
+  def Trigger(self, cine_number=DEFAULT_CINE):
+    self.SendCommand('trig %d' % cine_number)
+
+  def PrepareRecording(self, num_frames=MAX_PTFRAMES, cine_number=DEFAULT_CINE):
     """Record num_frames into the cine slot.
 
     This function will override any existing recording in this slot. The
@@ -189,7 +196,6 @@ class Phantom(object):
 
     self._SetProperty("defc.ptframes", num_frames)
     self.SendCommand('rec %d' % cine_number)
-    self.SendCommand('trig %d' % cine_number)
 
   def SendCommand(self, cmd):
     """Send a command to the camera, and return the response."""

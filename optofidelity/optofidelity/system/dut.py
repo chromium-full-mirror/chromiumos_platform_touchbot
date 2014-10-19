@@ -85,8 +85,11 @@ class DeviceUnderTest(object):
       y = (match["topLeftY"] + match["bottomRightY"]) / 2.0
       yield match["text"], x, y
 
-  def Tap(self, x, y):
-    self.client.tap(x, y)
+  def Tap(self, x, y, count=1):
+    if count == 1:
+      self.client.tap(x, y)
+    else:
+      self.client.multi_tap([[x, y]] * count)
 
   def Move(self, x, y, z):
     self.client.move(x, y, z)
