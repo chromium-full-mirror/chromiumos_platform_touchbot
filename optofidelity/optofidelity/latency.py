@@ -5,7 +5,8 @@
 import time
 
 from optofidelity.test_runner import TestClass
-from optofidelity.detection import Event, Line, Finger, ScreenFlash
+from optofidelity.detection import (Event, FingerLED, FingerMove, Line,
+                                    ScreenFlash)
 
 
 class TouchMoveLatencyTest(TestClass):
@@ -15,7 +16,7 @@ class TouchMoveLatencyTest(TestClass):
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
-    processor.AddDetector(Finger())
+    processor.AddDetector(FingerMove())
 
   def ExecuteTest(self, app, dut, camera):
     app.EnterPage("Move")
@@ -52,7 +53,7 @@ class TapLatencyTest(TestClass):
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
-    processor.AddDetector(Finger())
+    processor.AddDetector(FingerLED())
 
   def ExecuteTest(self, app, dut, camera):
     app.EnterPage("Tap")

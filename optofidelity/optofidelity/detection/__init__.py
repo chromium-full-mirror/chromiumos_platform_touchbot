@@ -9,7 +9,7 @@ which are consolidated in a Trace class.
 
 These traces can then later be processed to calculate latencies.
 """
-from optofidelity.detection.finger import Finger
+from optofidelity.detection.finger import FingerMove, FingerLED
 from optofidelity.detection.detector import Frame, Video
 from optofidelity.detection.line import Line
 from optofidelity.detection.screen import ScreenFlash

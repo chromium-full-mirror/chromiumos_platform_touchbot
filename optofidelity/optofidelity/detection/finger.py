@@ -7,23 +7,9 @@ from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
-class Finger(Detector):
-  """Detects finger events, such as FingerDown, FingerUp and FingerMoved."""
-  name = "finger"
-
-  finger_min_area = 1000
-  """Minimal area of the robot finger in square pixels."""
-
-  finger_max_eccentricity = 0.95
-  """Maximal eccentricity of the robot finger. The eccentricity is close to 1
-     for very elongated objects, and 0 for a square-ish object."""
-
-  finger_max_move_speed = 5
-  """Maximum movement speed of the finger in pixels per frame."""
-
-  border_max_touching_distance = 5
-  """Any object that's closer to the border than this threshold is considered
-     to touch the border."""
+class FingerLED(Detector):
+  """Detects finge LED events such as FingerDown, FingerUp."""
+  name = "finger_led"
 
   led_test_area_margin = 10
   """Margin around the test area when blacking out the screen for LED
@@ -43,10 +29,77 @@ class Finger(Detector):
   """Maximum eccentricity of an LED object."""
 
   def __init__(self):
+    self.led_switching = False
+
+  def Preprocess(self, frame, debug):
+    """Preprocessing step to process frame into more compact data.
+
+    This method returns data to be passed to GenerateEvents. This method
+    is stateless and can be called on any frames out of order.
+    """
+    # Look for a large amount of change outside of the test area, i.e. a
+    # flashing LED:
+    margin = self.led_test_area_margin
+    mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
+    delta = np.abs(frame.delta) * mask
+    delta = Filter.Min(delta, disk_size=self.led_min_filter_kernel_size)
+    binary = delta > self.led_diff_strength_treshold
+
+    def is_led(region, labels, debug):
+      if debug:
+        print (region.label, region.area, region.eccentricity)
+      return (region.area > self.led_min_size and
+              region.eccentricity < self.led_max_eccentricity)
+    led_shape = Shape.Find(binary, is_led, debug=debug)
+
+    # Determine on/off state of the LED.
+    led_color = None
+    if led_shape:
+      led_color = np.mean(frame.original[led_shape.mask])
+    return led_color
+
+  def GenerateEvents(self, preprocessed_data, timestamp, debug):
+    """Search for the current location of the finger.
+
+    This method will return FINGER_DOWN and FINGER_UP events.
+    """
+    led_color = preprocessed_data
+
+    if led_color is not None:
+      # Use the led_switching flag to prevent multiple events
+      if not self.led_switching:
+        self.led_switching = True
+        if led_color > 0.5:
+          return [Event(timestamp, Event.FINGER_DOWN)]
+        else:
+          return [Event(timestamp, Event.FINGER_UP)]
+    else:
+      self.led_switching = False
+    return []
+
+
+class FingerMove(Detector):
+  """Detects FingerMoved events."""
+  name = "finger_move"
+
+  finger_min_area = 1000
+  """Minimal area of the robot finger in square pixels."""
+
+  finger_max_eccentricity = 0.95
+  """Maximal eccentricity of the robot finger. The eccentricity is close to 1
+     for very elongated objects, and 0 for a square-ish object."""
+
+  finger_max_move_speed = 5
+  """Maximum movement speed of the finger in pixels per frame."""
+
+  border_max_touching_distance = 5
+  """Any object that's closer to the border than this threshold is considered
+     to touch the border."""
+
+  def __init__(self):
     self.found = False
     self.finger_shape = None
     self.location = None
-    self.led_switching = False
 
   def Preprocess(self, frame, debug):
     """Preprocessing step to process frame into more compact data.
@@ -83,26 +136,7 @@ class Finger(Detector):
         debug.canvas.DrawContour(Canvas.GREEN, finger_shape)
         debug.canvas.DrawHLine(Canvas.GREEN, location, finger_shape.bottom)
 
-    # Look for a large amount of change outside of the test area, i.e. a
-    # flashing LED:
-    margin = self.led_test_area_margin
-    mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
-    delta = np.abs(frame.delta) * mask
-    delta = Filter.Min(delta, disk_size=self.led_min_filter_kernel_size)
-    binary = delta > self.led_diff_strength_treshold
-
-    def is_led(region, labels, debug):
-      if debug:
-        print (region.label, region.area, region.eccentricity)
-      return (region.area > self.led_min_size and
-              region.eccentricity < self.led_max_eccentricity)
-    led_shape = Shape.Find(binary, is_led, debug=debug)
-
-    # Determine on/off state of the LED.
-    led_color = None
-    if led_shape:
-      led_color = np.mean(frame.original[led_shape.mask])
-    return (location, led_color)
+    return location
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Search for the current location of the finger.
@@ -110,9 +144,7 @@ class Finger(Detector):
     This method will return a list of FINGER_MOVED events when the finger
     is moving.
     """
-    events = []
-
-    (new_location, led_color) = preprocessed_data
+    new_location = preprocessed_data
     self.found = new_location is not None
 
     # Report new location if location has changed but not changed too much.
@@ -120,19 +152,5 @@ class Finger(Detector):
         (self.location is None or
          np.abs(self.location - new_location) < self.finger_max_move_speed)):
       self.location = new_location
-      events.append(Event(timestamp, Event.FINGER_MOVED,
-                          location=new_location))
-
-    # If there is a strong change we expect it to be the flashing LED
-    if led_color is not None:
-      # Use the led_switching flag to prevent multiple events
-      if not self.led_switching:
-        self.led_switching = True
-        if led_color > 0.5:
-          events.append(Event(timestamp, Event.FINGER_DOWN))
-        else:
-          events.append(Event(timestamp, Event.FINGER_UP))
-    else:
-      self.led_switching = False
-
-    return events
+      return [Event(timestamp, Event.FINGER_MOVED, location=new_location)]
+    return []
