@@ -49,15 +49,24 @@ class TouchMoveLatencyTest(TestClass):
 class TapLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TapLatency"
-  required_events = []
+
+  base_record_duration = 300
+  """Duration at beginning of each recording (in number of frames)."""
+
+  per_tap_record_duration = 200
+  """Duration of each tap in recording (in number of frames)."""
+
   num_measurements = 6
+  """Number of tap latency measurements (i.e. number of taps)."""
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
     processor.AddDetector(FingerLED())
 
   def ExecuteTest(self, app, dut, camera):
-    camera.PrepareRecording(300 + 200 * self.num_measurements)
+    duration = (self.base_record_duration +
+                self.per_tap_record_duration * self.num_measurements)
+    camera.PrepareRecording(duration)
     app.EnterPage("Tap")
     dut.Move(dut.test_plane, dut.height/2, 10)
     camera.Trigger()

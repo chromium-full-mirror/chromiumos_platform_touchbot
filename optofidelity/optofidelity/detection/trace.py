@@ -75,6 +75,7 @@ class Trace(object):
   def __repr__(self):
     return str(self)
 
+  @contract(event_type=str)
   def Split(self, event_type):
     """Split trace before each occurence of event_type."""
     events = None

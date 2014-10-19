@@ -15,18 +15,21 @@ class FingerLED(Detector):
   """Margin around the test area when blacking out the screen for LED
      detection."""
 
-  led_min_filter_kernel_size = 5
+  led_median_filter_kernel_size = 5
   """Kernel size of the minimum rank order filter applied for LED detection."""
 
   led_diff_strength_treshold = 0.2
   """Pixels that have changed by at least this amount from the last frame are
      candidates for a blinking LED."""
 
-  led_min_size = 50
+  led_min_size = 100
   """Minimum size of an LED in the min filtered and thresholded picture."""
 
   led_max_eccentricity = 0.9
   """Maximum eccentricity of an LED object."""
+
+  screen_max_avg_delta = 0.001
+  """Maximum average delta of the screen before suppressing LED events."""
 
   def __init__(self):
     self.led_switching = False
@@ -37,25 +40,33 @@ class FingerLED(Detector):
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order.
     """
-    # Look for a large amount of change outside of the test area, i.e. a
-    # flashing LED:
+    # Create mask showing everything outside the active screen.
     margin = self.led_test_area_margin
     mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
-    delta = np.abs(frame.delta) * mask
-    delta = Filter.Min(delta, disk_size=self.led_min_filter_kernel_size)
+
+    # If the screen is switching, reflections of the screen will cause parts
+    # of the robot to look like a flashing LED. So We want to suppress any
+    # LED events during this time.
+    screen_delta = frame.test_area.shape.mask * frame.delta
+    screen_avg_delta = np.mean(np.abs(screen_delta))
+    if screen_avg_delta > self.screen_max_avg_delta:
+      if debug:
+        print "Suspending LED detection"
+      return None
+
+    # Look for an LED shaped large change in the masked area.
+    delta = np.abs(frame.delta * mask)
+    delta = Filter.Median(delta, disk_size=self.led_median_filter_kernel_size)
     binary = delta > self.led_diff_strength_treshold
 
-    def is_led(region, labels, debug):
-      if debug:
-        print (region.label, region.area, region.eccentricity)
-      return (region.area > self.led_min_size and
-              region.eccentricity < self.led_max_eccentricity)
-    led_shape = Shape.Find(binary, is_led, debug=debug)
+    if np.sum(binary) < self.led_min_size:
+      return None
+
+    if debug:
+      debug.canvas.Draw(Canvas.BLUE, binary)
 
     # Determine on/off state of the LED.
-    led_color = None
-    if led_shape:
-      led_color = np.mean(frame.original[led_shape.mask])
+    led_color = np.mean(frame.original[binary])
     return led_color
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
