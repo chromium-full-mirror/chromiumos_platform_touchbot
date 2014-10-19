@@ -102,9 +102,14 @@ class Canvas(object):
   YELLOW = [0.7, 0.7, 0]
   BLACK = [0, 0, 0]
 
-  def __init__(self, image, tform_fn=None):
-    self.image = skimage.color.gray2rgb(image)
+  def __init__(self, image=None, tform_fn=None):
+    self.image = None
+    if image:
+      self.image = skimage.color.gray2rgb(image)
     self.tform_fn = tform_fn
+
+  def __nonzero__(self):
+    return self.image is not None
 
   def Scaled(self, scale):
     return transform.rescale(self.image, scale)
@@ -148,3 +153,6 @@ class Canvas(object):
       return
     self.Draw(color, shape.mask)
 
+  def Fill(self, image, tform_fn=None):
+    self.image = skimage.color.gray2rgb(image)
+    self.tform_fn = tform_fn

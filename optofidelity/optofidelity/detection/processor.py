@@ -14,6 +14,85 @@ from optofidelity.videoproc import (Canvas, Filter, VideoException, VideoReader,
                                     Viewer)
 
 
+class ProcessorDebugger(object):
+  """Contains video processing debugging functionality.
+
+  This class is accepts a comma separated string of flags, and contains a canvas
+  for drawing debugging information. It imitates a boolean debug flag and
+  evaluates to True if any debugging flag has been set.
+
+  For each flag, a FlagDebugger instance can be accessed using the [] operator,
+  which provides the same functionality as this class, however only evaluates
+  to True if the specified flag has been set.
+  """
+  def __init__(self, flags_string=None, start_idx=None, stop_idx=None,
+               debugger=None):
+    self.flags = []
+    self.canvas = Canvas()
+    self.start_idx = None
+    self.stop_idx = None
+    if debugger:
+      self.flags = debugger.flags
+      self.canvas = debugger.canvas
+      self.start_idx = debugger.start_idx
+      self.stop_idx = debugger.stop_idx
+    if start_idx:
+      self.start_idx = int(start_idx)
+    if stop_idx:
+      self.stop_idx = int(stop_idx)
+    if flags_string:
+      self.flags = flags_string.split(",")
+
+  def InitFrame(self, frame, test_area):
+    """Fill the debug canvas with a background from the current frame."""
+    if not self.flags:
+      return
+    if self.HasFlag("normalized"):
+      self.canvas.Fill(frame.normalized)
+    elif self.HasFlag("rectified"):
+      self.canvas.Fill(frame.rectified)
+    else:
+      if self.HasFlag("diff"):
+        self.canvas.Fill(0.5 + frame.delta, test_area.Unrectify)
+      else:
+        self.canvas.Fill(frame.original, test_area.Unrectify)
+      self.canvas.DrawContour(Canvas.GREEN, test_area.shape)
+
+  def Display(self, video):
+    """Display the debug canvas of the current frame."""
+    if not self.flags:
+      return
+    image = self.canvas.image
+    if image.shape[0] < 500:
+      image = self.canvas.Scaled(2)
+    key = Viewer.VideoFrame(image)
+    if key == ord('p'):
+      video.EnterInteractive()
+
+  def HasFlag(self, flag):
+    return flag in self.flags or "all" in self.flags
+
+  def __getitem__(self, key):
+    return FlagDebugger(self, key)
+
+  def __nonzero__(self):
+    return len(self.flags)
+
+
+class FlagDebugger(ProcessorDebugger):
+  """Debugger for a specific flag only
+
+  This class provides the same functionality as ProcessorDebugger, but only
+  evaluates to True if the specified flag has been set.
+  """
+  def __init__(self, debugger, flag):
+    ProcessorDebugger.__init__(self, debugger=debugger)
+    self.flag = flag
+
+  def __nonzero__(self):
+    return self.flag in self.flags
+
+
 class VideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
 
@@ -38,74 +117,36 @@ class VideoProcessor(object):
   def AddDetector(self, detector):
     self.detectors[detector.name] = detector
 
-  def Initialize(self, video_reader, debug=[]):
+  def Initialize(self, video_reader, debug):
     # verify in the first frame that the test area is still valid
     first_frame = video_reader.FrameAt(0)
-    self.test_area.VerifyFrame(first_frame,
-                               "verification" in debug or "all" in debug)
+    self.test_area.VerifyFrame(first_frame, debug["verification"])
 
     # initialize all detectors
     video = Video(video_reader, self.test_area)
     for detector in self.detectors.itervalues():
-      debug_flag = debug and (detector.name in debug or "all" in debug)
-      if not detector.Initialize(video, debug_flag):
+      if not detector.Initialize(video, debug[detector.name]):
         raise VideoException("Processor %s failed to initialize"
                              % detector.name)
 
-  def Preprocess(self, frame, debug=[]):
+  def Preprocess(self, frame, debug):
     preprocessed_data = {}
     for detector in self.detectors.itervalues():
-      debug_flag = debug and (detector.name in debug or "all" in debug)
-      data = detector.Preprocess(frame, debug_flag)
+      data = detector.Preprocess(frame, debug[detector.name])
       preprocessed_data[detector.name] = data
     return (frame.index, preprocessed_data)
 
-  def GenerateEvents(self, trace, i, preprocessed_data, debug=[],
-                     debug_canvas=None):
+  def GenerateEvents(self, trace, i, preprocessed_data, debug):
     for detector in self.detectors.itervalues():
-      debug_flag = debug and (detector.name in debug or "all" in debug)
       data = preprocessed_data[detector.name]
-      canvas = debug_canvas if debug_flag else None
-      events = detector.GenerateEvents(data, i, canvas)
-      if debug_flag and events:
+      flag_debug = debug[detector.name]
+      events = detector.GenerateEvents(data, i, flag_debug)
+      if flag_debug and events:
         print events
       trace.AddAll(events)
 
-  def SkimVideo(self, video, debug=[]):
-    """Skims through video and return types of Events generated."""
-    trace = self.ProcessVideo(video, step=15, debug=debug)
-    event_types = []
-    for event in trace.Events():
-      if event.event_type not in event_types:
-        event_types.append(event.event_type)
-    return event_types
-
-  def MakeDebugCanvas(self, debug, frame):
-    if debug:
-      if "normalized" in debug:
-        return Canvas(frame.normalized)
-      elif "rectified" in debug:
-        return Canvas(frame.rectified)
-      else:
-        if "delta" in debug:
-          canvas = Canvas(0.5 + frame.delta, self.test_area.Unrectify)
-        else:
-          canvas = Canvas(frame.original, self.test_area.Unrectify)
-        canvas.DrawContour(Canvas.GREEN, self.test_area.shape)
-        return canvas
-    return None
-
-  def DisplayDebugCanvas(self, debug_canvas, video):
-    if debug_canvas:
-      image = debug_canvas.image
-      if debug_canvas.image.shape[0] < 500:
-        image = debug_canvas.Scaled(2)
-      key = Viewer.VideoFrame(image)
-      if key == ord('p'):
-        video.EnterInteractive()
-
   @contract(video=VideoReader)
-  def ReadRelevantFrames(self, video, step=1):
+  def ReadRelevantFrames(self, video, debug):
     """Yield frames from video while omitting unecesssary frames.
 
     This method omits frames that show no change to the previous frame, thus
@@ -114,10 +155,18 @@ class VideoProcessor(object):
     Yields tuples (i, image) with i being the frame index and image the
     image data as a numpy array.
     """
+    stop = debug.stop_idx or video.num_frames
+    start = debug.start_idx or 0
+    if debug["interactive"]:
+      for i, image in video.Frames(start=start, stop=stop):
+        print "Reading frame %d/%d" % (i, stop)
+        yield i, image
+      return
+
     prev_image = None
-    i = 0
+    i = start
     dont_peek_before = None
-    while i < video.num_frames:
+    while i < stop:
       # Read frame and calculate inter-frame difference
       image = video.FrameAt(i)
       diff = np.ones((1, 1))
@@ -131,14 +180,15 @@ class VideoProcessor(object):
         # frame, looking for one that still shows little difference.
         for peek_ahead in self.peek_distances:
           peek_i = i + peek_ahead - 1
-          if peek_i >= video.num_frames:
+          if peek_i >= stop:
             continue
           peek_image = video.FrameAt(peek_i)
           diff = np.abs(prev_image - peek_image)
           peek_max_diff = self.peek_frame_unchanged_max_diff
           if Filter.StableMax(diff) < peek_max_diff:
             # The peeked at frame shows little difference, jump ahead.
-            print ""
+            if not debug:
+              print ""
             print "skipped", peek_i - i, "frames"
             i = peek_i
             image = peek_image
@@ -148,24 +198,29 @@ class VideoProcessor(object):
         dont_peek_before = i + min(self.peek_distances)
 
       # Yield next frame
-      sys.stdout.write("\rReading frame %d/%d" % (i, video.num_frames))
-      sys.stdout.flush()
+      if debug:
+        print "Reading frame %d/%d" % (i, stop)
+      else:
+        sys.stdout.write("\rReading frame %d/%d" % (i, stop))
+        sys.stdout.flush()
       yield i, image
       prev_image = image
       i += 1
-    print ""
+    if not debug:
+      print ""
 
-  def ProcessVideo(self, video, step=1, debug=[]):
+  def ProcessVideo(self, video, debug):
     """Process video and return a trace of all detected events."""
     trace = Trace()
     prev_image = None
-    for i, image in self.ReadRelevantFrames(video):
+    for i, image in self.ReadRelevantFrames(video, debug):
       frame = Frame(image, prev_image, self.test_area, i)
-      i, preprocessed_data = self.Preprocess(frame, debug)
+      debug.InitFrame(frame, self.test_area)
 
-      debug_canvas = self.MakeDebugCanvas(debug, frame)
-      self.GenerateEvents(trace, i, preprocessed_data, debug, debug_canvas)
-      self.DisplayDebugCanvas(debug_canvas, video)
+      i, preprocessed_data = self.Preprocess(frame, debug)
+      self.GenerateEvents(trace, i, preprocessed_data, debug)
+
+      debug.Display(video)
       prev_image = image
     return trace
 
@@ -184,7 +239,8 @@ def PreProcessProcess(generator, frame_queue, data_queue):
     if image is None:
       break
     frame = Frame(image, prev_image, generator.test_area, i)
-    data_queue.put(generator.Preprocess(frame))
+    debug = ProcessorDebugger(None)
+    data_queue.put(generator.Preprocess(frame, debug))
 
 
 class MultithreadedVideoProcessor(VideoProcessor):
@@ -198,7 +254,7 @@ class MultithreadedVideoProcessor(VideoProcessor):
     self.num_processes = num_processes or multiprocessing.cpu_count()
     VideoProcessor.__init__(self, test_area)
 
-  def ProcessVideo(self, video, step=1, debug=[]):
+  def ProcessVideo(self, video, debug):
     # Start pre-processing processes
     frame_queue = multiprocessing.Queue()
     data_queue = multiprocessing.Queue()
@@ -213,11 +269,10 @@ class MultithreadedVideoProcessor(VideoProcessor):
     # Read frames and put them into the processing queue
     prev_image = None
     num_frames = 0
-    for i, frame in self.ReadRelevantFrames(video, step=1):
+    for i, frame in self.ReadRelevantFrames(video, debug):
       num_frames += 1
       frame_queue.put((i, frame, prev_image))
       prev_image = frame
-    print ""
 
     # Terminate worker threads by passing None into the queue
     for i in range(self.num_processes):
@@ -230,26 +285,12 @@ class MultithreadedVideoProcessor(VideoProcessor):
       data_entry = data_queue.get()
       data_map[data_entry[0]] = data_entry[1]
 
-    # Generate events from pre-processing results
+    # Generate events from frames in order
     trace = Trace()
-    def ProcessFrame(i, debug=[], debug_canvas=None):
+    for i in sorted(data_map.keys()):
       sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
       sys.stdout.flush()
       preprocessed_data = data_map[i]
-      self.GenerateEvents(trace, i, preprocessed_data, debug, debug_canvas)
-
-    # Process frames in order
-    prev_image = None
-    for i in sorted(data_map.keys()):
-      if not debug:
-        ProcessFrame(i)
-      else:
-        # Load frames from video again for debugging view
-        image = video.FrameAt(i)
-        frame = Frame(image, prev_image, self.test_area, i)
-        debug_canvas = self.MakeDebugCanvas(debug, frame)
-        ProcessFrame(i, debug, debug_canvas)
-        self.DisplayDebugCanvas(debug_canvas, video)
-        prev_image = image
+      self.GenerateEvents(trace, i, preprocessed_data, debug)
 
     return trace

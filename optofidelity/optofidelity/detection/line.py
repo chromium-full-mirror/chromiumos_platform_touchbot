@@ -114,7 +114,7 @@ class Line(object):
     self.reverse = False
     self._line_end = None
 
-  def Initialize(self, video, debug=False):
+  def Initialize(self, video, debug):
     step = -self.target_line_search_step
     stop = -step * self.target_line_search_max_steps
     for frame in video.Frames(start=-1, stop=stop, step=step):
@@ -122,14 +122,14 @@ class Line(object):
         return True
     return False
 
-  def DetectTargetLine(self, frame, debug=False):
+  def DetectTargetLine(self, frame, debug):
     """Detect the final line that is to be drawn.
 
     The parameter frame has to be a Frame instance from an image showing the
     non-occluded target line.
     Returns False if the detection failed.
     """
-    def is_target_line(region, labels, debug=False):
+    def is_target_line(region, labels, debug):
       if debug:
         print region.label, region.area, region.eccentricity, region.orientation
       return (region.area > self.target_line_min_area and
@@ -260,7 +260,7 @@ class Line(object):
       # segment is big enough, append as new segment
       self.segments.append(new_segment)
 
-  def Preprocess(self, frame, debug=False):
+  def Preprocess(self, frame, debug):
     """Preprocessing step to process 2D frames into a 1D profile.
 
     The profile of a line roughly looks like this:
@@ -279,7 +279,7 @@ class Line(object):
     return Filter.ExtractProfile(1 - frame.normalized,
                                  self._drawn_profile)
 
-  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Generate Line events from sequential preprocessed data.
 
     Returns a list of LINE_DRAW_START, LINE_DRAW_END and LINE_RESET events as
@@ -322,13 +322,13 @@ class Line(object):
                          transition_end)
     self._line_end = transition_end
 
-    if debug_canvas:
+    if debug:
       for segment in self.segments:
-        debug_canvas.DrawHLine(Canvas.GREEN, segment.end,
+        debug.canvas.DrawHLine(Canvas.GREEN, segment.end,
                                     self.target_shape.center_y)
 
-      debug_canvas.DrawHLine(Canvas.YELLOW, transition_start,
+      debug.canvas.DrawHLine(Canvas.YELLOW, transition_start,
                                   self.target_shape.center_y)
-      debug_canvas.DrawHLine(Canvas.YELLOW, transition_end,
+      debug.canvas.DrawHLine(Canvas.YELLOW, transition_end,
                                   self.target_shape.center_y)
     return events

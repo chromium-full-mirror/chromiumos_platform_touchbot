@@ -115,8 +115,16 @@ class VideoReader(object):
         key = cv2.waitKey() & 0xFF
         if key == ord('k'):
           i -= 1
+        elif key == ord('l'):
+          i -= 10
+        elif key == ord(';'):
+          i -= 100
         elif key == ord('j'):
           i += 1
+        elif key == ord('h'):
+          i += 10
+        elif key == ord('g'):
+          i += 100
         elif key == ord('c'):
           self.interactive = False
           i += 1
@@ -155,7 +163,7 @@ class FileVideoReader(VideoReader):
     return True
 
   def Read(self):
-    if not self.frame_cache:
+    if self.frame_cache is None:
       # cache current frame in case it's requested again.
       ret, self.frame_cache = self.cap.retrieve()
       if not ret:

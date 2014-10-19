@@ -68,7 +68,7 @@ class Detector(object):
   """Base class for detectors that extract event traces from videos."""
   name = NotImplemented
 
-  def Initialize(self, video, debug=False):
+  def Initialize(self, video, debug):
     """To be called to initialize the detector for a specific video.
 
     The detector might query specific frames from the video stream to
@@ -77,7 +77,7 @@ class Detector(object):
     """
     return True
 
-  def Preprocess(self, frame, debug=False):
+  def Preprocess(self, frame, debug):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. It is
@@ -86,7 +86,7 @@ class Detector(object):
     """
     raise NotImplementedError()
 
-  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Perform detection on the preprocessed data and return events.
 
     This method has to be called in order, and should offload as much of the

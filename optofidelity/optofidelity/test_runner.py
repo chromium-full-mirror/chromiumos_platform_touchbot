@@ -17,7 +17,8 @@ import time
 import traceback
 
 from optofidelity.system import TestApp, TestArea
-from optofidelity.detection import MultithreadedVideoProcessor as VideoProcessor
+from optofidelity.detection import (VideoProcessor,
+                                    MultithreadedVideoProcessor)
 from optofidelity.system import RetryFunction, DUTException
 from optofidelity.videoproc import VideoException, VideoWriter, FileVideoReader
 
@@ -87,7 +88,7 @@ class TestRunner(object):
   def AddApp(self, app):
     self.test_apps[str(app)] = app
 
-  def ProcessVideoFromFile(self, name, debug=[]):
+  def ProcessVideoFromFile(self, name, debug):
     if os.path.exists(name + ".test_class"):
       test_class_name = open(name + ".test_class").read()
       test_class = self.test_classes[test_class_name]
@@ -102,8 +103,7 @@ class TestRunner(object):
       video = FileVideoReader(name + ".mov")
       print "Detecting Screen in", (name + ".mov")
       test_area = TestArea()
-      debug_flag = debug and ("screen" in debug or "all" in debug)
-      test_area.Detect(video.Frames(stop=60), debug=debug_flag)
+      test_area.Detect(video.Frames(stop=60), debug=debug.HasFlag("screen"))
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):
     print "%s: Dumping debug info:" % case
@@ -124,28 +124,21 @@ class TestRunner(object):
       open(basename + ".error", "w").write(traceback.format_exc())
     print "%s: Debug with: %s --debug-video %s" % (case, sys.argv[0], basename)
 
-  def _ProcessVideo(self, test_class, video, test_area, debug=[]):
-    processor = VideoProcessor(test_area)
+  def _ProcessVideo(self, test_class, video, test_area, debug):
+    if debug:
+      processor = VideoProcessor(test_area)
+    else:
+      processor = MultithreadedVideoProcessor(test_area)
 
     test_class.InitializeProcessor(processor)
     processor.Initialize(video, debug=debug)
-
-    if test_class.required_events:
-      print "Validating video"
-      generated_events = processor.SkimVideo(video, debug=debug)
-      if debug:
-        print "Generated event types: %s" % (generated_events)
-      for event_type in test_class.required_events:
-        if event_type not in generated_events:
-          msg = "Video did not generate required %s events" % event_type
-          raise VideoException(msg)
 
     print "Generating trace"
     trace = processor.ProcessVideo(video, debug=debug)
     print "Processing trace"
     return test_class.ProcessTrace(trace)
 
-  def _RunTest(self, dut, app, case, debug=[]):
+  def _RunTest(self, dut, app, case, debug):
     video = case.test_class.ExecuteTest(app, dut, self.system.camera)
     try:
       if self.dump_all:
@@ -159,7 +152,7 @@ class TestRunner(object):
       self._DumpDebugInfo(case, video, True)
       raise DUTException(dut, "Video processing failure")
 
-  def _RunAppTests(self, dut, app, cases, debug=[]):
+  def _RunAppTests(self, dut, app, cases, debug):
     dut.EnterApp(app.name)
     app.CalibrateScreen(self.system.camera, dump=self.dump_all)
     for case in cases:
@@ -168,7 +161,7 @@ class TestRunner(object):
                     "Running test: " + str(case))
     dut.ExitApp()
 
-  def _RunDUTTests(self, dut, cases, debug=[]):
+  def _RunDUTTests(self, dut, cases, debug):
     dut.ExitApp()
     sorted_cases = sorted(cases, key=lambda c: c.app)
     for app, cases in itertools.groupby(sorted_cases, key=lambda c: c.app):
@@ -176,7 +169,7 @@ class TestRunner(object):
                     dut.Reset,
                     "Running tests: " + str(app))
 
-  def RunTests(self, glob=None, debug=[]):
+  def RunTests(self, glob, debug):
     test_cases = []
     for app in self.test_apps.values():
       for test_class in self.test_classes.values():

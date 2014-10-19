@@ -37,7 +37,7 @@ class ScreenFlash(Detector):
     self.last_no_draw_time = 0
     self.debug_canvas = None
 
-  def Initialize(self, video, debug=False):
+  def Initialize(self, video, debug):
     """Run sanity checks on the first frame of the video."""
     error_msg = None
 
@@ -82,7 +82,7 @@ class ScreenFlash(Detector):
       raise VideoException(error_msg)
     return True
 
-  def Preprocess(self, frame, debug=False):
+  def Preprocess(self, frame, debug):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. This method
@@ -90,7 +90,7 @@ class ScreenFlash(Detector):
     return Filter.ExtractProfile(frame.rectified, frame.test_area.on_profile,
                                  frame.test_area.off_profile)
 
-  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Generate Screen events from sequential preprocessed data.
 
     Returns a list of events that will contain SCREEN_DRAW_START
@@ -130,7 +130,7 @@ class ScreenFlash(Detector):
                             color="Black"))
         events.append(Event(timestamp, Event.SCREEN_DRAW_END, color="Black"))
 
-    if debug_canvas:
-      debug_canvas.Plot(Canvas.BLUE, profile)
+    if debug:
+      debug.canvas.Plot(Canvas.BLUE, profile)
 
     return events

@@ -12,7 +12,7 @@ import warnings
 from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest
 from optofidelity.system import OptofidelityTestSystem
 from optofidelity.test_runner import TestRunner
-
+from optofidelity.detection import ProcessorDebugger
 
 usage = """TestRunner usage examples
 
@@ -31,10 +31,22 @@ def RegisterTestClasses(runner):
   runner.AddTestClass(TouchMoveLatencyTest)
   runner.AddTestClass(TapLatencyTest)
 
+def AddDebugOptions(parser):
+  parser.add_option("--debug",
+                    dest="debug", default=None,
+                    help="Enable debug printouts and images.")
+  parser.add_option("--start",
+                    dest="start", default=None,
+                    help="Start processing at this frame")
+  parser.add_option("--stop",
+                    dest="stop", default=None,
+                    help="Stop processing at this frame")
+
+def BuildDebugger(options):
+  return ProcessorDebugger(options.debug, options.start, options.stop)
+
 def RunTests(glob, options):
-  debug = []
-  if options.debug:
-    debug = options.debug.split(",")
+  debug = BuildDebugger(options)
 
   system = OptofidelityTestSystem(config_file)
 
@@ -64,12 +76,10 @@ def Main():
   parser.add_option("--dump-all",
                     dest="dump_all", default=False, action="store_true",
                     help="Dump debug info for all executed tests.")
-  parser.add_option("--debug",
-                    dest="debug", default=None,
-                    help="Enable debug printouts and images.")
   parser.add_option("--debug-video",
                     dest="debug_video", default=None,
                     help="Debug a previously recorded video.")
+  AddDebugOptions(parser)
   (options, args) = parser.parse_args()
 
   if not options.debug:

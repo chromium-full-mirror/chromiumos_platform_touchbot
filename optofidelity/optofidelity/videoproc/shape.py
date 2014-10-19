@@ -294,13 +294,10 @@ class Shape(object):
     for props in measure.regionprops(labels, binary_im):
       if props.max_intensity < 1.0:
         continue
-      if debug:
-        is_match = match_fn(props, labels, debug)
-        if is_match:
-          print props.label, "is match"
-      else:
-        is_match = match_fn(props, labels)
+      is_match = match_fn(props, labels, debug)
       if is_match:
+        if debug:
+           print props.label, "is match"
         matches.append(props)
 
     # handle no matches error

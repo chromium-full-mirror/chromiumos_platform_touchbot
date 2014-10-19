@@ -48,7 +48,7 @@ class Finger(Detector):
     self.location = None
     self.led_switching = False
 
-  def Preprocess(self, frame, debug=False):
+  def Preprocess(self, frame, debug):
     """Preprocessing step to process frame into more compact data.
 
     This method returns data to be passed to GenerateEvents. This method
@@ -59,7 +59,7 @@ class Finger(Detector):
     # we are looking for a big object that is not very elongated
     # (i.e. not the line). It is also expected to touch the top of the image,
     # but not the bottom of the image.
-    def is_finger(region, labels, debug=False):
+    def is_finger(region, labels, debug):
       if debug:
         print (region.label, region.area, region.eccentricity, region.bbox[0],
                region.bbox[2])
@@ -79,6 +79,9 @@ class Finger(Detector):
       coords = finger_shape.coords
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
+      if debug:
+        debug.canvas.DrawContour(Canvas.GREEN, finger_shape)
+        debug.canvas.DrawHLine(Canvas.GREEN, location, finger_shape.bottom)
 
     # Look for a large amount of change outside of the test area, i.e. a
     # flashing LED:
@@ -88,7 +91,7 @@ class Finger(Detector):
     delta = Filter.Min(delta, disk_size=self.led_min_filter_kernel_size)
     binary = delta > self.led_diff_strength_treshold
 
-    def is_led(region, labels, debug=False):
+    def is_led(region, labels, debug):
       if debug:
         print (region.label, region.area, region.eccentricity)
       return (region.area > self.led_min_size and
@@ -96,12 +99,12 @@ class Finger(Detector):
     led_shape = Shape.Find(binary, is_led, debug=debug)
 
     # Determine on/off state of the LED.
-    led_color = 0
+    led_color = None
     if led_shape:
       led_color = np.mean(frame.original[led_shape.mask])
-    return (location, finger_shape, led_color, led_shape)
+    return (location, led_color)
 
-  def GenerateEvents(self, preprocessed_data, timestamp, debug_canvas=None):
+  def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Search for the current location of the finger.
 
     This method will return a list of FINGER_MOVED events when the finger
@@ -109,7 +112,7 @@ class Finger(Detector):
     """
     events = []
 
-    (new_location, self.finger_shape, led_color, led_shape) = preprocessed_data
+    (new_location, led_color) = preprocessed_data
     self.found = new_location is not None
 
     # Report new location if location has changed but not changed too much.
@@ -121,7 +124,7 @@ class Finger(Detector):
                           location=new_location))
 
     # If there is a strong change we expect it to be the flashing LED
-    if led_shape:
+    if led_color is not None:
       # Use the led_switching flag to prevent multiple events
       if not self.led_switching:
         self.led_switching = True
@@ -131,12 +134,5 @@ class Finger(Detector):
           events.append(Event(timestamp, Event.FINGER_UP))
     else:
       self.led_switching = False
-
-    if debug_canvas:
-      if self.finger_shape:
-        debug_canvas.DrawContour(Canvas.GREEN, self.finger_shape)
-        debug_canvas.DrawContour(Canvas.BLUE, led_shape)
-        debug_canvas.DrawHLine(Canvas.GREEN, self.location,
-                               self.finger_shape.bottom)
 
     return events

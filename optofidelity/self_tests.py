@@ -21,7 +21,7 @@ import warnings
 from optofidelity.latency import TouchMoveLatencyTest
 from optofidelity.test_runner import TestRunner
 from optofidelity.videoproc import VideoException
-from main import RegisterTestClasses
+from main import RegisterTestClasses, AddDebugOptions, BuildDebugger
 
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -109,9 +109,6 @@ $ %prog TestName --debug=normalized,line
 
 def Main():
   parser = OptionParser(usage=usage)
-  parser.add_option("--debug",
-                    dest="debug", default=None,
-                    help="Enable debug printouts and images.")
   parser.add_option("--upload", "-u",
                     dest="upload", default=False, action="store_true",
                     help="Upload local self test videos to cloud storage. "+
@@ -120,15 +117,14 @@ def Main():
   parser.add_option("--download", "-d",
                     dest="download", default=False, action="store_true",
                     help="Download self test videos from cloud storage.")
+  AddDebugOptions(parser)
   (options, args) = parser.parse_args()
 
   glob = None
   if args:
     glob = args[0]
 
-  debug = []
-  if options.debug:
-    debug = options.debug.split(",")
+  debug = BuildDebugger(options)
 
   if options.upload:
     os.system("gsutil -m rsync -r %s %s" % (tests_dir, gs_path))
