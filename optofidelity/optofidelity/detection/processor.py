@@ -9,7 +9,7 @@ import sys
 
 from optofidelity.detection.detector import Frame, Video, Detector
 from optofidelity.detection.trace import Trace
-from optofidelity.system import TestArea
+from optofidelity.system import CameraCalibration
 from optofidelity.videoproc import (Canvas, Filter, VideoException, VideoReader,
                                     Viewer)
 
@@ -108,7 +108,7 @@ class VideoProcessor(object):
   """Distances from the current frame to peek at when looking for frames to
      skip."""
 
-  @contract(test_area=TestArea)
+  @contract(test_area=CameraCalibration)
   def __init__(self, test_area):
     self.test_area = test_area
     self.detectors = {}
@@ -249,7 +249,7 @@ class MultithreadedVideoProcessor(VideoProcessor):
   This implementation uses multiple processes to do the most computational
   intensive operations in parallel.
   """
-  @contract(test_area=TestArea, num_processes=">=0|None")
+  @contract(test_area=CameraCalibration, num_processes=">=0|None")
   def __init__(self, test_area, num_processes=None):
     self.num_processes = num_processes or multiprocessing.cpu_count()
     VideoProcessor.__init__(self, test_area)

@@ -14,6 +14,6 @@ stored and read from a file to skip the lengthy calibration process.
 """
 from optofidelity.system.util import DUTException, RetryFunction
 from optofidelity.system.system import OptofidelityTestSystem
-from optofidelity.system.test_area import TestArea
+from optofidelity.system.calibration import CameraCalibration
 from optofidelity.system.app import TestApp
 from optofidelity.system.dut import DeviceUnderTest

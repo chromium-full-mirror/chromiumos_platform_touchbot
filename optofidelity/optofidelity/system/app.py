@@ -5,7 +5,7 @@ from contracts import contract
 import time
 
 from optofidelity.system.dut import DeviceUnderTest
-from optofidelity.system.test_area import TestArea
+from optofidelity.system.calibration import CameraCalibration
 from optofidelity.videoproc import VideoWriter
 
 
@@ -44,7 +44,7 @@ class TestApp(object):
     for page in self.pages.keys():
       coords = hdf5["pages"][page]
       self.pages[page] = (coords[0], coords[1])
-    self.test_area = TestArea.Load(hdf5["screen"])
+    self.test_area = CameraCalibration.Load(hdf5["screen"])
 
   def CalibrateButtons(self):
     for text, x, y in self.dut.ReadText():
@@ -63,7 +63,7 @@ class TestApp(object):
     self.ExitPage()
 
     reader = camera.GetVideoReader()
-    self.test_area = TestArea()
+    self.test_area = CameraCalibration()
     try:
       self.test_area.Detect(reader)
       if not dump:

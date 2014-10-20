@@ -16,7 +16,7 @@ import sys
 import time
 import traceback
 
-from optofidelity.system import TestApp, TestArea
+from optofidelity.system import TestApp, CameraCalibration
 from optofidelity.detection import (VideoProcessor,
                                     MultithreadedVideoProcessor)
 from optofidelity.system import RetryFunction, DUTException
@@ -94,7 +94,7 @@ class TestRunner(object):
       test_class = self.test_classes[test_class_name]
 
       video = FileVideoReader(name + ".mov")
-      test_area = TestArea.Load(h5py.File(name + ".test_area", "r"))
+      test_area = CameraCalibration.Load(h5py.File(name + ".test_area", "r"))
 
       res = self._ProcessVideo(test_class, video, test_area, debug=debug)
       print res
@@ -102,7 +102,7 @@ class TestRunner(object):
       # no test_class, this is a screen detection recording
       video = FileVideoReader(name + ".mov")
       print "Detecting Screen in", (name + ".mov")
-      test_area = TestArea()
+      test_area = CameraCalibration()
       test_area.Detect(video.Frames(stop=60), debug=debug.HasFlag("screen"))
 
   def _DumpDebugInfo(self, case, video, dump_last_exception=False):

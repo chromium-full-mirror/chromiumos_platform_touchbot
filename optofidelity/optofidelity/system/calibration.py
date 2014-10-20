@@ -7,7 +7,7 @@ import skimage.transform as transform
 
 from optofidelity.videoproc import Canvas, Filter, Shape, VideoException, Viewer
 
-class TestArea(object):
+class CameraCalibration(object):
   """Detects the test area on a device.
 
   This class can detect the flashing test area and can rectify images
@@ -76,7 +76,7 @@ class TestArea(object):
 
   @classmethod
   def Load(self, hdf5):
-    test_area = TestArea()
+    test_area = CameraCalibration()
     test_area.shape = Shape(mask=hdf5["shape"][()])
     test_area.on_image = hdf5["on_image"][()]
     test_area.on_profile = hdf5["on_profile"][()]
