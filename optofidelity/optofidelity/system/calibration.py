@@ -1,11 +1,15 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import h5py
 import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
+import tempfile
 
-from optofidelity.videoproc import Canvas, Filter, Shape, VideoException, Viewer
+
+from optofidelity.videoproc import (Canvas, FileVideoReader, Filter, Shape,
+                                    VideoException, VideoWriter, Viewer)
 
 class CameraCalibration(object):
   """Detects the test area on a device.
@@ -67,7 +71,11 @@ class CameraCalibration(object):
     self.off_image = None
     self.off_profile = None
 
-  def Save(self, hdf5):
+    self.video = None
+    self.video_cache_file = None
+
+  def Save(self, filename):
+    hdf5 = h5py.File(filename, "w")
     hdf5.create_dataset("shape", data=self.shape.mask)
     hdf5.create_dataset("on_image", data=self.on_image)
     hdf5.create_dataset("on_profile", data=self.on_profile)
@@ -75,7 +83,8 @@ class CameraCalibration(object):
     hdf5.create_dataset("off_profile", data=self.off_profile)
 
   @classmethod
-  def Load(self, hdf5):
+  def Load(self, filename):
+    hdf5 = h5py.File(filename, "r")
     test_area = CameraCalibration()
     test_area.shape = Shape(mask=hdf5["shape"][()])
     test_area.on_image = hdf5["on_image"][()]
@@ -84,6 +93,27 @@ class CameraCalibration(object):
     test_area.off_profile = hdf5["off_profile"][()]
     test_area.rect_transform = test_area.EstimateRectTransform()
     return test_area
+
+  def Calibrate(self, app, camera, debug):
+    self.RecordVideo(app, camera)
+    self.Process(debug)
+
+  def CacheVideo(self):
+    """Download video from the camera to a temporary file."""
+    self.video_cache_file = tempfile.NamedTemporaryFile()
+    print "Downloading calibration video"
+    writer = VideoWriter(self.video_cache_file.name)
+    writer.Write(self.video)
+    self.video = FileVideoReader(self.video_cache_file.name)
+
+  def RecordVideo(self, app, camera):
+    """Record calibration video on the app using the specified camera."""
+    app.EnterPage(app.PAGE_FLASH)
+    app.dut.ClearScreen()
+    camera.Record(60)
+    camera.WaitUntilReady()
+    app.ExitPage()
+    self.video = camera.GetVideoReader()
 
   def EstimateRectTransform(self):
     """Estimates transformation from rectified device screen to video frame.
@@ -191,19 +221,16 @@ class CameraCalibration(object):
     else:
       return ref_images[1], ref_images[0]
 
-  def Detect(self, video_reader, debug=False):
-    """Detect the devices flashing screen.
-
-    The frames argument has to be a python iterator that yields
-    video frames. Those video frames have to show the device's screen
-    flashing black and white.
-    """
+  def Process(self, debugger):
+    """Process calibration video recorded by RecordVideo."""
+    assert self.video, "No calibration video"
+    debug = debugger["calibration"]
     # Extract information from video frames. We need the following information:
     # Image of the screen off (min average grayscale)
     # Image of the screen on (max average grayscale)
     # And the accumulative difference between frames to find the area that
     # is changing the most.
-    on_frame, off_frame = self.FindReferenceFrames(video_reader, debug=debug)
+    on_frame, off_frame = self.FindReferenceFrames(self.video, debug=debug)
     delta = Filter.Truncate(on_frame - off_frame)
 
     # Find screen shape

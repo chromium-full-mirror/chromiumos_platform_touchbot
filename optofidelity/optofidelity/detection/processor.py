@@ -292,5 +292,5 @@ class MultithreadedVideoProcessor(VideoProcessor):
       sys.stdout.flush()
       preprocessed_data = data_map[i]
       self.GenerateEvents(trace, i, preprocessed_data, debug)
-
+    print ""
     return trace

@@ -104,7 +104,7 @@ class Canvas(object):
 
   def __init__(self, image=None, tform_fn=None):
     self.image = None
-    if image:
+    if image is not None:
       self.image = skimage.color.gray2rgb(image)
     self.tform_fn = tform_fn
 

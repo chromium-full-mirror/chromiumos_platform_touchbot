@@ -5,7 +5,6 @@ from contracts import contract
 import time
 
 from optofidelity.system.dut import DeviceUnderTest
-from optofidelity.system.calibration import CameraCalibration
 from optofidelity.videoproc import VideoWriter
 
 
@@ -27,7 +26,6 @@ class TestApp(object):
         self.PAGE_CLICK: (-1, -1),
         self.PAGE_FLASH: (-1, -1),
     }
-    self.test_area = None
     self.button_coords = (-1, -1)
 
   def SaveCalibration(self, hdf5):
@@ -35,7 +33,6 @@ class TestApp(object):
     hdf5.create_group("pages")
     for page, coords in self.pages.items():
       hdf5["pages"].create_dataset(page, data=coords)
-    self.test_area.Save(hdf5.create_group("screen"))
 
   def LoadCalibration(self, hdf5):
     button_coords = hdf5["button_coords"]
@@ -44,7 +41,6 @@ class TestApp(object):
     for page in self.pages.keys():
       coords = hdf5["pages"][page]
       self.pages[page] = (coords[0], coords[1])
-    self.test_area = CameraCalibration.Load(hdf5["screen"])
 
   def CalibrateButtons(self):
     for text, x, y in self.dut.ReadText():
@@ -55,31 +51,9 @@ class TestApp(object):
       if x < 0 or y < 0:
         raise DUTException(self.dut, "Cannot find button for page " + page)
 
-  def CalibrateScreen(self, camera, dump=False):
-    self.EnterPage(self.PAGE_FLASH)
-    self.dut.ClearScreen()
-    camera.Record(60)
-    camera.WaitUntilReady()
-    self.ExitPage()
-
-    reader = camera.GetVideoReader()
-    self.test_area = CameraCalibration()
-    try:
-      self.test_area.Detect(reader)
-      if not dump:
-        return
-    except Exception, e:
-      print "Error while detecting screen"
-      print e
-    # Dump screen info
-    name = str(self).replace("/", "_") + "_Screen_" + str(int(time.time()))
-    writer = VideoWriter(name + ".mov")
-    writer.Write(reader)
-
   def Calibrate(self, x, y, camera, dump=False):
     self.button_coords = (x, y)
     self.CalibrateButtons()
-    self.CalibrateScreen(camera, dump)
 
   def EnterPage(self, page):
     self.dut.Tap(*self.pages[page])

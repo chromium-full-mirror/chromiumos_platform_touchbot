@@ -12,6 +12,7 @@ import warnings
 from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest
 from optofidelity.system import OptofidelityTestSystem
 from optofidelity.test_runner import TestRunner
+from optofidelity.test_run import TestRun
 from optofidelity.detection import ProcessorDebugger
 
 usage = """TestRunner usage examples
@@ -45,9 +46,23 @@ def AddDebugOptions(parser):
 def BuildDebugger(options):
   return ProcessorDebugger(options.debug, options.start, options.stop)
 
-def RunTests(glob, options):
-  debug = BuildDebugger(options)
+def Process(path, what, debug):
+  run = TestRun.Load(path)
+  if what == "calibration":
+    run.ProcessCalibrationVideo(debug)
+  elif what == "video":
+    run.ProcessTestVideo(debug)
+    print run.test_trace
+  elif what == "trace":
+    run.ProcessTestTrace(debug)
+    print run.test_results
+  elif what == "all":
+    run.ProcessCalibrationVideo(debug)
+    run.ProcessTestVideo(debug)
+    run.ProcessTestTrace(debug)
+  run.Save()
 
+def RunTests(glob, debug, options):
   system = OptofidelityTestSystem(config_file)
 
   if options.calibrate or not os.path.exists(calibration_file):
@@ -56,7 +71,7 @@ def RunTests(glob, options):
   else:
     system.LoadCalibration(calibration_file)
 
-  runner = TestRunner(system, options.dump_all)
+  runner = TestRunner(system, script_dir, options.dump_all)
   RegisterTestClasses(runner)
   for dut in system:
     for app in dut:
@@ -67,7 +82,6 @@ def RunTests(glob, options):
   else:
     runner.RunTests(glob, debug)
 
-
 def Main():
   parser = OptionParser(usage=usage)
   parser.add_option("--calibrate",
@@ -76,9 +90,10 @@ def Main():
   parser.add_option("--dump-all",
                     dest="dump_all", default=False, action="store_true",
                     help="Dump debug info for all executed tests.")
-  parser.add_option("--debug-video",
-                    dest="debug_video", default=None,
-                    help="Debug a previously recorded video.")
+  parser.add_option("--process",
+                    dest="process", default=None,
+                    help="Process local files")
+
   AddDebugOptions(parser)
   (options, args) = parser.parse_args()
 
@@ -90,7 +105,11 @@ def Main():
   if args:
     glob = args[0]
 
-  RunTests(glob, options)
+  debug = BuildDebugger(options)
+  if options.process:
+    Process(glob, options.process, debug)
+  else:
+    RunTests(glob, debug, options)
 
 
 if __name__ == "__main__":
