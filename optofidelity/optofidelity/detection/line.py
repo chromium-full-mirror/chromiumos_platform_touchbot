@@ -8,42 +8,48 @@ from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
-class LineSegment(object):
-  """Contains information of a line segment detected by the Line class.
-
-  A line segment describes a segment of a horizontal line, which start/end
-  bein values on the x-axis of the video frames. The level of the line is
-  the average grayscale value of the line normalized to the final grayscale
-  value of the segment when it is finished drawing.
-  """
-  @contract(start=">=0", end=">=0", draw_start=">=0")
-  def __init__(self, start, end, draw_start):
+class ProfileSegment(object):
+  def __init__(self, array, start, end):
+    self.array = array
     self.start = start
     self.end = end
-    self.draw_start = draw_start
-    self.draw_end = None
-    self.level = 0
-
-  def UpdateLevel(self, normalized):
-    """Update the level of this segment from a normalized profile.
-
-    See Line.Preprocess for information on this profile.
-    """
-    if self.start > self.end:
-      idx = range(self.end, self.start)
-    else:
-      idx = range(self.start, self.end)
-    self.level = np.median(normalized[idx])
 
   def __repr__(self):
-    return "(%d, %d, %d)" % (self.end, self.draw_start, self.draw_end)
+    return "[%d:%d]" % (self.start, self.end)
+
+class Profile(object):
+  def __init__(self, image, mask=None):
+    if mask is None:
+      self.array = np.sum(image, 0) / image.shape[0]
+    else:
+      self.array = np.sum(image * mask, 0) / np.sum(mask, 0)
+
+  def __getitem__(self, key):
+    return self.array.__getitem__(key)
 
   @property
-  def length(self):
-    return np.abs(self.end - self.start)
+  def shape(self):
+    return self.array.shape
 
+  @property
+  def size(self):
+    return self.end - self.start
 
-class Line(object):
+  def Segment(self, threshold):
+    segmentation = (self.array > threshold)
+    objects = []
+    object_start = None
+    for i, value in enumerate(segmentation):
+      if value and object_start is None:
+        object_start = i
+      elif not value and object_start is not None:
+        objects.append(ProfileSegment(self.array, object_start, i))
+        object_start = None
+    if object_start is not None:
+      objects.append(ProfileSegment(self.array, object_start, i))
+    return objects
+
+class Line(Detector):
   """Detects line draw events.
 
   For initialization it requires an image of the fully drawn, non occluded line,
@@ -54,230 +60,63 @@ class Line(object):
   """
   name = "line"
 
-  draw_end_thresh = 0.9
+  draw_end_min_color = 0.9
   """How much of the target color a line segment has to reach to be considered
      fully drawn."""
 
-  target_line_min_area = 500
-  """Minimum size of the target line shape, in square pixels."""
+  draw_start_min_color = 0.05
+  """How much of the target color a line segment has to reach to be considered
+     starting to draw."""
 
-  target_line_min_eccentricity = 0.99
-  """Minimum eccentricity of the target line shape."""
+  line_segment_min_color = 0.5
+  """Minimum color for a pixel to be considered part of the currently
+     drawing segment."""
 
-  target_line_max_orientation = 0.1
-  """Maximum orientation of the target line shape in radians from horizontal."""
-
-  target_line_search_step = 10
-  """When searching for the target line, look only at every Nth frame."""
-
-  target_line_search_max_steps = 10
-  """How many frames to look at when looking for a target line."""
-
-  target_line_padding = 5
-  """How many pixels of padding around the target line to account for camera
-     shake?"""
-
-  profile_object_threshold = 0.1
-  """Areas above this threshold are considered to be an object in the
-     image profile."""
-
-  border_touching_threshold = 5
-  """Any object that's closer to the border than this threshold is considered
-     to touch the border."""
-
-  minimum_line_length = 4
-  """Minimum length of a newly detected line."""
-
-  minimum_line_level = 0.5
-  """Minimum brightness level of a newly detected line."""
-
-  transition_epsilon = 0.01
-  """Near-zero epsilon to detect when the transition area hits zero."""
-
-  segment_merge_level = 0.3
-  """Line segments with an level difference lower than this threshold will be
-     merged."""
-
-  segment_min_length = 2
+  segment_min_length = 3
   """Minimum length of a line segment."""
 
-  def __init__(self):
-    # Calibration Information
-    self.target_shape = None
-    self._target_left = None
-    self._target_right = None
-    self._drawn_profile = None
+  line_horizontal_offset = 0
+  """Horizontal offset of the line measured from the center of the test area,
+     in rectified space pixels."""
 
-    # Stateful Information
-    self.found = False
-    self.segments = []
-    self.reverse = False
-    self._line_end = None
+  line_width = 8
+  """Width of drawn line in rectified space pixels."""
+
+  def __init__(self):
+    self.last_no_draw_map = None
+    self.line_obj = None
+    self.location = 0
 
   def Initialize(self, video, debug):
-    step = -self.target_line_search_step
-    stop = -step * self.target_line_search_max_steps
-    for frame in video.Frames(start=-1, stop=stop, step=step):
-      if self.DetectTargetLine(frame, debug=debug):
-        return True
-    return False
-
-  def DetectTargetLine(self, frame, debug):
-    """Detect the final line that is to be drawn.
-
-    The parameter frame has to be a Frame instance from an image showing the
-    non-occluded target line.
-    Returns False if the detection failed.
-    """
-    def is_target_line(region, labels, debug):
-      if debug:
-        print region.label, region.area, region.eccentricity, region.orientation
-      return (region.area > self.target_line_min_area and
-              region.eccentricity > self.target_line_min_eccentricity and
-              np.abs(region.orientation) < self.target_line_max_orientation)
-
-    # Find object fitting the is_target_line function.
-    binary = frame.foreground
-    self.target_shape = Shape.Find(binary, is_target_line, debug=debug)
-    if not self.target_shape:
-      return False
-
-    self._target_left = self.target_shape.left
-    self._target_right = self.target_shape.right
-
-    # Add margin to account for camera shake.
-    padding = self.target_line_padding
-    self.target_shape = self.target_shape.WithMargin(padding, padding)
-
-    # Calculate profile of drawn line and empty screen as reference.
-    self._drawn_profile = Filter.ExtractProfile(
-        (1 - frame.normalized) * self.target_shape.mask)
-
-    if debug:
-      res = Canvas(frame.rectified)
-      res.DrawContour([0, 1, 0], self.target_shape)
-      Viewer.DebugView(contour=res.image)
     return True
-
-  def _FindLine(self, profile):
-    """Search profile for the beginning of a line draw.
-
-    Since the robot finger is passing through the same area, we have to
-    reject the robot finger and identify the peak in the profile that
-    represents the line.
-
-    Returns a tuple (start, end) if the line is _found and sets
-    self.reverse if the line is drawn from right to left.
-    """
-    # segment objects on profile line (1D version of shape detection)
-    segmentation = (profile > self.profile_object_threshold).astype(np.int)
-    segmentation_diff = np.diff(segmentation)
-
-    objects = []
-    object_start = 0
-    for i in range(len(segmentation_diff)):
-      if segmentation_diff[i] > 0:
-        object_start = i
-      elif segmentation_diff[i] < 0:
-        objects.append((object_start, i))
-
-    # The first object will be the robot finger.
-    if len(objects) <= 1:
-      return None
-
-    # find leftmost and rightmost objects
-    leftmost_object = min(objects, key=lambda o: o[0])
-    rightmost_object = max(objects, key=lambda o: o[1])
-
-    # check if the object is at the start or end of the target line
-    line = None
-    border_threshold = self.border_touching_threshold
-    if leftmost_object[0] < self._target_left + border_threshold:
-      line = leftmost_object
-      self.reverse = False
-    elif rightmost_object[1] > self._target_right - border_threshold:
-      line = rightmost_object
-      self.reverse = True
-    if not line:
-      return None
-
-    # check if the line is dark and long enough
-    line_level = np.mean(profile[line[0]:line[1]])
-    line_length = line[1] - line[0]
-    if (line_level > self.minimum_line_level and
-        line_length > self.minimum_line_length):
-      return line
-    return None
-
-  def _FindTransition(self, profile):
-    """Find beginnging and end of transition area in the profile profile."""
-    # Determine directions depending on the direction the line is being drawn
-    forward = +1 if not self.reverse else -1
-    backward = -1 if not self.reverse else +1
-    front = 0 if not self.reverse else len(profile)
-    back = len(profile) if not self.reverse else 0
-
-    # find transition period around the end of the line
-    # the transition starts where the profile starts decreasing from 1 and
-    # ends where it hits 0.
-    transition_start = self._line_end
-    transition_end = self._line_end
-    for i in range(self._line_end, front, backward):
-      if profile[i] > 1 - self.transition_epsilon:
-        transition_start = i
-        break
-    for i in range(self._line_end, back, forward):
-      if profile[i] < self.transition_epsilon:
-        transition_end = i
-        break
-    return (transition_start, transition_end)
-
-  def _AddNewSegments(self, timestamp, profile, transition_start,
-                      transition_end):
-    """Add new segments to self.segments after they have been fully drawn."""
-    forward = +1 if not self.reverse else -1
-    backward = -1 if not self.reverse else +1
-
-    # Add initial line segment
-    if not self.segments:
-      self.segments.append(LineSegment(transition_start,
-                                       transition_end + backward,
-                                       timestamp))
-
-    # Look for potential new segment
-    last_segment = self.segments[-1]
-    new_segment = LineSegment(last_segment.end + forward,
-                              transition_end + backward,
-                              timestamp)
-    new_segment.UpdateLevel(profile)
-
-    segment_level_diff = np.abs(last_segment.level - new_segment.level)
-
-    if segment_level_diff < self.segment_merge_level:
-      # segments colors are very close to each other, merge them.
-      last_segment.end = new_segment.end
-    elif new_segment.length > self.segment_min_length:
-      # segment is big enough, append as new segment
-      self.segments.append(new_segment)
 
   def Preprocess(self, frame, debug):
     """Preprocessing step to process 2D frames into a 1D profile.
 
     The profile of a line roughly looks like this:
-      ____________________
-                          \                       _
-                           \_                    / \
-                             \__________________/   \___
-            ^            |----|        ^          ^
-       fully drawn     transition   no line     robot
-      line segments       area       drawn      finger
+         _________________
+        |                 \
+        |                  \_
+     ___|                    \_________________
+               ^         |----|        ^
+       fully drawn     transition   no line
+      line segments       area       drawn
 
     This method returns data to be passed to GenerateEvents. This method
-    is stateless and can be called on any frames out of order."""
-    if not self.target_shape:
-      return None
-    return Filter.ExtractProfile(1 - frame.normalized,
-                                 self._drawn_profile)
+    is stateless and can be called on any frames out of order.
+
+    The line is expected to be line_horizontal_offset pixels below the center
+    of the screen and have at least a width of line_width.
+    """
+    center = int(frame.normalized.shape[0] / 2) + self.line_horizontal_offset
+    top = int(center - (self.line_width / 2))
+    bottom = int(center + (self.line_width / 2))
+
+    mask = np.zeros(frame.normalized.shape, dtype=np.bool)
+    mask[top:bottom, :] = True
+    if debug:
+      debug.canvas.DrawContour(Canvas.RED, Shape(mask))
+    return Profile(1 - frame.normalized, mask)
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Generate Line events from sequential preprocessed data.
@@ -290,45 +129,62 @@ class Line(object):
     events = []
     profile = preprocessed_data
 
-    if debug_canvas:
-      debug_canvas.Plot(Canvas.BLUE, profile)
+    if debug:
+      debug.canvas.Plot(Canvas.BLUE, profile.array)
 
-    if not self.target_shape:
+    # Note the timestamp at which each profile pixel has last been below the
+    # draw_start_min_color threshold. This is the frame before the drawing
+    # started.
+    if self.last_no_draw_map is None:
+      self.last_no_draw_map = np.zeros(profile.shape)
+    no_draw_indices = (profile.array < self.draw_start_min_color)
+    self.last_no_draw_map[no_draw_indices] = timestamp
+
+    # Segment line in current frame
+    objects = profile.Segment(self.line_segment_min_color)
+
+    # If we have not seen a line before, just store this line object.
+    if self.line_obj is None:
+      if len(objects) == 1:
+        self.line_obj = objects[0]
       return events
 
-    # Search for start of line drawing
-    if not self.found:
-      line = self._FindLine(profile)
-      if line:
-        self._line_end = line[1] if not self.reverse else line[0]
-        self.found = True
-
-    if not self.found:
+    # If the line disappeared generate a reset event.
+    if len(objects) == 0:
+      self.line_obj = None
+      events.append(Event(timestamp, Event.LINE_RESET))
       return events
 
-    # Update existing segments and create draw events
-    for segment in self.segments:
-      segment.UpdateLevel(profile)
-      if segment.draw_end is None and segment.level > self.draw_end_thresh:
-        segment.draw_end = timestamp
-        events.append(Event(segment.draw_start, Event.LINE_DRAW_START,
-                            location=segment.end))
-        events.append(Event(segment.draw_end, Event.LINE_DRAW_END,
-                            location=segment.end))
+    # Determine new line segment and location
+    new_line = objects[0]
+    new_location = None
+    new_slice = None
 
-    # Find transition area and add new line segments to the segment list
-    (transition_start, transition_end) = self._FindTransition(profile)
-    self._AddNewSegments(timestamp, profile, transition_start,
-                         transition_end)
-    self._line_end = transition_end
+    if self.line_obj.start - new_line.start > self.segment_min_length:
+      # New segment drawn on left side of existing line.
+      new_location = new_line.start + 1
+      new_slice = np.s_[new_line.start:self.line_obj.start]
+    elif new_line.end - self.line_obj.end > self.segment_min_length:
+      # New segment draw on right side of existing line.
+      new_location = new_line.end - 1
+      new_slice = np.s_[self.line_obj.end:new_line.end]
+
+    if new_slice is not None:
+      # Wait until the median color level meets the draw_end_min_color
+      # requirement, then generate draw events.
+      level = np.median(profile[new_slice])
+      if level > self.draw_end_min_color:
+        last_no_draw = np.max(self.last_no_draw_map[new_slice])
+        events.append(Event(last_no_draw + 1, Event.LINE_DRAW_START,
+                            location=new_location))
+        events.append(Event(timestamp, Event.LINE_DRAW_END,
+                            location=new_location))
+
+        self.line_obj = new_line
+        self.location = new_location
 
     if debug:
-      for segment in self.segments:
-        debug.canvas.DrawHLine(Canvas.GREEN, segment.end,
-                                    self.target_shape.center_y)
+      debug.canvas.DrawHLine(Canvas.BLUE, self.location, 0)
 
-      debug.canvas.DrawHLine(Canvas.YELLOW, transition_start,
-                                  self.target_shape.center_y)
-      debug.canvas.DrawHLine(Canvas.YELLOW, transition_end,
-                                  self.target_shape.center_y)
     return events
+
