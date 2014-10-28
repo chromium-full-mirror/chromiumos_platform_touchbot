@@ -10,36 +10,44 @@
   <title>Scroll Latency Test</title>
   <style>
     div.block  {
-      width: 200px;
+      width: 60px;
       margin: auto;
       height: 1024px;
       cursor: pointer;
     }
-    div#black {
-      background-color: black;
-    }
-    div#white {
+    div#block_a {
       background-color: white;
+    }
+    div#block_b {
+      background-color: black;
     }
     body {
       margin: 0;
     }
   </style>
   <script>
-    function scroll_to_click(event) {
+    function on_click(event) {
+      // Swap colors with each click
+      block_a_color = $("#block_a").css("background-color");
+      block_b_color = $("#block_b").css("background-color");
+      $("#block_a").css("background-color", block_b_color)
+      $("#block_b").css("background-color", block_a_color)
+
+      // Scroll to location of click
       $("body").animate({
-          scrollTop: $("#black").height - event.pageY + document.body.scrollTop
+          scrollTop: ($("#block_a").height() - event.clientY +
+                      document.body.scrollTop)
       }, 0);
     }
     $(document).ready(function() {
-      $("div.block").click(scroll_to_click)
+      $("body").click(on_click)
     })
   </script>
 </head>
 
 <body>
-  <div id="black" class="block">&nbsp;</div>
-  <div id="white" class="block">&nbsp;</div>
+  <div id="block_a" class="block">&nbsp;</div>
+  <div id="block_b" class="block">&nbsp;</div>
 </body>
 
 </html>

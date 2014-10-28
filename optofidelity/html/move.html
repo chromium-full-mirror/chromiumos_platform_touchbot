@@ -19,7 +19,6 @@
     }
   </style>
   <script>
-    var prev_x = 0;
     var prev_y = 0;
 
     function OnTouchStart(event) {
@@ -36,21 +35,22 @@
     function OnTouchMove(event) {
       event.preventDefault();
 
-      var ctx = $('#canvas')[0].getContext('2d');
+      var canvas = $('#canvas')[0]
+      var ctx = canvas.getContext('2d');
       var touch = event.changedTouches[0];
 
+      center_x = canvas.clientWidth / 2;
+
       ctx.strokeStyle = 'black';
-      ctx.lineWidth = 200;
+      ctx.lineWidth = 60;
       ctx.lineCap = 'butt'
 
-      ctx.beginPath();
-      delta_x = touch.clientX - prev_x
       delta_y = touch.clientY - prev_y
-      ctx.moveTo(prev_x, prev_y - delta_y * 2);
-      ctx.lineTo(prev_x, touch.clientY);
+      ctx.beginPath();
+      ctx.moveTo(center_x, prev_y - delta_y);
+      ctx.lineTo(center_x, touch.clientY);
       ctx.stroke();
 
-      //prev_x = touch.clientX;
       prev_y = touch.clientY;
     }
 
