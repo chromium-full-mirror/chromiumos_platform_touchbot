@@ -9,7 +9,6 @@ import scipy.signal as signal
 
 from optofidelity.videoproc import VideoException
 
-
 class Event(object):
   """Describes an event detected in the camera stream."""
   LINE_DRAW_START = "LineDrawStart"
@@ -18,8 +17,8 @@ class Event(object):
   SCREEN_DRAW_START = "ScreenDrawStart"
   SCREEN_DRAW_END = "ScreenDrawEnd"
   FINGER_MOVED = "FingerMoved"
-  FINGER_DOWN = "FingerDown"
-  FINGER_UP = "FingerUp"
+  LED_OFF = "LEDOff"
+  LED_ON = "LEDOn"
 
   def __init__(self, time, event_type, location=None, color=None):
     self.event_type = event_type
@@ -75,17 +74,29 @@ class Trace(object):
   def __repr__(self):
     return str(self)
 
+  def RequireEvents(self, *event_types):
+    for event_type in event_types:
+      if len(self.Events(event_type)) == 0:
+        raise Exception("Trace does not show the events of type " + event_type)
+
+  @contract(event_type=str, start_time=">=0|None")
+  def Find(self, event_type, start_time=None):
+    for i, event in enumerate(self.Events(event_type)):
+      if start_time is None or event.time >= start_time:
+        return i, event
+    return -1, None
+
+
   @contract(event_type=str)
   def Split(self, event_type):
     """Split trace before each occurence of event_type."""
-    events = None
+    events = []
     for event in self._events:
       if event.event_type == event_type:
         if events:
           yield Trace(events)
         events = []
-      if events is not None:
-        events.append(event)
+      events.append(event)
     if events:
       yield Trace(events)
 
@@ -100,7 +111,7 @@ class Trace(object):
 
   def Times(self, event_type=None, color=None):
     """Return numpy array of times of event_type."""
-    return np.asarray([e.time for e in self.Events(event_type, color)])
+    return np.asarray([e.time for e in self.Events(event_type, color)], dtype=np.float)
 
   def Time(self, event_type=None, color=None):
     """Return numpy array of times of event_type."""
@@ -113,18 +124,26 @@ class Trace(object):
 
   def Locations(self, event_type=None):
     """Return numpy array of locations of event_type."""
-    return np.asarray([e.location for e in self.Events(event_type)])
+    return np.asarray([e.location for e in self.Events(event_type)], dtype=np.float)
 
-  def TrimByLocation(self, loc_min, loc_max):
+  def LocationAt(self, event_type, time):
+    """Return location of an event_type at the specified time."""
+    mapping = self.TimeLocationMap(event_type)
+    return mapping(time)
+
+  def TrimByLocation(self, loc_min, loc_max, event_type=None):
     """Return a TraceProcessor with events filtered by location.
 
     The new trace processor contains the same events minus the ones the ones
     with their location outside the [loc_min,loc_max) range.
+    With the argument event_type you can limit the trimming to a certain event
+    type while retaining all other events.
     """
     if loc_min > loc_max:
       (loc_min, loc_max) = (loc_max, loc_min)
     events = [e for e in self._events
-                if e.location >= loc_min and e.location <= loc_max]
+                if (e.event_type != event_type or
+                    (e.location >= loc_min and e.location <= loc_max))]
     return Trace(events)
 
   def TrimByTime(self, time_min, time_max):
@@ -151,6 +170,29 @@ class Trace(object):
     finger_time = self.Times(event_type)
     return interpolate.interp1d(finger_time, finger_loc)
 
+  def Speeds(self, event_type):
+    events = self.Events(event_type)
+    locations = np.asarray([e.location for e in events])
+    times = np.asarray([e.time for e in events])
+
+    # Calculated smoothed first derivative
+    def MovingAvg(f, N):
+      return signal.convolve(f, np.ones(N,) / N, "valid")
+    smoothing_kernel = self.linear_motion_smoothing_kernel
+    smoothed = MovingAvg(locations, smoothing_kernel)
+    speed = np.abs(MovingAvg(np.diff(smoothed), smoothing_kernel))
+
+    delta_t = np.diff(MovingAvg(times, smoothing_kernel))
+    delta_l = np.diff(MovingAvg(locations, smoothing_kernel))
+    speed = np.abs(delta_l / delta_t)
+    speed = MovingAvg(speed, smoothing_kernel)
+
+    # Smoothing and deriving above reduces the array size, we have to account
+    # for the shift in indices.
+    reshaped = np.zeros((len(events),))
+    reshaped[smoothing_kernel-1:-smoothing_kernel] = speed
+    return reshaped
+
   def FindLinearMotionRange(self, event_type):
     """Return (start, end) event of range in which event shows linear motion.
 
@@ -159,14 +201,7 @@ class Trace(object):
     at this speed.
     """
     events = self.Events(event_type)
-    locations = [e.location for e in events]
-
-    # Calculated smoothed first derivative
-    def MovingAvg(f, N):
-      return signal.convolve(f, np.ones(N,) / N, "valid")
-    smoothing_kernel = self.linear_motion_smoothing_kernel
-    smoothed = MovingAvg(locations, smoothing_kernel)
-    speed = np.abs(MovingAvg(np.diff(smoothed), smoothing_kernel))
+    speed = self.Speeds(event_type)
 
     # Allow 20% variation of the maximum speed in linear range.
     max_speed_idx = np.argmax(speed)
@@ -184,10 +219,30 @@ class Trace(object):
       if speed[i] < min_speed:
         end = i
         break
+    return events[start], events[end]
 
-    # Smoothing and deriving above reduces the array size, we have to account
-    # for the shift in indices.
-    start += SMOOTHING_KERNEL
-    end += SMOOTHING_KERNEL
+  def FindStaticMotionRange(self, event_type):
+    """Return (start, end) event of range in which event shows no motion.
 
+    The static motion has to be enclosed between motion. No motion at the
+    beginning or end of the trace will be ignored.
+    """
+    events = self.Events(event_type)
+    speed = self.Speeds(event_type)
+
+    moved = False
+    start = None
+    end = None
+    for i, speed in enumerate(speed):
+      if speed > 1:
+        moved = True
+        if end is not None:
+          break
+      if moved and speed < 0.05:
+        if start is None:
+          start = i
+        end = i
+
+    if start is None or end is None:
+      raise Exception("Cannot find static motion range")
     return events[start], events[end]

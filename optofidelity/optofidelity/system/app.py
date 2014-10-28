@@ -12,6 +12,7 @@ class TestApp(object):
   """Provides functionality to navigate different pages of an app."""
   PAGE_TAP = "Tap"
   PAGE_MOVE = "Move"
+  PAGE_SCROLL = "Scroll"
   PAGE_CLICK = "Click"
   PAGE_FLASH = "Flash"
   TEST_APP_ICON = None
@@ -25,6 +26,7 @@ class TestApp(object):
         self.PAGE_MOVE: (-1, -1),
         self.PAGE_CLICK: (-1, -1),
         self.PAGE_FLASH: (-1, -1),
+        self.PAGE_SCROLL: (-1, -1),
     }
     self.button_coords = (-1, -1)
 

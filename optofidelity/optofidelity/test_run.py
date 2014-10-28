@@ -134,7 +134,8 @@ class TestRun(object):
   def ProcessTestTrace(self, debug):
     """Process the trace into latency results."""
     assert self.test_trace, "No test trace"
-    self.test_results = self.test_class.ProcessTrace(self.test_trace)
+    self.test_results = self.test_class.ProcessTrace(self.test_trace,
+                                                     debug["trace"])
 
   @classmethod
   def Load(cls, path):

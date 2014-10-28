@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """This module implements test cases to measure touch latency."""
+import matplotlib.pyplot as plt
 import time
 
 from optofidelity.test_runner import TestClass
@@ -12,38 +13,133 @@ from optofidelity.detection import (Event, FingerLED, FingerMove, Line,
 class TouchMoveLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TouchMoveLatency"
-  required_events = []
+
+  page = "Move"
+  """Name of the page to run this test on."""
+
+  test_area_margin = 30
+  """Margin on each side of the test area to stay clear of (in mm)."""
+
+  calib_move_distance = 10
+  """Distance to move for the calibration movement (in mm)."""
+
+  commands_duration = 2000
+  """Duration of the full set of robot commands (in # of camera frames)."""
+
+  repetitions = 1
+  """How often to repeat the test."""
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
     processor.AddDetector(FingerMove())
 
   def ExecuteTest(self, app, dut, camera):
-    app.EnterPage("Move")
-    dut.Move(dut.test_plane, 10, 10)
-    camera.Record(300)
-    dut.Swipe(dut.test_plane, 30, dut.test_plane, 90)
+    camera.PrepareRecording(self.commands_duration * self.repetitions)
+    app.EnterPage(self.page)
+
+    # The robot will draw a line between the 'left' and 'right' location and
+    # back. It will pause after the first bit of the line so the video
+    # processing can calculate the offset between finger and line location.
+    left = self.test_area_margin
+    right = dut.height - self.test_area_margin
+    left_calib_stop = left + self.calib_move_distance
+    right_calib_stop = right - self.calib_move_distance
+
+    # Height of finger down and up state in cm
+    down = -1
+    up = 10
+
+    for i in range(self.repetitions):
+      # Tap to reset the screen, then draw from left to right.
+      dut.Tap(dut.test_plane, left)
+      if i == 0:
+        camera.Trigger()
+      dut.Move(dut.test_plane, left, down)
+      dut.Move(dut.test_plane, left_calib_stop, down)
+      dut.Move(dut.test_plane, right, down)
+      dut.Move(dut.test_plane, right, up)
+
+      # Tap to reset the screen, then draw from right to left.
+      dut.Tap(dut.test_plane, right)
+      dut.Move(dut.test_plane, right, down)
+      dut.Move(dut.test_plane, right_calib_stop, down)
+      dut.Move(dut.test_plane, left, down)
+      dut.Move(dut.test_plane, left, up)
+
     camera.WaitUntilReady()
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace):
-    # find linear motion range and trim draw events to this range.
-    start_event, end_event = trace.FindLinearMotionRange(Event.FINGER_MOVED)
+  def ProcessTrace(self, traces, debug):
+    start_lat = []
+    end_lat = []
 
-    trace = trace.TrimByLocation(start_event.location, end_event.location)
+    def PlotEvent(trace, event_type):
+      plt.plot(trace.Times(event_type), trace.Locations(event_type))
 
-    # for each draw event, calculate difference to time when the finger
-    # moved through the line location.
-    finger_loc_time = trace.LocationTimeMap(Event.FINGER_MOVED)
-    start_lat = [e.time - finger_loc_time(e.location)
-                 for e in trace.Events(Event.LINE_DRAW_START)]
-    end_lat = [e.time - finger_loc_time(e.location)
-               for e in trace.Events(Event.LINE_DRAW_END)]
+    if debug:
+      plt.figure()
+      PlotEvent(traces, Event.FINGER_MOVED)
+      plt.title("Finger/Line draw locations")
+
+    for trace in traces.Split(Event.LINE_RESET):
+      trace.RequireEvents(Event.FINGER_MOVED,
+                          Event.LINE_DRAW_END,
+                          Event.LINE_DRAW_END)
+
+      # Find pause after first movement to calibrate the offset between
+      # finger and line location.
+      calib_start, calib_end = trace.FindStaticMotionRange(Event.FINGER_MOVED)
+      finger_at_calib = calib_end.location
+      line_at_calib = trace.LocationAt(Event.LINE_DRAW_END, calib_end.time)
+      calib_offset = finger_at_calib - line_at_calib
+
+      if debug:
+        print "Calibration Offset:", calib_offset
+
+      # Find linear motion range and trim draw events to this range.
+      start_event, end_event = trace.FindLinearMotionRange(Event.FINGER_MOVED)
+      start_location = start_event.location - calib_offset
+      end_location = end_event.location - calib_offset
+      trace = trace.TrimByLocation(start_location, end_location,
+                                   Event.LINE_DRAW_START)
+      trace = trace.TrimByLocation(start_location, end_location,
+                                   Event.LINE_DRAW_END)
+
+      # Add trimmed line draw events to plot
+      if debug:
+        PlotEvent(trace, Event.LINE_DRAW_START)
+        PlotEvent(trace, Event.LINE_DRAW_END)
+
+      # For each draw event, calculate difference to time when the finger
+      # moved through the line location.
+      finger_loc_time = trace.LocationTimeMap(Event.FINGER_MOVED)
+      start_lat.extend([e.time - finger_loc_time(e.location + calib_offset)
+                        for e in trace.Events(Event.LINE_DRAW_START)])
+      end_lat.extend([e.time - finger_loc_time(e.location + calib_offset)
+                      for e in trace.Events(Event.LINE_DRAW_END)])
+
+    if debug:
+      plt.figure()
+      plt.plot(start_lat)
+      plt.plot(end_lat)
+      plt.title("Start/End Latencies")
+      plt.show()
+
     return {
-        "StartLatency": start_lat,
-        "EndLatency": end_lat
+        "DrawStartLatency": start_lat,
+        "DrawEndLatency": end_lat
     }
+
+
+class ScrollLatencyTest(TouchMoveLatencyTest):
+  """Measures scroll latency.
+
+  This latency measurement logic is identical to TouchMoveLatencyTest, but
+  is executed on the Scroll page.
+  """
+  name = "ScrollLatency"
+  page = "Scroll"
 
 
 class TapLatencyTest(TestClass):
@@ -75,14 +171,16 @@ class TapLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace):
-    traces = trace.Split(Event.FINGER_DOWN)
-
+  def ProcessTrace(self, trace, debug):
     down_start = []
     down_end = []
     up_start = []
     up_end = []
-    for trace in traces:
+
+    for trace in trace.Split(Event.FINGER_DOWN):
+      if not trace.Events(Event.FINGER_DOWN):
+        continue
+
       finger_down = trace.Time(Event.FINGER_DOWN)
       finger_up = trace.Time(Event.FINGER_UP)
 
