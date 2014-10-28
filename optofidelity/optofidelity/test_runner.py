@@ -68,22 +68,28 @@ class TestRunner(object):
 
     # Group test cases by DUT and run all of them
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
+    results = {}
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
-      RetryFunction(lambda: self._RunDUTTests(dut, cases, debug),
-                    dut.Reset,
-                    "Running tests: " + str(dut))
+      dut_results = RetryFunction(lambda: self._RunDUTTests(dut, cases, debug),
+                                  dut.Reset,
+                                  "Running tests: " + str(dut))
+      results.update(dut_results)
+    return results
 
   def _RunDUTTests(self, dut, cases, debug):
     dut.LocateButtons()
 
     # Group test cases by app and run all of them
+    results = {}
     sorted_cases = sorted(cases, key=lambda c: c.app)
     for app, cases in itertools.groupby(sorted_cases, key=lambda c: c.app):
       dut.EnterApp(app.name)
-      RetryFunction(lambda: self._RunAppTests(dut, app, cases, debug),
-                    app.Reset,
-                    "Running tests: " + str(app))
+      function = lambda: self._RunAppTests(dut, app, cases, debug)
+      app_results = RetryFunction(function, app.Reset,
+                                  "Running tests: " + str(app))
+      results.update(app_results)
       dut.ExitApp()
+    return results
 
   def _RunAppTests(self, dut, app, cases, debug):
     app.LocateButtons()
@@ -102,10 +108,14 @@ class TestRunner(object):
       calibration.CacheVideo()
 
     # Run all test cases with that calibration
+    results = {}
     for case in cases:
-      RetryFunction(lambda: self._RunTest(dut, app, case, calibration, debug),
-                    app.Reset,
-                    "Running test: " + str(case))
+      function = lambda: self._RunTest(dut, app, case, calibration, debug)
+      case_results = RetryFunction(function, app.Reset,
+                                   "Running test: " + str(case))
+      results.update(case_results)
+    return results
+
 
   def _RunTest(self, dut, app, case, calibration, debug):
     # Path to store results in
@@ -122,7 +132,13 @@ class TestRunner(object):
       run.ProcessTestTrace(debug)
       if self.dump_all:
         run.SaveAll(result_path)
-      return run.test_results
+      print "Results:"
+      results = {}
+      for key, value in run.test_results.iteritems():
+        new_key = "%s/%s" % (str(case), key)
+        print "  %s: %s" % (new_key, str(value))
+        results[new_key] = value
+      return results
     except Exception, e:
       print "%s: Processing failed: %s" % (case, e)
       traceback.print_exc()

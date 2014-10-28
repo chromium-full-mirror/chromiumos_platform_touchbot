@@ -72,7 +72,13 @@ def RunTests(glob, debug, options):
     for app in dut:
       runner.AddApp(app)
 
-  runner.RunTests(glob, debug)
+  results = runner.RunTests(glob, debug)
+
+  print "Latency Results:"
+  for name, result in results.iteritems():
+    std = np.std(result)
+    mean = np.mean(result)
+    print "  %s: %f (std=%f)" % (name, mean, std)
 
 def Main():
   parser = OptionParser(usage=usage)

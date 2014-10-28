@@ -29,8 +29,7 @@ def RetryFunction(function, recover_function, title, max_attempts=3):
   for i in range(max_attempts):
     try:
       print "%s (Attempt %d)" % (title, i+1)
-      function()
-      return
+      return function()
     except Exception as e:
       print "%s: FAILED" % title
       traceback.print_exc()
