@@ -13,14 +13,19 @@ class DeviceUnderTest(object):
   It provides methods to navigate different apps on the device and execute
   basic movements and robot commands.
   """
+  test_plane_margin = 10
+
   @contract(tnt=TnTClient, name=str)
-  def __init__(self, tnt, name):
+  def __init__(self, tnt, name, flip):
     self.name = name
     self.apps = {}
     self.client = tnt.dut(self.name)
     self.width = self.client.panel_width
     self.height = self.client.panel_height
-    self.test_plane = 20
+    if flip:
+      self.test_plane = self.width - self.test_plane_margin
+    else:
+      self.test_plane = self.test_plane_margin
 
   def RegisterApp(self, app):
     self.apps[app.name] = app
@@ -89,6 +94,9 @@ class DeviceUnderTest(object):
     """Move finger to a position that does not obstruct the screen."""
     self.client.move(self.test_plane, -50, 50)
 
+  def Home(self):
+    raise NotImplementedError()
+
   def Back(self):
     raise NotImplementedError()
 
@@ -107,8 +115,8 @@ class DeviceUnderTest(object):
 
 class AndroidDUT(DeviceUnderTest):
   """Implementation of a DUT for Android devices."""
-  def __init__(self, tnt, name):
-    DeviceUnderTest.__init__(self, tnt, name)
+  def __init__(self, tnt, name, flip):
+    DeviceUnderTest.__init__(self, tnt, name, flip)
     self.home_coords = (self.width / 2, self.height - 3)
     self.back_coords = (self.width / 2 - 20, self.height - 3)
 
@@ -118,3 +126,5 @@ class AndroidDUT(DeviceUnderTest):
   def ExitApp(self):
     self.Tap(*self.home_coords)
 
+  def Home(self):
+    self.Tap(*self.home_coords)

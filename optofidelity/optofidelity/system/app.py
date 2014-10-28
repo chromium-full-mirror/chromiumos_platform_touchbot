@@ -30,6 +30,12 @@ class TestApp(object):
         self.PAGE_SCROLL: (-1, -1),
     }
     self.button_coords = (-1, -1)
+    self.top = 0
+    self.bottom = dut.height
+
+  @property
+  def height(self):
+    return self.bottom - self.top
 
   def LocateButtons(self):
     for text, x, y in self.dut.ReadText():
@@ -54,6 +60,16 @@ class TestApp(object):
     self.dut.Back()
     # Go back into the app.
     self.dut.EnterApp(self.name)
+
+  def Tap(self, y, count=1):
+    x = self.dut.test_plane
+    y += self.top
+    self.dut.Tap(x, y, count)
+
+  def Move(self, y, z):
+    x = self.dut.test_plane
+    y += self.top
+    self.dut.Move(x, y, z)
 
   def __str__(self):
     return "%s/%s" % (str(self.dut), self.name)

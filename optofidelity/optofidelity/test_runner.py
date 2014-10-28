@@ -66,6 +66,12 @@ class TestRunner(object):
     if glob:
       test_cases = [c for c in test_cases if fnmatch(str(c), glob)]
 
+    if debug["robot"]:
+      for case in test_cases:
+        case.app.LocateButtons()
+        case.test_class.ExecuteTest(case.app, case.app.dut, self.system.camera)
+      return {}
+
     # Group test cases by DUT and run all of them
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     results = {}
@@ -77,6 +83,7 @@ class TestRunner(object):
     return results
 
   def _RunDUTTests(self, dut, cases, debug):
+    dut.Home()
     dut.LocateButtons()
 
     # Group test cases by app and run all of them
@@ -95,12 +102,8 @@ class TestRunner(object):
     app.LocateButtons()
 
     # Calibrate camera by making the screen flash
-    try:
-      calibration = CameraCalibration()
-      calibration.Calibrate(app, self.system.camera, debug["calibration"])
-    except VideoException, e:
-      print "%s: Calibration failed: %s" % (app, e)
-      raise DUTException(dut, "Video processing failure")
+    calibration = CameraCalibration()
+    calibration.Calibrate(app, self.system.camera, debug["calibration"])
 
     # Cache calibration video to disk. The video on the camera will get
     # overwritten by the test runs.
@@ -143,7 +146,7 @@ class TestRunner(object):
       print "%s: Processing failed: %s" % (case, e)
       traceback.print_exc()
       run.SaveAll(failure_path)
-      raise DUTException(dut, "Video processing failure")
+      raise e
 
 
 

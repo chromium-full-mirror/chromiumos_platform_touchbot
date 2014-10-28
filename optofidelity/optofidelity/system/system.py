@@ -62,15 +62,29 @@ class OptofidelityTestSystem(object):
       dut_type = config.get(dut_name, "type")
       dut_apps = config.get(dut_name, "apps").split(",")
       dut_apps = [a.strip() for a in dut_apps]
+      flip = False
+      if config.has_option(dut_name, "flip"):
+        flip = True
       if dut_type.lower() == "android":
-        dut = AndroidDUT(self.tnt, dut_name)
+        dut = AndroidDUT(self.tnt, dut_name, flip)
       else:
         raise Exception("Unknown device type %s" % dut_type)
+
+      margin_top = 0
+      margin_bottom = 0
+      if config.has_option(dut_name, "margin_top"):
+        margin_top = int(config.get(dut_name, "margin_top"))
+      if config.has_option(dut_name, "margin_bottom"):
+        margin_bottom = int(config.get(dut_name, "margin_bottom"))
 
       for app_name in dut_apps:
         if app_name.lower() == "clank":
           app = ClankTestApp(dut)
         else:
           raise Exception("Unknown device type %s" % dut_type)
+        app.top += margin_top
+        app.bottom -= margin_bottom
         dut.RegisterApp(app)
+
+
       self.duts[dut.name] = dut

@@ -17,9 +17,6 @@ class TouchMoveLatencyTest(TestClass):
   page = "Move"
   """Name of the page to run this test on."""
 
-  test_area_margin = 30
-  """Margin on each side of the test area to stay clear of (in mm)."""
-
   calib_move_distance = 10
   """Distance to move for the calibration movement (in mm)."""
 
@@ -40,8 +37,8 @@ class TouchMoveLatencyTest(TestClass):
     # The robot will draw a line between the 'left' and 'right' location and
     # back. It will pause after the first bit of the line so the video
     # processing can calculate the offset between finger and line location.
-    left = self.test_area_margin
-    right = dut.height - self.test_area_margin
+    left = 0
+    right = app.height
     left_calib_stop = left + self.calib_move_distance
     right_calib_stop = right - self.calib_move_distance
 
@@ -51,20 +48,20 @@ class TouchMoveLatencyTest(TestClass):
 
     for i in range(self.repetitions):
       # Tap to reset the screen, then draw from left to right.
-      dut.Tap(dut.test_plane, left)
+      app.Tap(left)
       if i == 0:
         camera.Trigger()
-      dut.Move(dut.test_plane, left, down)
-      dut.Move(dut.test_plane, left_calib_stop, down)
-      dut.Move(dut.test_plane, right, down)
-      dut.Move(dut.test_plane, right, up)
+      app.Move(left, down)
+      app.Move(left_calib_stop, down)
+      app.Move(right, down)
+      app.Move(right, up)
 
       # Tap to reset the screen, then draw from right to left.
-      dut.Tap(dut.test_plane, right)
-      dut.Move(dut.test_plane, right, down)
-      dut.Move(dut.test_plane, right_calib_stop, down)
-      dut.Move(dut.test_plane, left, down)
-      dut.Move(dut.test_plane, left, up)
+      app.Tap(right)
+      app.Move(right, down)
+      app.Move(right_calib_stop, down)
+      app.Move(left, down)
+      app.Move(left, up)
 
     camera.WaitUntilReady()
     app.ExitPage()
@@ -164,9 +161,9 @@ class TapLatencyTest(TestClass):
                 self.per_tap_record_duration * self.num_measurements)
     camera.PrepareRecording(duration)
     app.EnterPage("Tap")
-    dut.Move(dut.test_plane, dut.height/2, 10)
+    dut.Move(dut.test_plane, app.height/2, 10)
     camera.Trigger()
-    dut.Tap(dut.test_plane, dut.height/2, count=self.num_measurements)
+    dut.Tap(dut.test_plane, app.height/2, count=self.num_measurements)
     camera.WaitUntilReady()
     app.ExitPage()
     return camera.GetVideoReader()

@@ -7,9 +7,6 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
-import matplotlib
-matplotlib.use('TkAgg')
-
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
