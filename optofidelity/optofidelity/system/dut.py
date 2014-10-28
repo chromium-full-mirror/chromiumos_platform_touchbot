@@ -19,7 +19,7 @@ class DeviceUnderTest(object):
     self.client = tnt.dut(self.name)
     self.width = self.client.panel_width
     self.height = self.client.panel_height
-    self.test_plane = self.width / 2
+    self.test_plane = 20
 
   def SaveCalibration(self, hdf5):
     for app in self.apps.values():

@@ -94,7 +94,7 @@ class TestRun(object):
     return os.path.join(self.path, "test.mov")
 
   def ProcessCalibrationVideo(self, debug):
-    self.calibration.Process(debug, self.calibration_video)
+    self.calibration.Process(debug["calibration"], self.calibration_video)
 
   def SaveCalibrationVideo(self):
     assert self.calibration_video, "No calibration video"

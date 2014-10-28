@@ -75,22 +75,22 @@ class CameraCalibration(object):
     self.video_cache_file = None
 
   def Save(self, filename):
-    hdf5 = h5py.File(filename, "w")
-    hdf5.create_dataset("shape", data=self.shape.mask)
-    hdf5.create_dataset("on_image", data=self.on_image)
-    hdf5.create_dataset("on_profile", data=self.on_profile)
-    hdf5.create_dataset("off_image", data=self.off_image)
-    hdf5.create_dataset("off_profile", data=self.off_profile)
+    with h5py.File(filename, "w") as hdf5:
+      hdf5.create_dataset("shape", data=self.shape.mask)
+      hdf5.create_dataset("on_image", data=self.on_image)
+      hdf5.create_dataset("on_profile", data=self.on_profile)
+      hdf5.create_dataset("off_image", data=self.off_image)
+      hdf5.create_dataset("off_profile", data=self.off_profile)
 
   @classmethod
   def Load(self, filename):
-    hdf5 = h5py.File(filename, "r")
-    test_area = CameraCalibration()
-    test_area.shape = Shape(mask=hdf5["shape"][()])
-    test_area.on_image = hdf5["on_image"][()]
-    test_area.on_profile = hdf5["on_profile"][()]
-    test_area.off_image = hdf5["off_image"][()]
-    test_area.off_profile = hdf5["off_profile"][()]
+    with h5py.File(filename, "r") as hdf5:
+      test_area = CameraCalibration()
+      test_area.shape = Shape(mask=hdf5["shape"][()])
+      test_area.on_image = hdf5["on_image"][()]
+      test_area.on_profile = hdf5["on_profile"][()]
+      test_area.off_image = hdf5["off_image"][()]
+      test_area.off_profile = hdf5["off_profile"][()]
     test_area.rect_transform = test_area.EstimateRectTransform()
     return test_area
 
@@ -221,16 +221,17 @@ class CameraCalibration(object):
     else:
       return ref_images[1], ref_images[0]
 
-  def Process(self, debugger):
+  def Process(self, debug, video=None):
     """Process calibration video recorded by RecordVideo."""
-    assert self.video, "No calibration video"
-    debug = debugger["calibration"]
+    video = video or self.video
+    assert video, "No calibration video"
+
     # Extract information from video frames. We need the following information:
     # Image of the screen off (min average grayscale)
     # Image of the screen on (max average grayscale)
     # And the accumulative difference between frames to find the area that
     # is changing the most.
-    on_frame, off_frame = self.FindReferenceFrames(self.video, debug=debug)
+    on_frame, off_frame = self.FindReferenceFrames(video, debug=debug)
     delta = Filter.Truncate(on_frame - off_frame)
 
     # Find screen shape

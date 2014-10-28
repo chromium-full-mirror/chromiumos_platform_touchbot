@@ -9,7 +9,7 @@ import numpy as np
 import os
 import warnings
 
-from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest
+from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest, ScrollLatencyTest
 from optofidelity.system import OptofidelityTestSystem
 from optofidelity.test_runner import TestRunner
 from optofidelity.test_run import TestRun
@@ -31,6 +31,7 @@ calibration_file = os.path.join(script_dir, "calibration.hdf5")
 def RegisterTestClasses(runner):
   runner.AddTestClass(TouchMoveLatencyTest)
   runner.AddTestClass(TapLatencyTest)
+  runner.AddTestClass(ScrollLatencyTest)
 
 def AddDebugOptions(parser):
   parser.add_option("--debug",
@@ -77,10 +78,7 @@ def RunTests(glob, debug, options):
     for app in dut:
       runner.AddApp(app)
 
-  if options.debug_video:
-    runner.ProcessVideoFromFile(options.debug_video, debug)
-  else:
-    runner.RunTests(glob, debug)
+  runner.RunTests(glob, debug)
 
 def Main():
   parser = OptionParser(usage=usage)

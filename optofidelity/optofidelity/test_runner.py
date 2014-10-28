@@ -89,7 +89,7 @@ class TestRunner(object):
     # Calibrate camera by making the screen flash
     try:
       calibration = CameraCalibration()
-      calibration.Calibrate(app, self.system.camera, debug)
+      calibration.Calibrate(app, self.system.camera, debug["calibration"])
     except VideoException, e:
       print "%s: Calibration failed: %s" % (app, e)
       raise DUTException(dut, "Video processing failure")
@@ -122,8 +122,8 @@ class TestRunner(object):
       if self.dump_all:
         run.SaveAll(result_path)
       return run.test_results
-    except VideoException, e:
-      print "%s: Video processing failed: %s" % (case, e)
+    except Exception, e:
+      print "%s: Processing failed: %s" % (case, e)
       run.SaveAll(failure_path)
       raise DUTException(dut, "Video processing failure")
 

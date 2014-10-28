@@ -100,7 +100,7 @@ class FingerMove(Detector):
   """Maximal eccentricity of the robot finger. The eccentricity is close to 1
      for very elongated objects, and 0 for a square-ish object."""
 
-  finger_max_move_speed = 5
+  finger_max_move_speed = 10
   """Maximum movement speed of the finger in pixels per frame."""
 
   border_max_touching_distance = 5

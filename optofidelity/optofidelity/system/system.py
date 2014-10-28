@@ -7,6 +7,7 @@ import h5py
 from optofidelity.phantom import Phantom
 from optofidelity.system.app import ClankTestApp
 from optofidelity.system.dut import AndroidDUT
+from optofidelity.system.util import RetryFunction
 from optofidelity.tnt.TnTClient import TnTClient
 
 class OptofidelityTestSystem(object):
