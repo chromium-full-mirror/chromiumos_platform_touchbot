@@ -66,12 +66,6 @@ def Process(path, what, debug):
 def RunTests(glob, debug, options):
   system = OptofidelityTestSystem(config_file)
 
-  if options.calibrate or not os.path.exists(calibration_file):
-    system.Calibrate(options.dump_all)
-    system.SaveCalibration(calibration_file)
-  else:
-    system.LoadCalibration(calibration_file)
-
   runner = TestRunner(system, script_dir, options.dump_all)
   RegisterTestClasses(runner)
   for dut in system:
@@ -82,9 +76,6 @@ def RunTests(glob, debug, options):
 
 def Main():
   parser = OptionParser(usage=usage)
-  parser.add_option("--calibrate",
-                    dest="calibrate", default=False, action="store_true",
-                    help="re-calibrate the robot system.")
   parser.add_option("--dump-all",
                     dest="dump_all", default=False, action="store_true",
                     help="Dump debug info for all executed tests.")

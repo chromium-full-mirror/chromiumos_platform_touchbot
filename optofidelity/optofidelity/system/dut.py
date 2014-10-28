@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 from contracts import contract
 
+from optofidelity.system.util import DUTException
 from optofidelity.tnt.TnTClient import TnTClient
 from optofidelity.videoproc import VideoException, VideoWriter
 
@@ -21,33 +22,20 @@ class DeviceUnderTest(object):
     self.height = self.client.panel_height
     self.test_plane = 20
 
-  def SaveCalibration(self, hdf5):
-    for app in self.apps.values():
-      app.SaveCalibration(hdf5.create_group(app.name))
-
-  def LoadCalibration(self, hdf5):
-    for app in self.apps.values():
-      app.LoadCalibration(hdf5[app.name])
-
   def RegisterApp(self, app):
     self.apps[app.name] = app
 
-  def Calibrate(self, camera, dump=False):
-    """Calibrate this DUT and all it's apps."""
-    self.ExitApp()
-
+  def LocateButtons(self):
+    """Locate buttons for all apps."""
     for app in self.apps.values():
       x, y = self.FindIcon(app.TEST_APP_ICON)
       if x < 0 or y < 0:
         raise DUTException(self, "Cannot find icon " + app.TEST_APP_ICON)
-      self.Tap(x, y)
-      app.Calibrate(x, y, camera, dump)
-      self.ExitApp()
+      app.button_coords = (x, y)
 
   def Reset(self):
     self.ExitApp()
     self.ExitApp()
-    return self.IsHome()
 
   def EnterApp(self, app_name):
     self.Tap(*self.apps[app_name].button_coords)

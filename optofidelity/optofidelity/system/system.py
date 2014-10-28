@@ -74,24 +74,3 @@ class OptofidelityTestSystem(object):
           raise Exception("Unknown device type %s" % dut_type)
         dut.RegisterApp(app)
       self.duts[dut.name] = dut
-
-  def Calibrate(self, dump=False):
-    """Run calibration on all DUTs."""
-    for dut in self.duts.values():
-      RetryFunction(lambda: dut.Calibrate(self.camera, dump),
-                    lambda: dut.Reset(),
-                    "Calibrate %s" % dut)
-
-  def SaveCalibration(self, filename):
-    """Store calibration information into an hdf5 file."""
-    hdf5 = h5py.File(filename, "w")
-    for dut in self.duts.values():
-      dut.SaveCalibration(hdf5.create_group(dut.name))
-    hdf5.close()
-
-  def LoadCalibration(self, filename):
-    """Load calibration information from an hdf5 file."""
-    hdf5 = h5py.File(filename, "r")
-    for dut in self.duts.values():
-      dut.LoadCalibration(hdf5[dut.name])
-    hdf5.close()

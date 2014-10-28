@@ -1,6 +1,7 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+import traceback
 
 class DUTException(Exception):
   """Exceptions in handling a device under test.
@@ -24,13 +25,17 @@ def RetryFunction(function, recover_function, title, max_attempts=3):
   title: For debug prints
   max_attempts: How often to try.
   """
+  last_exc = None
   for i in range(max_attempts):
     try:
       print "%s (Attempt %d)" % (title, i+1)
       function()
       return
-    except DUTException as e:
+    except Exception as e:
       print "%s: FAILED" % title
-      print "%s: Exception: %s" % (title, e)
+      traceback.print_exc()
       print "%s: Trying to recover." % title
-      recover_function()
+      if i < max_attempts - 1:
+        recover_function()
+      else:
+        raise e

@@ -70,21 +70,23 @@ class TestRunner(object):
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
       RetryFunction(lambda: self._RunDUTTests(dut, cases, debug),
-                    lambda: dut.Reset(),
+                    dut.Reset,
                     "Running tests: " + str(dut))
 
   def _RunDUTTests(self, dut, cases, debug):
-    dut.Reset()
+    dut.LocateButtons()
 
     # Group test cases by app and run all of them
     sorted_cases = sorted(cases, key=lambda c: c.app)
     for app, cases in itertools.groupby(sorted_cases, key=lambda c: c.app):
+      dut.EnterApp(app.name)
       RetryFunction(lambda: self._RunAppTests(dut, app, cases, debug),
-                    dut.Reset,
+                    app.Reset,
                     "Running tests: " + str(app))
+      dut.ExitApp()
 
   def _RunAppTests(self, dut, app, cases, debug):
-    dut.EnterApp(app.name)
+    app.LocateButtons()
 
     # Calibrate camera by making the screen flash
     try:
@@ -104,7 +106,6 @@ class TestRunner(object):
       RetryFunction(lambda: self._RunTest(dut, app, case, calibration, debug),
                     app.Reset,
                     "Running test: " + str(case))
-    dut.ExitApp()
 
   def _RunTest(self, dut, app, case, calibration, debug):
     # Path to store results in
@@ -124,6 +125,7 @@ class TestRunner(object):
       return run.test_results
     except Exception, e:
       print "%s: Processing failed: %s" % (case, e)
+      traceback.print_exc()
       run.SaveAll(failure_path)
       raise DUTException(dut, "Video processing failure")
 

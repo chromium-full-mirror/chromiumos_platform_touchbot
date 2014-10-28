@@ -5,6 +5,7 @@ from contracts import contract
 import time
 
 from optofidelity.system.dut import DeviceUnderTest
+from optofidelity.system.util import DUTException
 from optofidelity.videoproc import VideoWriter
 
 
@@ -30,21 +31,7 @@ class TestApp(object):
     }
     self.button_coords = (-1, -1)
 
-  def SaveCalibration(self, hdf5):
-    hdf5.create_dataset("button_coords", data=self.button_coords)
-    hdf5.create_group("pages")
-    for page, coords in self.pages.items():
-      hdf5["pages"].create_dataset(page, data=coords)
-
-  def LoadCalibration(self, hdf5):
-    button_coords = hdf5["button_coords"]
-    self.button_coords = (button_coords[0], button_coords[1])
-
-    for page in self.pages.keys():
-      coords = hdf5["pages"][page]
-      self.pages[page] = (coords[0], coords[1])
-
-  def CalibrateButtons(self):
+  def LocateButtons(self):
     for text, x, y in self.dut.ReadText():
       if text in self.pages:
         self.pages[text] = (x, y)
@@ -53,10 +40,6 @@ class TestApp(object):
       if x < 0 or y < 0:
         raise DUTException(self.dut, "Cannot find button for page " + page)
 
-  def Calibrate(self, x, y, camera, dump=False):
-    self.button_coords = (x, y)
-    self.CalibrateButtons()
-
   def EnterPage(self, page):
     self.dut.Tap(*self.pages[page])
 
@@ -64,7 +47,12 @@ class TestApp(object):
     self.dut.Back()
 
   def Reset(self):
-    self.dut.ExitApp()
+    # Back once to exit any page we might be in.
+    self.dut.Back()
+    # Back another time to go back to the home screen.
+    # If we are on the home screen already, this will just not do anything.
+    self.dut.Back()
+    # Go back into the app.
     self.dut.EnterApp(self.name)
 
   def __str__(self):
