@@ -10,6 +10,10 @@ from optofidelity.detection import (Event, FingerLED, FingerMove, Line,
                                     ScreenFlash)
 
 
+def PlotEvent(trace, event_type):
+  plt.plot(trace.Times(event_type), trace.Locations(event_type))
+
+
 class TouchMoveLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TouchMoveLatency"
@@ -70,9 +74,6 @@ class TouchMoveLatencyTest(TestClass):
   def ProcessTrace(self, traces, debug):
     start_lat = []
     end_lat = []
-
-    def PlotEvent(trace, event_type):
-      plt.plot(trace.Times(event_type), trace.Locations(event_type))
 
     if debug:
       plt.figure()
@@ -137,6 +138,120 @@ class ScrollLatencyTest(TouchMoveLatencyTest):
   """
   name = "ScrollLatency"
   page = "Scroll"
+
+
+class ScrollStartLatencyTest(TestClass):
+  """Calculates latency from a line draw video."""
+  name = "ScrollStartLatency"
+
+  page = "Scroll"
+  """Name of the page to run this test on."""
+
+  scroll_distance = 10
+  """Distance to move for each scroll (in mm)."""
+
+  commands_duration = 2000
+  """Duration of the full set of robot commands (in # of camera frames)."""
+
+  finger_min_speed = 0.2
+  """Minimum speed for the robot finger to be considered moving."""
+
+  def InitializeProcessor(self, processor):
+    processor.AddDetector(Line())
+    processor.AddDetector(FingerMove())
+    processor.AddDetector(FingerLED())
+
+  def ExecuteTest(self, app, dut, camera):
+    camera.PrepareRecording(self.commands_duration)
+    app.EnterPage(self.page)
+
+    # Height of finger down and up state in cm
+    down = -1
+    up = 10
+
+    # Scroll by scroll_distance, lift finger, then scroll again until
+    # the end of the page is reached.
+    app.Tap(0)
+    camera.Trigger()
+    for i in range(self.scroll_distance, int(app.height), self.scroll_distance):
+      app.Move(i - self.scroll_distance, down)
+      app.Move(i, down)
+      app.Move(i, up)
+
+    camera.WaitUntilReady()
+    app.ExitPage()
+    return camera.GetVideoReader()
+
+  def ProcessTrace(self, trace, debug):
+    start_lat = []
+    end_lat = []
+
+    finger_moved_events = trace.Events(Event.FINGER_MOVED)
+    finger_speed = trace.Speed(Event.FINGER_MOVED)
+    current_time = 0
+
+    if debug:
+      plt.figure()
+      PlotEvent(trace, Event.FINGER_MOVED)
+      PlotEvent(trace, Event.LINE_DRAW_START)
+      PlotEvent(trace, Event.LINE_DRAW_END)
+      plt.title("Finger/Line draw locations")
+
+    while True:
+      if debug:
+        print "-" * 80
+
+      # Search for finger down event
+      (_, finger_down) = trace.Find(Event.FINGER_DOWN, current_time)
+      if not finger_down:
+        break
+      if debug:
+        print finger_down
+
+      # Find first line draw start after finger_down
+      (_, line_draw_start) = trace.Find(Event.LINE_DRAW_START, finger_down.time)
+      if not line_draw_start:
+        break
+      if debug:
+        print line_draw_start
+
+      # Find first line draw end after finger_down
+      (_, line_draw_end) = trace.Find(Event.LINE_DRAW_END, finger_down.time)
+      if not line_draw_end:
+        break
+      if debug:
+        print line_draw_end
+
+      # Search for first significant finger movement after finger down
+      (finger_down_idx, _) = trace.Find(Event.FINGER_MOVED, finger_down.time)
+      finger_moved = None
+      for i in range(finger_down_idx, len(finger_speed)):
+        if finger_speed[i] > self.finger_min_speed:
+          finger_moved = finger_moved_events[i]
+          break
+      if not finger_moved:
+        break
+      if debug:
+        print finger_moved
+
+      # Calculate latency
+      start_lat.append(line_draw_start.time - finger_moved.time)
+      end_lat.append(line_draw_end.time - finger_moved.time)
+
+      # Progress time and repeat until one of the events cannot be found.
+      current_time = line_draw_end.time
+
+    if debug:
+      plt.figure()
+      plt.plot(start_lat)
+      plt.plot(end_lat)
+      plt.title("Start/End Latencies")
+      plt.show()
+
+    return {
+        "DrawStartLatency": start_lat,
+        "DrawEndLatency": end_lat
+    }
 
 
 class TapLatencyTest(TestClass):

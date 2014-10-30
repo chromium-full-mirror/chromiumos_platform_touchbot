@@ -9,7 +9,8 @@ import numpy as np
 import os
 import warnings
 
-from optofidelity.latency import TapLatencyTest, TouchMoveLatencyTest, ScrollLatencyTest
+from optofidelity.latency import (TapLatencyTest, TouchMoveLatencyTest,
+                                  ScrollLatencyTest, ScrollStartLatencyTest)
 from optofidelity.system import OptofidelityTestSystem
 from optofidelity.test_runner import TestRunner
 from optofidelity.test_run import TestRun
@@ -32,6 +33,7 @@ def RegisterTestClasses(runner):
   runner.AddTestClass(TouchMoveLatencyTest)
   runner.AddTestClass(TapLatencyTest)
   runner.AddTestClass(ScrollLatencyTest)
+  runner.AddTestClass(ScrollStartLatencyTest)
 
 def AddDebugOptions(parser):
   parser.add_option("--debug",
