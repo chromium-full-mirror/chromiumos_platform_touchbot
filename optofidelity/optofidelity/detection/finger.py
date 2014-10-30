@@ -93,7 +93,7 @@ class FingerMove(Detector):
   """Detects FingerMoved events."""
   name = "finger_move"
 
-  finger_min_area = 1000
+  finger_min_area = 500
   """Minimal area of the robot finger in square pixels."""
 
   finger_max_eccentricity = 0.95
