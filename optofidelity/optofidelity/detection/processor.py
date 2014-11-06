@@ -45,7 +45,7 @@ class ProcessorDebugger(object):
 
   def InitFrame(self, frame, test_area):
     """Fill the debug canvas with a background from the current frame."""
-    if not self.flags:
+    if not self.HasFlag("video"):
       return
     if self.HasFlag("normalized"):
       self.canvas.Fill(frame.normalized)
@@ -60,7 +60,7 @@ class ProcessorDebugger(object):
 
   def Display(self, video):
     """Display the debug canvas of the current frame."""
-    if not self.flags:
+    if not self.HasFlag("video"):
       return
     image = self.canvas.image
     if image.shape[0] < 500:
@@ -198,7 +198,7 @@ class VideoProcessor(object):
         dont_peek_before = i + min(self.peek_distances)
 
       # Yield next frame
-      if debug:
+      if debug["video"]:
         print "Reading frame %d/%d" % (i, stop)
       else:
         sys.stdout.write("\rReading frame %d/%d" % (i, stop))

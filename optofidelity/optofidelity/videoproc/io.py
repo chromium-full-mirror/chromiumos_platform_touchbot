@@ -11,7 +11,7 @@ import cv2
 import skimage
 import skimage.color
 import sys
-
+import time
 
 CODEC = cv2.cv.CV_FOURCC(*"xvid")
 if sys.platform == "darwin":
@@ -23,10 +23,12 @@ class VideoReader(object):
 
   Provides common functionality for accessing videos.
   """
-  def __init__(self, num_frames):
+  def __init__(self, num_frames, perf_enabled=False):
     self.current_frame = 0
     self.interactive = False
     self.num_frames = num_frames
+    self.transfer_times = []
+    self.perf_enabled = perf_enabled
 
   def _SeekTo(self, frame):
     """Seek to an absolute location in the video.
@@ -107,7 +109,13 @@ class VideoReader(object):
     while True:
       if i < 0 or i >= len(frames):
         break
+
+      start_t = time.time()
+
       frame = self.FrameAt(frames[i])
+
+      if self.perf_enabled:
+        self.transfer_times.append(time.time() - start_t)
 
       yield frames[i], frame
 

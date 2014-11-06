@@ -3,8 +3,10 @@
 # found in the LICENSE file.
 from contracts import contract
 import cPickle as pickle
+import numpy as np
 import os
 import shutil
+import time
 
 from optofidelity.system import TestApp, CameraCalibration
 from optofidelity.detection import (VideoProcessor,
@@ -122,20 +124,34 @@ class TestRun(object):
     """Process the recorded video into a trace."""
     assert self.test_video, "No test video"
     assert self.calibration, "No calibrated test area"
-    if debug:
+
+    if debug["perf"]:
+      start_t = time.time()
+      self.test_video.perf_enabled = True
+
+    if debug["video"]:
       processor = VideoProcessor(self.calibration)
     else:
       processor = MultithreadedVideoProcessor(self.calibration)
     self.test_class.InitializeProcessor(processor)
     processor.Initialize(self.test_video, debug=debug)
     self.test_trace = processor.ProcessVideo(self.test_video, debug=debug)
+
+    if debug["perf"]:
+      transfer_time = np.mean(self.test_video.transfer_times)
+      print "PERF: Processing: %f s" % (time.time() - start_t)
+      print "PERF: Transfer: %f ms / frame" % (transfer_time * 1000)
+
     return self.test_trace
 
   def ProcessTestTrace(self, debug):
     """Process the trace into latency results."""
     assert self.test_trace, "No test trace"
+    start_t = time.time()
     self.test_results = self.test_class.ProcessTrace(self.test_trace,
                                                      debug["trace"])
+    if debug["perf"]:
+      print "PERF: Trace processing: %f s" % (time.time() - start_t)
 
   @classmethod
   def Load(cls, path):

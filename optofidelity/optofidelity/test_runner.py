@@ -73,6 +73,7 @@ class TestRunner(object):
       return {}
 
     # Group test cases by DUT and run all of them
+    start_t = time.time()
     sorted_cases = sorted(test_cases, key=lambda c: c.app.dut)
     results = {}
     for dut, cases in itertools.groupby(sorted_cases, key=lambda c: c.app.dut):
@@ -80,6 +81,8 @@ class TestRunner(object):
                                   dut.Reset,
                                   "Running tests: " + str(dut))
       results.update(dut_results)
+    if debug["perf"]:
+      print "PERF: All tests: %f s" % (time.time() - start_t)
     return results
 
   def _RunDUTTests(self, dut, cases, debug):
@@ -102,8 +105,12 @@ class TestRunner(object):
     app.LocateButtons()
 
     # Calibrate camera by making the screen flash
+
+    start_t = time.time()
     calibration = CameraCalibration()
     calibration.Calibrate(app, self.system.camera, debug["calibration"])
+    if debug["perf"]:
+      print "PERF: Calibration: %f s" % (time.time() - start_t)
 
     # Cache calibration video to disk. The video on the camera will get
     # overwritten by the test runs.
@@ -127,6 +134,7 @@ class TestRunner(object):
     failure_path = os.path.join(self.failures_path, str(case), timestamp)
 
     # Record test video on the robot
+    start_t = time.time()
     run = TestRun(case.test_class, app, calibration, self.results_path)
     run.RecordTestVideo(self.system)
     try:
@@ -141,6 +149,8 @@ class TestRunner(object):
         new_key = "%s/%s" % (str(case), key)
         print "  %s: %s" % (new_key, str(value))
         results[new_key] = value
+      if debug["perf"]:
+        print "PERF: %s: %f s" % (str(case), time.time() - start_t)
       return results
     except Exception, e:
       print "%s: Processing failed: %s" % (case, e)
