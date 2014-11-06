@@ -18,6 +18,23 @@ if sys.platform == "darwin":
   CODEC = cv2.cv.CV_FOURCC(*"mp4v")
 
 
+class PrefetchEnabled(object):
+  """Helper object to be used in the with-statement.
+
+  It will enable prefetch on entering the with block and make sure the camera
+  is left in a good state upon exiting.
+  """
+  def __init__(self, reader):
+    self.reader = reader
+
+  def __enter__(self):
+    self.reader.prefetch_enabled = True
+
+  def __exit__(self, type, value, traceback):
+    self.reader.ClearPrefetch()
+    self.reader.prefetch_enabled = False
+
+
 class VideoReader(object):
   """Abstract base class for Video Reader.
 
@@ -29,6 +46,23 @@ class VideoReader(object):
     self.num_frames = num_frames
     self.transfer_times = []
     self.perf_enabled = perf_enabled
+    self.prefetch_enabled = False
+
+  @property
+  def frame_shape(self):
+    frame = self.FrameAt(self.current_frame)
+    return frame.shape
+
+  def PrefetchEnabled(self):
+    """Safely enables prefetch in combination with the with statement.
+
+    Use as follows:
+      with reader.PrefetchEnabled():
+        use reader
+    It will automatically clear any outstanding prefetches to leave the reader
+    in a good state.
+    """
+    return PrefetchEnabled(self)
 
   def _SeekTo(self, frame):
     """Seek to an absolute location in the video.
@@ -36,6 +70,12 @@ class VideoReader(object):
     This method is for internal use and to be implemented by
     a subclass. Use the more convenient Seek method.
     """
+    pass
+
+  def Prefetch(self, frame):
+    pass
+
+  def ClearPrefetch(self):
     pass
 
   def Read(self):
@@ -105,17 +145,21 @@ class VideoReader(object):
       if stop is None:
         stop = self.num_frames
       frames = range(start, stop, step)
+
     i = 0
     while True:
       if i < 0 or i >= len(frames):
         break
 
-      start_t = time.time()
+      start = time.time()
+
+      if self.prefetch_enabled and not self.interactive and i + 1 < len(frames):
+        self.Prefetch(frames[i + 1])
 
       frame = self.FrameAt(frames[i])
 
       if self.perf_enabled:
-        self.transfer_times.append(time.time() - start_t)
+        self.transfer_times.append(time.time() - start)
 
       yield frames[i], frame
 
@@ -138,6 +182,7 @@ class VideoReader(object):
           i += 1
       else:
         i += 1
+
 
 class FileVideoReader(VideoReader):
   """Implementation of a VideoReader for reading from files using OpenCV.

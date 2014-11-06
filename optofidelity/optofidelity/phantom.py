@@ -33,6 +33,35 @@ import skimage
 
 from optofidelity.videoproc.io import VideoReader
 
+class ImageRequest(object):
+  """Class storing information about a requested chunk of images."""
+  def __init__(self, phantom, start, num_frames):
+    self.phantom = phantom
+    self.num_frames = num_frames
+    self.start = start
+    self.shape = None
+
+  def ReceiveAck(self):
+    """Receive acknowledgement from camera on command channel.
+
+    This has to be called before another image can be requested. Otherwise we
+    might run into race conditions where the camera mixes up requests.
+    """
+    response = self.phantom.ReceiveCommandResponse()
+
+    # Determine the resolution of the image and how many bytes to wait for
+    RESOLUTION_REGEX = ('.*Ok!\s*{\s*cine\s*:\s*\d+,\s*res\s*:\s*' +
+                        '(?P<width>\d+)\s+x\s+(?P<height>\d+)\s*}')
+    matches = re.match(RESOLUTION_REGEX, response)
+    width = int(matches.group('width'))
+    height = int(matches.group('height'))
+    self.shape = (height, width)
+
+  def Receive(self):
+    """Receive image data."""
+    if self.shape is None:
+      self.ReceiveAck()
+    return self.phantom.ReceiveImages(self.shape, self.num_frames)
 
 class Phantom(object):
   HOST_IP = '100.100.100.1' # The host computer must have this IP
@@ -67,6 +96,7 @@ class Phantom(object):
     self.ip = ip
     self.port = port
     self.debug = debug
+    self.command_sent = False
 
     if ip is None:
       # Find the camera on the network
@@ -191,20 +221,36 @@ class Phantom(object):
     if num_frames > Phantom.MAX_PTFRAMES:
       raise ValueError('Cannot record more than %d frames' % MAX_PTFRAMES)
 
-    #if not self.IsReady(cine_number):
-    #  raise Exception('cine%d is not ready for recording' % cine_number)
-
     self._SetProperty("defc.ptframes", num_frames)
     self.SendCommand('rec %d' % cine_number)
 
-  def SendCommand(self, cmd):
-    """Send a command to the camera, and return the response."""
-    if len(cmd) >= Phantom.MAX_MESSAGE_SIZE - 1:
+  def SendCommandAsync(self, cmd):
+    """Send command without waiting for the response.
+
+    You mast call ReceiveCommandResponse before calling this method again.
+    """
+    cmd += "\r"
+
+    if self.command_sent:
+      msg = "Cannot send two commands without receiving resposne first."
+      raise Exception(msg)
+
+    if len(cmd) >= Phantom.MAX_MESSAGE_SIZE:
       raise ValueError('Message too long!')
 
     self.DebugPrint('SEND(%d): %s' %(len(cmd), cmd))
-    self.cmd_sock.send('%s\r' % cmd)
+    total_sent = 0
+    while total_sent < len(cmd):
+      sent = self.cmd_sock.send(cmd[total_sent:])
+      if sent == 0:
+        raise Exception("Cannot send command")
+      total_sent += sent
+    self.command_sent = True
 
+  def ReceiveCommandResponse(self):
+    """Reveice response from a command sent with SendCommandAsync."""
+    if not self.command_sent:
+      raise Exception("No command has been sent.")
     recv = ''
     while True:
       block = self.cmd_sock.recv(Phantom.MAX_MESSAGE_SIZE)
@@ -212,8 +258,16 @@ class Phantom(object):
       if len(block) == 0 or (len(block) > 2 and block[-1] == '\n'
                             and block[-2] != '\\'):
         break
-    self.DebugPrint('RECV(%d): %s' % (len(recv), recv))
+    if "ERR" in recv:
+      raise Exception("Received error code:" + recv)
+    self.DebugPrint('RECV(%d): %s' % (len(recv), recv.strip()))
+    self.command_sent = False
     return recv
+
+  def SendCommand(self, cmd):
+    """Send a command to the camera, and return the response."""
+    self.SendCommandAsync(cmd)
+    return self.ReceiveCommandResponse()
 
   def GetVideoReader(self, cine_number=DEFAULT_CINE):
     """Return a VideoReader that accesses a cine slot directly.
@@ -223,6 +277,18 @@ class Phantom(object):
     """
     return PhantomVideoReader(self, cine_number)
 
+  def RequestImages(self, start_frame, num_frames, cine_number=DEFAULT_CINE):
+    """Request images from camera. For details see GetImages.
+
+    Returns an ImageRequest instance that can be used to receive the
+    images of this request.
+    """
+    # Send the request to the camera for the frame in question
+    cmd = ('img {cine:%d, start:%d, cnt:%d}' %
+         (cine_number, start_frame, num_frames))
+    self.SendCommandAsync(cmd)
+    return ImageRequest(self, start_frame, num_frames)
+
   def GetImages(self, start_frame, num_frames, cine_number=DEFAULT_CINE):
     """Pull the selected images from a cine stored in ram.
 
@@ -231,37 +297,33 @@ class Phantom(object):
     images represented as numpy matrices. The images are assumed to be 8-bit
     grayscale images.
     """
-    # Send the request to the camera for the frame in question
-    cmd = ('img {cine:%d, start:%d, cnt:%d}' %
-         (cine_number, start_frame, num_frames))
-    data = self.SendCommand(cmd)
+    request = self.RequestImages(start_frame, num_frames, cine_number)
+    return request.Receive()
 
-    # Determine the resolution of the image and how many bytes to wait for
-    RESOLUTION_REGEX = ('.*Ok!\s*{\s*cine\s*:\s*\d+,\s*res\s*:\s*' +
-                        '(?P<width>\d+)\s+x\s+(?P<height>\d+)\s*}')
-    matches = re.match(RESOLUTION_REGEX, data)
-    w = int(matches.group('width'))
-    h = int(matches.group('height'))
-    frame_size = w * h
+  def ReceiveImages(self, shape, num_frames):
+    """Receive previously requested images."""
+    frame_size = shape[0] * shape[1]
     total_size = frame_size * num_frames
 
-    # Wait for all the data to come in
+    # Wait for image data to come in
     img_data = ''
     while (len(img_data) < total_size):
+      remaining_data = total_size - len(img_data)
       ready = select.select([self.data_sock], [], [], 5)
       if ready[0]:
-        img_data += self.data_sock.recv(Phantom.MAX_MESSAGE_SIZE)
+        request_size = min([remaining_data, Phantom.MAX_MESSAGE_SIZE])
+        img_data += self.data_sock.recv(request_size)
       else:
         raise Exception('No data received')
-
+    self.DebugPrint("RECV_IMG(%d)" % len(img_data))
     images = []
     for i in range(num_frames):
-      image = np.zeros((h, w))
+      image = np.zeros(shape)
       img_start = i * frame_size
       img_end = (i + 1) * frame_size
       img_string = img_data[img_start:img_end]
 
-      image = np.fromstring(img_string, dtype=np.uint8).reshape((h, w))
+      image = np.fromstring(img_string, dtype=np.uint8).reshape(shape)
       images.append(image)
 
     return images
@@ -337,18 +399,78 @@ class PhantomVideoReader(VideoReader):
 
   This class works as a fully functional VideoReader, streaming frames
   directly from the camera via ethernet.
+  Set perf=True to enable collection of performance measuring transfer times.
   """
-  def __init__(self, phantom, cine_number=Phantom.DEFAULT_CINE):
+  def __init__(self, phantom, cine_number=Phantom.DEFAULT_CINE, perf=False):
     self.phantom = phantom
     self.cine_number = cine_number
-    VideoReader.__init__(self, phantom.GetNumFrames(cine_number))
+    self.prefetch = None
+    self.prefetch_frame = None
+    VideoReader.__init__(self, phantom.GetNumFrames(cine_number), perf)
 
   def _SeekTo(self, frame):
     self.current_frame = frame
 
   def Read(self):
-    images = self.phantom.GetImages(self.current_frame, 1, self.cine_number)
+    # Clear prefetch if we got the wrong frame.
+    if self.prefetch and self.prefetch.start != self.current_frame:
+      self.ClearPrefetch()
+
+    # Request the current image if we don't have a prefetch for it.
+    request = self.prefetch
+    if not request:
+      request = self.phantom.RequestImages(self.current_frame , 1, self.cine_number)
+
+    # Receive ack before making any new requests.
+    request.ReceiveAck()
+
+    # Prefetch next frame.
+    if self.prefetch_frame:
+      self.prefetch = self.phantom.RequestImages(self.prefetch_frame , 1, self.cine_number)
+      self.prefetch_frame = None
+    else:
+      self.prefetch = None
+
+    # Receive current frame.
+    images = request.Receive()
     return skimage.img_as_float(images[0])
+
+  def Prefetch(self, frame):
+    """Select frame to prefetch with next Read command.
+
+    Prefetching has to be explicitly enabled to ensure frames that are
+    prefetched, but not read, will be cleaned up. Prefetching can be enabled
+    like this:
+    >>> with reader.PrefetchEnabled():
+    >>>    reader.Frames()
+    """
+    self.prefetch_frame = frame
+
+  def ClearPrefetch(self):
+    """Clear any outstanding requested frames.
+
+    It is important that this method is called, since the camera is left in
+    a broken state if a frame is requested, but not received.
+    """
+    if self.prefetch:
+      self.prefetch.Receive()
+      self.prefetch = None
+
+
+def PerfTest(debug=False):
+  """Runs performance test measuring the transfer time per frame."""
+  phantom = Phantom(sys.argv[2] if len(sys.argv) > 2 else None, debug=debug)
+  reader = PhantomVideoReader(phantom, perf=True)
+  start = time.time()
+  num_frames = 500
+  with reader.PrefetchEnabled():
+    for i, frame in reader.Frames(stop=num_frames):
+      sys.stdout.write("\r%d/%d" % (i, num_frames))
+      sys.stdout.flush()
+  print
+  delta_t = time.time() - start
+  print "Transfer time:", np.mean(reader.transfer_times) * 1000, "ms/frame"
+  print "Overall time:", delta_t / num_frames * 1000, "ms/frame"
 
 
 if __name__ == "__main__":
@@ -371,6 +493,8 @@ if __name__ == "__main__":
     phantom.DownloadVideo(sys.argv[2] if len(sys.argv) > 2 else 'out.avi')
   elif cmd.lower() == 'preview':
     Phantom().DisplayLivePreview()
+  elif cmd.lower() == 'perf':
+    PerfTest()
   elif cmd.lower() == "shell":
     phantom = Phantom(debug=True)
     while True:
