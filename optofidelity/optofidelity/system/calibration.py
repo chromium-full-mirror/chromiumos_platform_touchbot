@@ -175,38 +175,39 @@ class CameraCalibration(object):
       debug: A ProcessorDebugger instance.
     """
     ref_images = []
-    frames = video_reader.Frames()
+    with video_reader.PrefetchEnabled():
+      frames = video_reader.Frames()
 
-    # Accumulator to calculate mean images.
-    i, prev_frame = frames.next()
-    mean_accum = np.zeros(prev_frame.shape)
-    mean_accum_num = 0
+      # Accumulator to calculate mean images.
+      i, prev_frame = frames.next()
+      mean_accum = np.zeros(prev_frame.shape)
+      mean_accum_num = 0
 
-    for i, frame in frames:
-      # Calculate the mid-range value of the inter-frame difference.
-      # This reliably describes the general direction of change.
-      diff = frame - prev_frame
-      midrange = Filter.StableMidRange(diff)
+      for i, frame in frames:
+        # Calculate the mid-range value of the inter-frame difference.
+        # This reliably describes the general direction of change.
+        diff = frame - prev_frame
+        midrange = Filter.StableMidRange(diff)
 
-      if np.abs(midrange) < self.diff_unchanged_max_mid_range:
-        # Add frame to accumulator
-        mean_accum += frame
-        mean_accum_num += 1
-      else:
-        # The screen is in the process of switching colors.
-        if mean_accum_num > self.reference_min_num_frames:
-          # We collected enough samples for a solid reference image.
-          ref_images.append(mean_accum / mean_accum_num)
-          if len(ref_images) >= 2:
-            break
-        # Reset mean accumulator
-        mean_accum_num = 0
-        mean_accum = np.zeros(prev_frame.shape)
+        if np.abs(midrange) < self.diff_unchanged_max_mid_range:
+          # Add frame to accumulator
+          mean_accum += frame
+          mean_accum_num += 1
+        else:
+          # The screen is in the process of switching colors.
+          if mean_accum_num > self.reference_min_num_frames:
+            # We collected enough samples for a solid reference image.
+            ref_images.append(mean_accum / mean_accum_num)
+            if len(ref_images) >= 2:
+              break
+          # Reset mean accumulator
+          mean_accum_num = 0
+          mean_accum = np.zeros(prev_frame.shape)
 
-      if debug:
-        print i, midrange, mean_accum_num
-        Viewer.VideoFrame(0.5 + diff)
-      prev_frame = frame
+        if debug:
+          print i, midrange, mean_accum_num
+          Viewer.VideoFrame(0.5 + diff)
+        prev_frame = frame
 
     # Add the last accumulation in case we don't have enough reference images
     if mean_accum_num > self.reference_min_num_frames and len(ref_images) < 2:

@@ -157,48 +157,51 @@ class VideoProcessor(object):
     Yields tuples (i, image) with i being the frame index and image the
     image data as a numpy array.
     """
-    stop = debug.stop_idx or video.num_frames
-    start = debug.start_idx or 0
-    if debug["interactive"]:
-      for i, image in video.Frames(start=start, stop=stop):
+    with video.PrefetchEnabled():
+      stop = debug.stop_idx or video.num_frames
+      start = debug.start_idx or 0
+      if debug["interactive"]:
+        for i, image in video.Frames(start=start, stop=stop):
+          yield i, image
+        return
+
+      prev_image = None
+      i = start
+      dont_peek_before = None
+      while i < stop:
+        # Read frame and calculate inter-frame difference
+        if i + 1 < stop:
+          video.Prefetch(i + 1)
+        image = video.FrameAt(i)
+        diff = np.ones((1, 1))
+        if prev_image is not None:
+          diff = np.abs(prev_image - image)
+
+        inter_max_diff = self.inter_frame_unchanged_max_diff
+        if Filter.StableMax(diff) < inter_max_diff and i >= dont_peek_before:
+          # This frame shows very little inter-frame difference, thus could be
+          # omitted. Peek ahead a decreasing distance away from the previous
+          # frame, looking for one that still shows little difference.
+          for peek_ahead in self.peek_distances:
+            peek_i = i + peek_ahead - 1
+            if peek_i >= stop:
+              continue
+            peek_image = video.FrameAt(peek_i)
+            diff = np.abs(prev_image - peek_image)
+            peek_max_diff = self.peek_frame_unchanged_max_diff
+            if Filter.StableMax(diff) < peek_max_diff:
+              # The peeked at frame shows little difference, jump ahead.
+              i = peek_i
+              image = peek_image
+              last_peek = peek_ahead
+              break
+          # Don't peek again for a while.
+          dont_peek_before = i + min(self.peek_distances)
+
+        # Yield next frame
         yield i, image
-      return
-
-    prev_image = None
-    i = start
-    dont_peek_before = None
-    while i < stop:
-      # Read frame and calculate inter-frame difference
-      image = video.FrameAt(i)
-      diff = np.ones((1, 1))
-      if prev_image is not None:
-        diff = np.abs(prev_image - image)
-
-      inter_max_diff = self.inter_frame_unchanged_max_diff
-      if Filter.StableMax(diff) < inter_max_diff and i >= dont_peek_before:
-        # This frame shows very little inter-frame difference, thus could be
-        # omitted. Peek ahead a decreasing distance away from the previous
-        # frame, looking for one that still shows little difference.
-        for peek_ahead in self.peek_distances:
-          peek_i = i + peek_ahead - 1
-          if peek_i >= stop:
-            continue
-          peek_image = video.FrameAt(peek_i)
-          diff = np.abs(prev_image - peek_image)
-          peek_max_diff = self.peek_frame_unchanged_max_diff
-          if Filter.StableMax(diff) < peek_max_diff:
-            # The peeked at frame shows little difference, jump ahead.
-            i = peek_i
-            image = peek_image
-            last_peek = peek_ahead
-            break
-        # Don't peek again for a while.
-        dont_peek_before = i + min(self.peek_distances)
-
-      # Yield next frame
-      yield i, image
-      prev_image = image
-      i += 1
+        prev_image = image
+        i += 1
 
   def ProcessVideo(self, video, debug):
     """Process video and return a trace of all detected events."""
