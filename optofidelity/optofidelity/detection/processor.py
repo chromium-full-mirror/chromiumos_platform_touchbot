@@ -173,7 +173,8 @@ class VideoProcessor(object):
         if i + 1 < stop:
           video.Prefetch(i + 1)
         image = video.FrameAt(i)
-        diff = np.ones((1, 1))
+
+        diff = image
         if prev_image is not None:
           diff = np.abs(prev_image - image)
 

@@ -108,9 +108,10 @@ class CameraCalibration(object):
 
   def RecordVideo(self, app, camera):
     """Record calibration video on the app using the specified camera."""
+    camera.PrepareRecording(60)
     app.EnterPage(app.PAGE_FLASH)
     app.dut.ClearScreen()
-    camera.Record(60)
+    camera.Trigger()
     camera.WaitUntilReady()
     app.ExitPage()
     self.video = camera.GetVideoReader()

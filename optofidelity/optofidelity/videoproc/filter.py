@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 """Filtering algorithms for image analysis and segmentation."""
 from contracts import contract
+import bottleneck
 import numpy as np
 import skimage
 import skimage.exposure as exposure
@@ -26,7 +27,8 @@ class Filter(object):
   def StableMax(image):
     """Return the noise-immune maximum value of the image."""
     k = Filter.stable_extreme_number_of_elements
-    k_max = np.sort(image.flat)[-k:]
+    temp = bottleneck.partsort(image.flat, image.size-k)
+    k_max = temp[-k:]
     return np.mean(k_max)
 
   @staticmethod
@@ -34,7 +36,8 @@ class Filter(object):
   def StableMin(image):
     """Return the noise-immune minimum value of the image."""
     k = Filter.stable_extreme_number_of_elements
-    k_min = np.sort(image.flat)[:k]
+    temp = bottleneck.partsort(image.flat, k)
+    k_min = temp[:k]
     return np.mean(k_min)
 
   @staticmethod
