@@ -3,9 +3,11 @@
 # found in the LICENSE file.
 """This module provides classes that generate traces from video files."""
 from contracts import contract
+import ctypes
 import multiprocessing
 import numpy as np
 import sys
+import time
 
 from optofidelity.detection.detector import Frame, Video, Detector
 from optofidelity.detection.trace import Trace
@@ -159,7 +161,6 @@ class VideoProcessor(object):
     start = debug.start_idx or 0
     if debug["interactive"]:
       for i, image in video.Frames(start=start, stop=stop):
-        print "Reading frame %d/%d" % (i, stop)
         yield i, image
       return
 
@@ -187,9 +188,6 @@ class VideoProcessor(object):
           peek_max_diff = self.peek_frame_unchanged_max_diff
           if Filter.StableMax(diff) < peek_max_diff:
             # The peeked at frame shows little difference, jump ahead.
-            if not debug:
-              print ""
-            print "skipped", peek_i - i, "frames"
             i = peek_i
             image = peek_image
             last_peek = peek_ahead
@@ -198,22 +196,17 @@ class VideoProcessor(object):
         dont_peek_before = i + min(self.peek_distances)
 
       # Yield next frame
-      if debug["video"]:
-        print "Reading frame %d/%d" % (i, stop)
-      else:
-        sys.stdout.write("\rReading frame %d/%d" % (i, stop))
-        sys.stdout.flush()
       yield i, image
       prev_image = image
       i += 1
-    if not debug:
-      print ""
 
   def ProcessVideo(self, video, debug):
     """Process video and return a trace of all detected events."""
     trace = Trace()
     prev_image = None
     for i, image in self.ReadRelevantFrames(video, debug):
+      print "Processing frame %d/%d" % (i, video.num_frames)
+
       frame = Frame(image, prev_image, self.test_area, i)
       debug.InitFrame(frame, self.test_area)
 
@@ -242,6 +235,63 @@ def PreProcessProcess(generator, frame_queue, data_queue):
     debug = ProcessorDebugger(None)
     data_queue.put(generator.Preprocess(frame, debug))
 
+class Buffer(object):
+  """A buffer stores a video frame to be processed.
+
+  The image data is stored in a shared memory array to reduce inter-process
+  communication. Each buffer has an Event-type flag that denotes whether the
+  processing is done.
+  """
+  def __init__(self, image_shape):
+    size = image_shape[0] * image_shape[1]
+    self.image_shape = image_shape
+    self.buffer = multiprocessing.Array(ctypes.c_double, size)
+    self.done = multiprocessing.Event()
+    self.done.set()
+
+  @property
+  def image(self):
+    """Access shared memory as a numpy array. This does not copy data."""
+    np_buffer = np.frombuffer(self.buffer.get_obj())
+    return np_buffer.reshape(self.image_shape)
+
+class PreprocessWorker(multiprocessing.Process):
+  """A worker process that runs VideoProcessor.Preprocess on video frames.
+
+  It receives (frame_index, buffer_index, prev_buffer_index) via the
+  input_queue and processes posts the results of VideoProcessor.Preprocess
+  into the output_queue.
+  frame_index: is the index of the current frame in the video
+  buffer_index: Points to the index in buffer_list where this frame is stored.
+  prev_buffer_index: Points the index of the previous frame.
+  """
+  def __init__(self, processor, buffer_list, input_queue, output_queue):
+    multiprocessing.Process.__init__(self)
+    self.buffer_list = buffer_list
+    self.input_queue = input_queue
+    self.output_queue = output_queue
+    self.processor = processor
+
+  def run(self):
+    while True:
+      i, index, prev_index = self.input_queue.get()
+      if index is None:
+        break
+
+      # Read current and previous image from shared memory buffer
+      image = self.buffer_list[index].image
+      prev_image = None
+      if prev_index is not None:
+        prev_image = self.buffer_list[prev_index].image
+      frame = Frame(image, prev_image, self.processor.test_area, i)
+
+      # Pre-process
+      result = self.processor.Preprocess(frame, ProcessorDebugger(None))
+      self.output_queue.put(result)
+
+      # Notify processing of this buffer is done.
+      self.buffer_list[index].done.set()
+
 
 class MultithreadedVideoProcessor(VideoProcessor):
   """Processes and accumulates events from video into a trace.
@@ -255,24 +305,52 @@ class MultithreadedVideoProcessor(VideoProcessor):
     VideoProcessor.__init__(self, test_area)
 
   def ProcessVideo(self, video, debug):
+    video.perf = True
+
+    # Create shared memory buffer. This is a ring buffer.
+    buffer_list = []
+    image_shape = video.frame_shape
+    for i in range(self.num_processes + 2):
+      buffer_list.append(Buffer(image_shape))
+
     # Start pre-processing processes
     frame_queue = multiprocessing.Queue()
     data_queue = multiprocessing.Queue()
     processes = []
     for i in range(self.num_processes):
-      process_args = (self, frame_queue, data_queue,)
-      process = multiprocessing.Process(target=PreProcessProcess,
-                                        args=process_args)
+      process = PreprocessWorker(self, buffer_list, frame_queue, data_queue)
       process.start()
       processes.append(process)
 
-    # Read frames and put them into the processing queue
-    prev_image = None
+    # Read frames into shared memory buffer and create jobs to process them.
     num_frames = 0
+    current_idx = 0
+    prev_idx = None
+
     for i, frame in self.ReadRelevantFrames(video, debug):
+      # Wait for all operations accessing the current buffer to be done.
+      # We are waiting for next_idx too since it will use the current_idx
+      # as a prev_image.
+      next_idx = (current_idx + 1) % len(buffer_list)
+      buffer_list[current_idx].done.wait()
+      buffer_list[next_idx].done.wait()
+
+      # Write into current buffer and create a job to process it.
+      buffer_list[current_idx].image[:] = frame[:]
+      buffer_list[current_idx].done.clear()
+      frame_queue.put((i, current_idx, prev_idx))
+
+      # Update counters.
+      prev_idx = current_idx
+      current_idx = next_idx
       num_frames += 1
-      frame_queue.put((i, frame, prev_image))
-      prev_image = frame
+
+      # Visualize status of buffer
+      sys.stdout.write("\r")
+      for b in buffer_list:
+        sys.stdout.write("-" if b.done.is_set() else "*")
+      sys.stdout.write(" %d / %d" % (i, video.num_frames))
+      sys.stdout.flush()
 
     # Terminate worker threads by passing None into the queue
     for i in range(self.num_processes):
