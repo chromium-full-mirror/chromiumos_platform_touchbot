@@ -31,7 +31,6 @@ class TestCase(object):
   def __str__(self):
     return "%s/%s" % (self.app, self.test_class.name)
 
-
 class TestRunner(object):
   """Runs a collection of TestCases and handles potential error cases.
 
@@ -120,10 +119,15 @@ class TestRunner(object):
     # Run all test cases with that calibration
     results = {}
     for case in cases:
-      function = lambda: self._RunTest(dut, app, case, calibration, debug)
-      case_results = RetryFunction(function, app.Reset,
-                                   "Running test: " + str(case))
-      results.update(case_results)
+      for i in range(case.test_class.repetitions):
+        function = lambda: self._RunTest(dut, app, case, calibration, debug)
+        case_results = RetryFunction(function, app.Reset,
+                                     "Running test: %s (rep %d)"
+                                     % (case, i + 1))
+        for key, values in case_results.iteritems():
+          if key not in results:
+            results[key] = []
+          results[key].extend(values)
     return results
 
 

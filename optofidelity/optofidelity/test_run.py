@@ -23,7 +23,7 @@ class TestClass(object):
   2. It has to process the resulting trace, returning the test results.
   """
   name = "Unnamed"
-  required_events = []
+  repetitions = 1
 
   def InitializeProcessor(self, processor):
     """Configure and add detectors to the processor."""

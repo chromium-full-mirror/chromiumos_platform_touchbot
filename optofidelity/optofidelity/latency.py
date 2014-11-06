@@ -27,7 +27,7 @@ class TouchMoveLatencyTest(TestClass):
   commands_duration = 2000
   """Duration of the full set of robot commands (in # of camera frames)."""
 
-  repetitions = 1
+  repetitions = 2
   """How often to repeat the test."""
 
   def InitializeProcessor(self, processor):
@@ -35,7 +35,7 @@ class TouchMoveLatencyTest(TestClass):
     processor.AddDetector(FingerMove())
 
   def ExecuteTest(self, app, dut, camera):
-    camera.PrepareRecording(self.commands_duration * self.repetitions)
+    camera.PrepareRecording(self.commands_duration)
     app.EnterPage(self.page)
 
     # The robot will draw a line between the 'left' and 'right' location and
@@ -50,22 +50,21 @@ class TouchMoveLatencyTest(TestClass):
     down = -1
     up = 10
 
-    for i in range(self.repetitions):
-      # Tap to reset the screen, then draw from left to right.
-      app.Tap(left)
-      if i == 0:
-        camera.Trigger()
-      app.Move(left, down)
-      app.Move(left_calib_stop, down)
-      app.Move(right, down)
-      app.Move(right, up)
+    # Tap to reset the screen, then draw from left to right.
+    app.Tap(left)
+    if i == 0:
+      camera.Trigger()
+    app.Move(left, down)
+    app.Move(left_calib_stop, down)
+    app.Move(right, down)
+    app.Move(right, up)
 
-      # Tap to reset the screen, then draw from right to left.
-      app.Tap(right)
-      app.Move(right, down)
-      app.Move(right_calib_stop, down)
-      app.Move(left, down)
-      app.Move(left, up)
+    # Tap to reset the screen, then draw from right to left.
+    app.Tap(right)
+    app.Move(right, down)
+    app.Move(right_calib_stop, down)
+    app.Move(left, down)
+    app.Move(left, up)
 
     camera.WaitUntilReady()
     app.ExitPage()
@@ -155,6 +154,8 @@ class ScrollStartLatencyTest(TestClass):
 
   finger_min_speed = 0.2
   """Minimum speed for the robot finger to be considered moving."""
+
+  repetitions = 3
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
@@ -261,11 +262,13 @@ class TapLatencyTest(TestClass):
   base_record_duration = 300
   """Duration at beginning of each recording (in number of frames)."""
 
-  per_tap_record_duration = 200
+  per_tap_record_duration = 300
   """Duration of each tap in recording (in number of frames)."""
 
   num_measurements = 6
   """Number of tap latency measurements (i.e. number of taps)."""
+
+  repetitions = 4
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
