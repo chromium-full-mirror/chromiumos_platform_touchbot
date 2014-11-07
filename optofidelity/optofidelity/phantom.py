@@ -115,6 +115,12 @@ class Phantom(object):
     data_port = self.data_sock.getsockname()[1]
     self.SendCommand('attach {port: %d}' % data_port)
 
+  def __getnewargs__(self):
+    return (self.ip, self.port, False)
+
+  def __getstate__(self):
+    return {}
+
   def Partition(self, cine_count):
     """Partition camera memory to hold cine_count of cine_files"""
     self.SendCommand('partition %d' % cine_count)

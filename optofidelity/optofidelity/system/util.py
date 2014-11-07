@@ -15,26 +15,3 @@ class DUTException(Exception):
 
   def __str__(self):
     return str(self.dut) + ": " + str(self.error)
-
-
-def RetryFunction(function, recover_function, title, max_attempts=3):
-  """Try to runs function() recover from possible DUTExceptions.
-
-  function: The function to execute
-  recover_function: A function executed when a DUTException is thrown
-  title: For debug prints
-  max_attempts: How often to try.
-  """
-  last_exc = None
-  for i in range(max_attempts):
-    try:
-      print "%s (Attempt %d)" % (title, i+1)
-      return function()
-    except Exception as e:
-      print "%s: FAILED" % title
-      traceback.print_exc()
-      print "%s: Trying to recover." % title
-      if i < max_attempts - 1:
-        recover_function()
-      else:
-        raise e

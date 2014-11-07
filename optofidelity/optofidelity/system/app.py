@@ -23,15 +23,16 @@ class TestApp(object):
   def __init__(self, dut):
     self.dut = dut
     self.pages = {
-        self.PAGE_TAP: (-1, -1),
-        self.PAGE_MOVE: (-1, -1),
-        self.PAGE_CLICK: (-1, -1),
-        self.PAGE_FLASH: (-1, -1),
-        self.PAGE_SCROLL: (-1, -1),
+        self.PAGE_TAP: None,
+        self.PAGE_MOVE: None,
+        self.PAGE_CLICK: None,
+        self.PAGE_FLASH: None,
+        self.PAGE_SCROLL: None,
     }
-    self.button_coords = (-1, -1)
+    self.button_coords = None
     self.top = 0
     self.bottom = dut.height
+    self.calibration = None
 
   @property
   def height(self):
@@ -41,16 +42,24 @@ class TestApp(object):
     self.top += margin[0]
     self.bottom -= margin[1]
 
-  def LocateButtons(self):
+  def LocateButtons(self, force=False):
+    if [coords for coords in self.pages.values() if not coords]:
+      force = True
+
+    if not force:
+      return
+
     for text, x, y in self.dut.ReadText():
       if text in self.pages:
         self.pages[text] = (x, y)
 
-    for page, (x, y) in self.pages.items():
-      if x < 0 or y < 0:
+    for page, coords in self.pages.items():
+      if not coords:
         raise DUTException(self.dut, "Cannot find button for page " + page)
 
   def EnterPage(self, page):
+    if not self.pages[page]:
+      raise Exception("Did not locate button for page: %s" % page)
     self.dut.Tap(*self.pages[page])
 
   def ExitPage(self):

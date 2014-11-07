@@ -5,6 +5,7 @@
 """Main module for command line interface to optofidelity latency tests."""
 
 from optparse import OptionParser
+import cPickle as pickle
 import numpy as np
 import os
 import warnings
@@ -23,7 +24,7 @@ $ %prog --calibrate
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 config_file = os.path.join(script_dir, "optofidelity.xml")
-
+state_file = os.path.join(script_dir, "optofidelity.state")
 
 def AddDebugOptions(parser):
   parser.add_option("--debug",
@@ -59,9 +60,12 @@ def Process(path, what, debug):
 
 
 def RunTests(glob, debug, options):
-  system = OptofidelityTestSystem(config_file)
+  if os.path.exists(state_file) and not options.update_config:
+    system = pickle.load(open(state_file, "r"))
+  else:
+    system = OptofidelityTestSystem(config_file)
 
-  runner = TestRunner(system, script_dir, options.dump_all)
+  runner = TestRunner(system, script_dir, options.dump_all, options.skip_calib)
   results = runner.RunTests(glob, debug)
 
   print "Latency Results:"
@@ -70,6 +74,7 @@ def RunTests(glob, debug, options):
     mean = np.mean(result)
     print "  %s: %f (std=%f)" % (name, mean, std)
 
+  pickle.dump(system, open(state_file, "w"), protocol=-1)
 
 def Main():
   parser = OptionParser(usage=usage)
@@ -79,6 +84,12 @@ def Main():
   parser.add_option("--process",
                     dest="process", default=None,
                     help="Process local files")
+  parser.add_option("--update-config",
+                    dest="update_config", default=False, action="store_true",
+                    help="Update robot configuration.")
+  parser.add_option("--skip-calib",
+                    dest="skip_calib", default=False, action="store_true",
+                    help="Skip screen calibration.")
 
   AddDebugOptions(parser)
   (options, args) = parser.parse_args()

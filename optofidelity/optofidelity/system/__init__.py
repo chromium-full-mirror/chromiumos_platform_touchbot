@@ -12,7 +12,7 @@ all those apps and pages, and access the high speed camera to calibrate the
 screen location in the camera space. All this calibration data can then be
 stored and read from a file to skip the lengthy calibration process.
 """
-from optofidelity.system.util import DUTException, RetryFunction
+from optofidelity.system.util import DUTException
 from optofidelity.system.system import OptofidelityTestSystem
 from optofidelity.system.calibration import CameraCalibration
 from optofidelity.system.app import TestApp, ClankTestApp

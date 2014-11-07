@@ -10,7 +10,6 @@ import xml.etree.ElementTree as ElementTree
 
 from optofidelity.phantom import Phantom
 from optofidelity.system.dut import AndroidDUT
-from optofidelity.system.util import RetryFunction
 from optofidelity.tnt.TnTClient import TnTClient
 
 class OptofidelityTestSystem(object):

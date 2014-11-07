@@ -31,25 +31,31 @@ class DeviceUnderTest(object):
   def RegisterApp(self, app):
     self.apps[app.name] = app
 
-  def LocateButtons(self):
+  def LocateButtons(self, force=True):
     """Locate buttons for all apps."""
+    if [app for app in self.apps.values() if not app.button_coords]:
+      force = True
+
+    if not force:
+      return
     for app in self.apps.values():
-      x, y = self.FindIcon(app.TEST_APP_ICON)
-      if x < 0 or y < 0:
+      coords = self.FindIcon(app.TEST_APP_ICON)
+      if not coords:
         raise DUTException(self, "Cannot find icon " + app.TEST_APP_ICON)
-      app.button_coords = (x, y)
+      app.button_coords = coords
 
   def Reset(self):
     self.ExitApp()
     self.ExitApp()
 
   def EnterApp(self, app):
+    if not app.button_coords:
+      raise Exception("Did not detect button location for app: %s" % (str(app)))
     self.Tap(*app.button_coords)
 
   def IsHome(self):
     for app in self.apps.values():
-      x, y = self.FindIcon(app.TEST_APP_ICON)
-      if x < 0 or y < 0:
+      if not self.FindIcon(app.TEST_APP_ICON):
         return False
     return True
 
@@ -57,10 +63,10 @@ class DeviceUnderTest(object):
     """Return the coordinates of the icon described by icon_file."""
     ret = self.client.find_objects(icon_file)
     if not ret["success"]:
-      return -1, -1
+      return None
     best_match = max(ret["results"], key=lambda r: r["score"])
     if best_match["score"] < 0.5:
-      return -1, -1
+      return None
     x = (best_match["topLeftX"] + best_match["bottomRightX"]) / 2.0
     y = (best_match["topLeftY"] + best_match["bottomRightY"]) / 2.0
     return x, y

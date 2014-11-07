@@ -56,16 +56,16 @@ class TestRun(object):
   """
   metadata_filename = "metadata.pickle"
 
-  @contract(test_class=TestClass, app=TestApp, calibration=CameraCalibration,
+  @contract(test_class=TestClass, app=TestApp,
             path="str|None")
-  def __init__(self, test_class, app, calibration, path=None):
+  def __init__(self, test_class, app, path=None):
     self.path = path
     self.test_class = test_class
     self.dut_name = app.dut.name
     self.app_name = app.name
     self.error = None
 
-    self.calibration = calibration
+    self.calibration = app.calibration
     self.calibration_video = calibration.video
 
     self.test_video = None
