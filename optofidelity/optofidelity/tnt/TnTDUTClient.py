@@ -225,7 +225,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('angle', angle)
         r.set('duration', duration)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def double_tap(self, x=None, y=None, duration=None, interval=None, clearance=None, lift=None):
         """
@@ -260,7 +260,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('interval', interval)
         r.set('clearance', clearance)
         r.set('lift', lift)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def multi_tap(self, points=[], duration=None, interval=None, clearance=None):
         """
@@ -281,7 +281,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('duration', duration)
         r.set('interval', interval)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def toss(self, from_x, from_y, to_x, to_y, clearance=None):
         r = Request('Toss')
@@ -290,7 +290,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('to.x', to_x)
         r.set('to.y', to_y)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def drag(self, from_x=None, from_y=None, to_x=None, to_y=None, angle=None, begin_hold_time=0, end_hold_time=0, clearance=None, speed=None):
         """
@@ -311,7 +311,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('speed', speed)
         r.set('beginHoldTime', begin_hold_time)
         r.set('endHoldTime', end_hold_time)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def drag_and_hold(self, from_x=None, from_y=None, to_x=None, to_y=None, angle=None, duration=None, clearance=None):
         """ Similar like drag, but user has defined delay before and after
@@ -330,7 +330,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('angle', angle)
         r.set('duration', duration)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def swipe(self, from_x=None, from_y=None, to_x=None, to_y=None, angle=None, clearance=None, radius=6.0):
         """
@@ -349,7 +349,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('angle', angle)
         r.set('clearance', clearance)
         r.set('radius', radius)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def swipe_right(self, length=1.0, clearance=None, radius=6.0):
         """
@@ -455,7 +455,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('threshold', threshold)
         r.set('speed', speed)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def zoom(self, x=None, y=None, angle=None, distance=None, offset=None, speed=None, clearance=None):
         """ Perform a zoom gesture on a given position """
@@ -467,7 +467,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('offset', offset)
         r.set('speed', speed)
         r.set('clearance', clearance)
-        return self.POST(r)
+        return self.POST(r, async=True)
 
     def top_left_position(self):
         """
@@ -519,14 +519,14 @@ class TnTDUTClient(TnTClientObject):
 
         """
         r = Request('MoveX', {'distance': distance})
-        return self.GET(r)
+        return self.GET(r, async=True)
 
     def move_y(self, distance=1.0):
         """
         Move robot along DUT y axis. Distance is y movement in millimeters.
         """
         r = Request('MoveY', {'distance': distance})
-        return self.GET(r)
+        return self.GET(r, async=True)
 
     def move_z(self, distance=1.0):
         """
@@ -535,7 +535,7 @@ class TnTDUTClient(TnTClientObject):
         finger further away and negative value towards the DUT surface.
         """
         r = Request('MoveZ', {'distance': distance})
-        return self.GET(r)
+        return self.GET(r, async=True)
 
     def move(self, x=None, y=None, z=None, u=None, speed=None):
         """
@@ -552,7 +552,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('z', z)
         r.set('u', u)
         r.set('speed', speed)
-        return self.PUT(r)
+        return self.PUT(r, async=True)
 
     def jump(self, x=None, y=None, z=None, height=None, speed=None):
         """
@@ -567,14 +567,14 @@ class TnTDUTClient(TnTClientObject):
         print "x ", x
         print "y ", y
         print "z ", z
-        
+
         r = Request('Jump')
         r.set('x', x)
         r.set('y', y)
         r.set('z', z)
         r.set('height', height)
         r.set('speed', speed)
-        return self.GET(r)
+        return self.GET(r, async=True)
 
     def go(self, x=None, y=None, z=None, u=None, speed=None):
         """
@@ -591,7 +591,7 @@ class TnTDUTClient(TnTClientObject):
         r.set('z', z)
         r.set('u', u)
         r.set('speed', speed)
-        return self.PUT(r)
+        return self.PUT(r, async=True)
 
     def find_objects(self, filename, min_score=None, crop_left=None,
         crop_upper=None, crop_right=None, crop_lower=None, crop_unit=None):

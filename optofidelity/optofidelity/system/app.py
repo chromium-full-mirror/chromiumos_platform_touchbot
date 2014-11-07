@@ -74,15 +74,20 @@ class TestApp(object):
     # Go back into the app.
     self.dut.EnterApp(self)
 
-  def Tap(self, y, count=1):
+  def Tap(self, y, count=1, blocking=False):
     x = self.dut.test_plane
     y += self.top
-    self.dut.Tap(x, y, count)
+    self.dut.Tap(x, y, count, blocking)
 
-  def Move(self, y, z):
+  def Move(self, y, z, blocking=False):
     x = self.dut.test_plane
     y += self.top
-    self.dut.Move(x, y, z)
+    self.dut.Move(x, y, z, blocking)
+
+  def Jump(self, y, z, blocking=False):
+    x = self.dut.test_plane
+    y += self.top
+    self.dut.Jump(x, y, z, blocking)
 
   def __str__(self):
     return "%s/%s" % (str(self.dut), self.name)

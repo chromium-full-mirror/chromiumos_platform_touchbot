@@ -85,21 +85,29 @@ class DeviceUnderTest(object):
       y = (match["topLeftY"] + match["bottomRightY"]) / 2.0
       yield match["text"], x, y
 
-  def Tap(self, x, y, count=1):
+  def Tap(self, x, y, count=1, blocking=False):
     if count == 1:
       self.client.tap(x, y)
     else:
       self.client.multi_tap([[x, y]] * count)
+    if blocking:
+      self.client.complete_requests()
 
-  def Move(self, x, y, z):
+  def Move(self, x, y, z, blocking=False):
     self.client.move(x, y, z)
+    if blocking:
+      self.client.complete_requests()
 
-  def Swipe(self, from_x, from_y, to_x, to_y):
+  def Swipe(self, from_x, from_y, to_x, to_y, blocking=False):
     self.client.swipe(from_x, from_y, to_x, to_y)
+    if blocking:
+      self.client.complete_requests()
 
-  def ClearScreen(self):
+  def ClearScreen(self, blocking=False):
     """Move finger to a position that does not obstruct the screen."""
     self.client.move(self.test_plane, -50, 50)
+    if blocking:
+      self.client.complete_requests()
 
   def Home(self):
     raise NotImplementedError()

@@ -61,6 +61,8 @@ class TnTClientObject(object):
         else:
             self._url = "http://%s:%s/TnTAPI/" % (host, port)
 
+        self.async_request = None
+
     @property
     def name(self):
         return self._name
@@ -88,23 +90,35 @@ class TnTClientObject(object):
     def collection(self):
         return self._collection
 
-    def GET(self, request):
+    def GET(self, request, async=False):
         return self._send_request('GET', request)
 
-    def POST(self, request, expect=200):
+    def POST(self, request, expect=200, async=False):
         return self._send_request('POST', request, expect)
 
-    def PUT(self, request):
+    def PUT(self, request, async=False):
         return self._send_request('PUT', request)
 
-    def DELETE(self, request):
+    def DELETE(self, request, async=False):
         return self._send_request('DELETE', request)
 
     @property
     def response_headers(self):
         return self._response_headers
 
-    def _send_request(self, method, request, expected_status_code=200):
+    def complete_requests(self):
+        if self.async_request:
+            status_code = self.async_request.status_code
+            content = self.async_request.content
+            if status_code != 200:
+                raise HttpException(status_code, content)
+            self.async_request = None
+
+
+    def _send_request(self, method, request, expected_status_code=200,
+                      async=False):
+        self.complete_requests()
+
         # Send the request
         if method == 'GET':
             url = "%s%s?%s" % (self._url, request.name, request.query)
@@ -123,6 +137,9 @@ class TnTClientObject(object):
             r = requests.delete(url, headers=request.headers)
         else:
             raise Exception('Unknown or unsupported HTTP method -- %s' % method)
+
+        if async:
+            return r
 
         # Store headers
         self._response_headers = r.headers
@@ -317,7 +334,7 @@ class TnTClient(TnTClientObject):
         """ Get an effector object with the given name """
         from TnTEffectorClient import TnTEffectorClient
         return TnTEffectorClient(name, self.host, self.port)
-        
+
     def camera(self, name):
         """ Get an camera object with the given name """
         from TnTCameraClient import TnTCameraClient
