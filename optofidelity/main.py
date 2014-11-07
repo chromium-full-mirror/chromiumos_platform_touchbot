@@ -9,12 +9,8 @@ import numpy as np
 import os
 import warnings
 
-from optofidelity.latency import (TapLatencyTest, TouchMoveLatencyTest,
-                                  ScrollLatencyTest, ScrollStartLatencyTest)
-from optofidelity.system import OptofidelityTestSystem
-from optofidelity.test_runner import TestRunner
-from optofidelity.test_run import TestRun
-from optofidelity.detection import ProcessorDebugger
+from optofidelity import (OptofidelityTestSystem, TestRunner, TestRun,
+                          ProcessorDebugger)
 
 usage = """TestRunner usage examples
 
@@ -26,14 +22,8 @@ $ %prog --calibrate
 """
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
-config_file = os.path.join(script_dir, "optofidelity.cfg")
-calibration_file = os.path.join(script_dir, "calibration.hdf5")
+config_file = os.path.join(script_dir, "optofidelity.xml")
 
-def RegisterTestClasses(runner):
-  runner.AddTestClass(TouchMoveLatencyTest)
-  runner.AddTestClass(TapLatencyTest)
-  runner.AddTestClass(ScrollLatencyTest)
-  runner.AddTestClass(ScrollStartLatencyTest)
 
 def AddDebugOptions(parser):
   parser.add_option("--debug",
@@ -46,8 +36,10 @@ def AddDebugOptions(parser):
                     dest="stop", default=None,
                     help="Stop processing at this frame")
 
+
 def BuildDebugger(options):
   return ProcessorDebugger(options.debug, options.start, options.stop)
+
 
 def Process(path, what, debug):
   run = TestRun.Load(path)
@@ -65,15 +57,11 @@ def Process(path, what, debug):
     run.ProcessTestTrace(debug)
   run.Save()
 
+
 def RunTests(glob, debug, options):
   system = OptofidelityTestSystem(config_file)
 
   runner = TestRunner(system, script_dir, options.dump_all)
-  RegisterTestClasses(runner)
-  for dut in system:
-    for app in dut:
-      runner.AddApp(app)
-
   results = runner.RunTests(glob, debug)
 
   print "Latency Results:"
@@ -81,6 +69,7 @@ def RunTests(glob, debug, options):
     std = np.std(result)
     mean = np.mean(result)
     print "  %s: %f (std=%f)" % (name, mean, std)
+
 
 def Main():
   parser = OptionParser(usage=usage)

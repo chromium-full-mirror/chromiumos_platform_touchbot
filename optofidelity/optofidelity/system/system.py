@@ -2,10 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 from ConfigParser import SafeConfigParser
+from contracts import contract
+
 import h5py
+import re
+import xml.etree.ElementTree as ElementTree
 
 from optofidelity.phantom import Phantom
-from optofidelity.system.app import ClankTestApp
 from optofidelity.system.dut import AndroidDUT
 from optofidelity.system.util import RetryFunction
 from optofidelity.tnt.TnTClient import TnTClient
@@ -22,11 +25,24 @@ class OptofidelityTestSystem(object):
     >>> system["Nexus7"].Reset()
     >>> system["Nexus7"].EnterApp("Clank")
   """
+  dut_classes = {}
+  app_classes = {}
+
   def __init__(self, config_file):
     self.duts = {}
     self.tnt = None
     self.camera = None
     self.ReadConfig(config_file)
+
+  @classmethod
+  @contract(dut_class=type)
+  def RegisterDUTClass(cls, dut_class):
+    cls.dut_classes[dut_class.type_name] = dut_class
+
+  @classmethod
+  @contract(app_class=type)
+  def RegisterAppClass(cls, app_class):
+    cls.app_classes[app_class.name] = app_class
 
   def __getitem__(self, key):
     if isinstance(key, int):
@@ -35,56 +51,53 @@ class OptofidelityTestSystem(object):
       return self.duts.__getitem__(key)
 
   def ReadConfig(self, config_file):
-    """Read robot configuration from file.
+    """Read robot configuration from file."""
+    root = ElementTree.parse(config_file).getroot()
 
-    The configuration contains a list of DUTs and their properties as follows:
-    [DUTName]
-    type=Android
-    apps=Clank
+    def ParseCoord(element, attrib_name, default=None):
+      if attrib_name in variant_elem.attrib:
+        string = variant_elem.attrib[attrib_name]
+        match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
+        return int(match.group(1)), int(match.group(2))
+      return default
 
-    The DUTName has to be the name of the DUT on the OptoFidelity system,
-    whereas the only supported type at this time is Android, and the only
-    supported app is Clank.
-    """
-    config = SafeConfigParser()
-    config.read([config_file])
+    def ParseFlip(element):
+      orientation = element.get("orientation", "right")
+      if orientation == "right":
+        return False
+      elif orientation == "left":
+        return True
+      raise Exception("Orientation must be left or right")
 
-    host = config.get("robot", "host")
-    port = config.get("robot", "port")
-    self.tnt = TnTClient(host, port)
+    app_variants = {}
+    for name, cls in self.app_classes.iteritems():
+      app_variants[name] = (cls, None)
+    for variant_elem in root.iter("app-variant"):
+      name = variant_elem.attrib["name"]
+      cls = self.app_classes[variant_elem.attrib["type"]]
+      margin = ParseCoord(variant_elem, "margin")
+      app_variants[name] = (cls, margin)
 
-    camera_host = config.get("camera", "host")
-    self.camera = Phantom(camera_host)
+    robot = root.find("robot")
+    self.tnt = TnTClient(robot.attrib["host"], robot.attrib["port"])
 
-    for dut_name in config.sections():
-      if dut_name in ("robot", "camera"):
-        continue
-      dut_type = config.get(dut_name, "type")
-      dut_apps = config.get(dut_name, "apps").split(",")
-      dut_apps = [a.strip() for a in dut_apps]
-      flip = False
-      if config.has_option(dut_name, "flip"):
-        flip = True
-      if dut_type.lower() == "android":
-        dut = AndroidDUT(self.tnt, dut_name, flip)
-      else:
-        raise Exception("Unknown device type %s" % dut_type)
+    camera = root.find("camera")
+    self.camera = Phantom(camera.attrib["host"])
 
-      margin_top = 0
-      margin_bottom = 0
-      if config.has_option(dut_name, "margin_top"):
-        margin_top = int(config.get(dut_name, "margin_top"))
-      if config.has_option(dut_name, "margin_bottom"):
-        margin_bottom = int(config.get(dut_name, "margin_bottom"))
+    for dut_elem in root.iter("dut"):
+      name = dut_elem.attrib["name"]
+      dut_type = self.dut_classes[dut_elem.attrib["type"]]
+      tnt_name = dut_elem.get("tnt_name", name)
+      flip = ParseFlip(dut_elem)
+      dut = dut_type(self.tnt.dut(tnt_name), name, flip)
 
-      for app_name in dut_apps:
-        if app_name.lower() == "clank":
-          app = ClankTestApp(dut)
-        else:
-          raise Exception("Unknown device type %s" % dut_type)
-        app.top += margin_top
-        app.bottom -= margin_bottom
+      for app_elem in dut_elem.iter("app"):
+        (app_type, predef_margin) = app_variants[app_elem.attrib["type"]]
+        button = ParseCoord(app_elem, "button")
+        margin = ParseCoord(app_elem, "margin", predef_margin)
+        app = app_type(dut)
+        if margin:
+          app.ApplyMargin(margin)
         dut.RegisterApp(app)
-
 
       self.duts[dut.name] = dut

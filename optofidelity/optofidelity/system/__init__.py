@@ -15,5 +15,8 @@ stored and read from a file to skip the lengthy calibration process.
 from optofidelity.system.util import DUTException, RetryFunction
 from optofidelity.system.system import OptofidelityTestSystem
 from optofidelity.system.calibration import CameraCalibration
-from optofidelity.system.app import TestApp
-from optofidelity.system.dut import DeviceUnderTest
+from optofidelity.system.app import TestApp, ClankTestApp
+from optofidelity.system.dut import DeviceUnderTest, AndroidDUT
+
+OptofidelityTestSystem.RegisterDUTClass(AndroidDUT)
+OptofidelityTestSystem.RegisterAppClass(ClankTestApp)

@@ -4,7 +4,7 @@
 from contracts import contract
 
 from optofidelity.system.util import DUTException
-from optofidelity.tnt.TnTClient import TnTClient
+from optofidelity.tnt.TnTDUTClient import TnTDUTClient
 from optofidelity.videoproc import VideoException, VideoWriter
 
 class DeviceUnderTest(object):
@@ -14,12 +14,13 @@ class DeviceUnderTest(object):
   basic movements and robot commands.
   """
   test_plane_margin = 10
+  type_name = "undefined"
 
-  @contract(tnt=TnTClient, name=str)
-  def __init__(self, tnt, name, flip):
+  @contract(client=TnTDUTClient, name=str)
+  def __init__(self, client, name, flip):
     self.name = name
     self.apps = {}
-    self.client = tnt.dut(self.name)
+    self.client = client
     self.width = self.client.panel_width
     self.height = self.client.panel_height
     if flip:
@@ -42,8 +43,8 @@ class DeviceUnderTest(object):
     self.ExitApp()
     self.ExitApp()
 
-  def EnterApp(self, app_name):
-    self.Tap(*self.apps[app_name].button_coords)
+  def EnterApp(self, app):
+    self.Tap(*app.button_coords)
 
   def IsHome(self):
     for app in self.apps.values():
@@ -115,6 +116,8 @@ class DeviceUnderTest(object):
 
 class AndroidDUT(DeviceUnderTest):
   """Implementation of a DUT for Android devices."""
+  type_name = "android"
+
   def __init__(self, tnt, name, flip):
     DeviceUnderTest.__init__(self, tnt, name, flip)
     self.home_coords = (self.width / 2, self.height - 3)

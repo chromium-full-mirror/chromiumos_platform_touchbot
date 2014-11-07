@@ -17,11 +17,11 @@ class TestApp(object):
   PAGE_CLICK = "Click"
   PAGE_FLASH = "Flash"
   TEST_APP_ICON = None
+  name = "undefined"
 
-  @contract(dut=DeviceUnderTest, name=str)
-  def __init__(self, dut, name):
+  @contract(dut=DeviceUnderTest)
+  def __init__(self, dut):
     self.dut = dut
-    self.name = name
     self.pages = {
         self.PAGE_TAP: (-1, -1),
         self.PAGE_MOVE: (-1, -1),
@@ -36,6 +36,10 @@ class TestApp(object):
   @property
   def height(self):
     return self.bottom - self.top
+
+  def ApplyMargin(self, margin):
+    self.top += margin[0]
+    self.bottom -= margin[1]
 
   def LocateButtons(self):
     for text, x, y in self.dut.ReadText():
@@ -59,7 +63,7 @@ class TestApp(object):
     # If we are on the home screen already, this will just not do anything.
     self.dut.Back()
     # Go back into the app.
-    self.dut.EnterApp(self.name)
+    self.dut.EnterApp(self)
 
   def Tap(self, y, count=1):
     x = self.dut.test_plane
@@ -77,6 +81,8 @@ class TestApp(object):
 
 class ClankTestApp(TestApp):
   TEST_APP_ICON = "icons/clank_tests.shm"
+  name = "clank"
+
   def __init__(self, dut):
-    TestApp.__init__(self, dut, "Clank")
+    TestApp.__init__(self, dut)
 

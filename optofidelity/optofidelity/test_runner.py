@@ -39,21 +39,23 @@ class TestRunner(object):
   During execution, the test cases are sorted in a way that involves as little
   app and dut switching as possible.
   """
+  test_classes = {}
+
   def __init__(self, system, path, dump_all=False):
-    self.test_classes = {}
     self.test_apps = {}
     self.system = system
     self.dump_all = dump_all
     self.results_path = os.path.join(path, "results")
     self.failures_path = os.path.join(path, "failures")
 
-  @contract(test_class=type)
-  def AddTestClass(self, test_class):
-    self.test_classes[test_class.name] = test_class()
+    for dut in system:
+      for app in dut:
+        self.test_apps[str(app)] = app
 
-  @contract(app=TestApp)
-  def AddApp(self, app):
-    self.test_apps[str(app)] = app
+  @classmethod
+  @contract(test_class=type)
+  def RegisterTestClass(cls, test_class):
+    cls.test_classes[test_class.name] = test_class()
 
   def RunTests(self, glob, debug):
     # Discover all test cases
@@ -92,7 +94,7 @@ class TestRunner(object):
     results = {}
     sorted_cases = sorted(cases, key=lambda c: c.app)
     for app, cases in itertools.groupby(sorted_cases, key=lambda c: c.app):
-      dut.EnterApp(app.name)
+      dut.EnterApp(app)
       function = lambda: self._RunAppTests(dut, app, cases, debug)
       app_results = RetryFunction(function, app.Reset,
                                   "Running tests: " + str(app))

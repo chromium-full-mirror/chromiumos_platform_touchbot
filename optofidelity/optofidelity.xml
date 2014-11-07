@@ -1,0 +1,16 @@
+<optofidelity>
+  <robot host="192.168.0.5" port="8000" />
+  <camera host="192.168.0.4" />
+
+  <app-variant name="clank_tablet" type="clank" margin="(30, 15)" />
+  <app-variant name="clank_phone" type="clank" margin="(20, 15)" />
+
+  <dut name="nexus7" type="android" tnt_name="Nexus7">
+    <app type="clank_tablet" />
+  </dut>
+
+  <dut name="nexus5" type="android" orientation="left" tnt_name="Nexus5">
+    <app type="clank_phone" />
+  </dut>
+
+</optofidelity>
