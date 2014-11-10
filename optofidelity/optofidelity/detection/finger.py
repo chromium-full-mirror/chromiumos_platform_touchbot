@@ -7,9 +7,10 @@ from optofidelity.detection.trace import Event
 from optofidelity.videoproc import Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
-class FingerLED(Detector):
-  """Detects finge LED events such as FingerDown, FingerUp."""
-  name = "finger_led"
+
+class LEDDetector(Detector):
+  """Detects LED events such as led on, led off"""
+  name = "led"
 
   led_test_area_margin = 10
   """Margin around the test area when blacking out the screen for LED
@@ -72,7 +73,7 @@ class FingerLED(Detector):
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Search for the current location of the finger.
 
-    This method will return FINGER_DOWN and FINGER_UP events.
+    This method will return LED_ON and LED_OFF events.
     """
     led_color = preprocessed_data
 
@@ -81,9 +82,9 @@ class FingerLED(Detector):
       if not self.led_switching:
         self.led_switching = True
         if led_color > 0.5:
-          return [Event(timestamp, Event.FINGER_DOWN)]
+          return [Event(timestamp, Event.LED_ON)]
         else:
-          return [Event(timestamp, Event.FINGER_UP)]
+          return [Event(timestamp, Event.LED_OFF)]
     else:
       self.led_switching = False
     return []

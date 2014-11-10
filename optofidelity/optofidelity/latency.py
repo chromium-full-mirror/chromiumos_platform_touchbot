@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import time
 
 from optofidelity.test_runner import TestClass
-from optofidelity.detection import (Event, FingerLED, FingerMove, Line,
+from optofidelity.detection import (Event, LEDDetector, FingerMove, Line,
                                     ScreenFlash)
 
 
@@ -160,7 +160,7 @@ class ScrollStartLatencyTest(TestClass):
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
     processor.AddDetector(FingerMove())
-    processor.AddDetector(FingerLED())
+    processor.AddDetector(LEDDetector())
 
   def ExecuteTest(self, app, dut, camera):
     camera.PrepareRecording(self.commands_duration)
@@ -203,7 +203,7 @@ class ScrollStartLatencyTest(TestClass):
         print "-" * 80
 
       # Search for finger down event
-      (_, finger_down) = trace.Find(Event.FINGER_DOWN, current_time)
+      (_, finger_down) = trace.Find(Event.LED_ON, current_time)
       if not finger_down:
         break
       if debug:
@@ -272,7 +272,7 @@ class TapLatencyTest(TestClass):
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(ScreenFlash())
-    processor.AddDetector(FingerLED())
+    processor.AddDetector(LEDDetector())
 
   def ExecuteTest(self, app, dut, camera):
     duration = (self.base_record_duration +
@@ -292,12 +292,12 @@ class TapLatencyTest(TestClass):
     up_start = []
     up_end = []
 
-    for trace in trace.Split(Event.FINGER_DOWN):
-      if not trace.Events(Event.FINGER_DOWN):
+    for trace in trace.Split(Event.LED_ON):
+      if not trace.Events(Event.LED_ON):
         continue
 
-      finger_down = trace.Time(Event.FINGER_DOWN)
-      finger_up = trace.Time(Event.FINGER_UP)
+      finger_down = trace.Time(Event.LED_ON)
+      finger_up = trace.Time(Event.LED_OFF)
 
       screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
       screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
