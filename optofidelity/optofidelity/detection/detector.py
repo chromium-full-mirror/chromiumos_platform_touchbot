@@ -5,7 +5,6 @@ from contracts import contract
 import numpy as np
 
 from optofidelity.videoproc import Viewer, Filter, VideoException, VideoReader
-from optofidelity.system import CameraCalibration
 
 
 class Frame(object):
@@ -19,8 +18,7 @@ class Frame(object):
   """Everything below this threshold is considered to be the foreground
      objects on the screen."""
 
-  @contract(im="image", prev_im="image|None", test_area=CameraCalibration,
-            index='>=0')
+  @contract(im="image", prev_im="image|None", index='>=0')
   def __init__(self, im, prev_im, test_area, index=0):
     self.original = im
     self.rectified = im
@@ -50,10 +48,14 @@ class Frame(object):
 class Video(object):
   """Wraps around a video_reader and yields Frame instances."""
 
-  @contract(video_reader=VideoReader, test_area=CameraCalibration)
+  @contract(video_reader=VideoReader)
   def __init__(self, video_reader, test_area):
     self.video_reader = video_reader
     self.test_area = test_area
+
+  @property
+  def frame_shape(self):
+    return self.video_reader.frame_shape
 
   def Frames(self, start=0, stop=None, step=1, frames=None):
     prev_image = None

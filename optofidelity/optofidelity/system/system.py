@@ -9,7 +9,8 @@ import re
 import xml.etree.ElementTree as ElementTree
 
 from optofidelity.phantom import Phantom
-from optofidelity.system.dut import AndroidDUT
+from optofidelity.system.calibration import LEDCalibration
+from optofidelity.system.dut import CalibrationDUT
 from optofidelity.tnt.TnTClient import TnTClient
 
 class OptofidelityTestSystem(object):
@@ -31,6 +32,8 @@ class OptofidelityTestSystem(object):
     self.duts = {}
     self.tnt = None
     self.camera = None
+    self.led_calibration = LEDCalibration()
+    self.calibration_dut = None
     self.ReadConfig(config_file)
 
   @classmethod
@@ -82,6 +85,11 @@ class OptofidelityTestSystem(object):
 
     camera = root.find("camera")
     self.camera = Phantom(camera.attrib["host"])
+
+    calib_elem = root.find("calibration-device")
+    if calib_elem is not None:
+      tnt_name = calib_elem.get("tnt_name", "calibration")
+      self.calibration_dut = CalibrationDUT(self.tnt.dut(tnt_name), name, False)
 
     for dut_elem in root.iter("dut"):
       name = dut_elem.attrib["name"]

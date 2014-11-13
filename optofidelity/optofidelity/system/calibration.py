@@ -10,6 +10,77 @@ import tempfile
 
 from optofidelity.videoproc import (Canvas, FileVideoReader, Filter, Shape,
                                     VideoException, VideoWriter, Viewer)
+from optofidelity.detection import Event, LEDDetector, Trace, VideoProcessor
+
+
+class LEDCalibration(object):
+  base_record_duration = 200
+  """Duration at beginning of each recording (in number of frames)."""
+
+  per_tap_record_duration = 160
+  """Duration of each tap in recording (in number of frames)."""
+
+  num_measurements = 6
+  """Number of tap latency measurements (i.e. number of taps)."""
+
+  def __init__(self):
+    self.finger_down_delays = []
+    self.finger_up_delays = []
+    self.finger_down_delay = 0
+    self.finger_up_delay = 0
+
+  def Calibrate(self, dut, camera, debug):
+    self.RecordVideo(dut, camera)
+    trace = self.ProcessVideo(debug)
+    self.ProcessTrace(trace, debug)
+
+  def RecordVideo(self, dut, camera):
+    duration = (self.base_record_duration +
+                self.per_tap_record_duration * self.num_measurements)
+    camera.PrepareRecording(duration)
+    dut.Move(dut.width / 2, dut.height / 2, 10, blocking=True)
+    camera.Trigger()
+    dut.Tap(dut.width / 2, dut.height / 2, count=self.num_measurements)
+    camera.WaitUntilReady()
+    self.video = camera.GetVideoReader()
+
+  def ProcessVideo(self, debug, video=None):
+    video = video or self.video
+    assert video, "No calibration video"
+
+    trace = Trace()
+    processor = VideoProcessor(None, debug)
+    processor.AddDetector(LEDDetector())
+    processor.Initialize(video, debug)
+    return processor.ProcessVideo(video, debug)
+
+  def ProcessTrace(self, trace, debug):
+    if debug["trace"]:
+      print trace
+    led_events = trace.Events()
+    i = 0
+    while i + 3 < len(led_events):
+      # We are looking for 2 LEDs turning on and off
+      first_on = led_events[i]
+      second_on = led_events[i + 1]
+      first_off = led_events[i + 2]
+      second_off = led_events[i + 3]
+
+      # Make sure we got the right event types. If not the LED detection has
+      # missed an LED event.
+      assert first_on.event_type == Event.LED_ON
+      assert second_on.event_type == Event.LED_ON
+      assert first_off.event_type == Event.LED_OFF
+      assert second_off.event_type == Event.LED_OFF
+
+      # Calculate latency.
+      self.finger_down_delays.append(second_on.time - first_on.time)
+      self.finger_up_delays.append(second_off.time - first_off.time)
+      i += 4
+
+    self.finger_down_delay = np.mean(np.asarray(self.finger_down_delays))
+    self.finger_up_delay = np.mean(np.asarray(self.finger_up_delays))
+
 
 class CameraCalibration(object):
   """Detects the test area on a device.

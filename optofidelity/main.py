@@ -12,6 +12,7 @@ import warnings
 
 from optofidelity import (OptofidelityTestSystem, TestRunner, TestRun,
                           ProcessorDebugger)
+from optofidelity.system.calibration import LEDCalibration
 
 usage = """TestRunner usage examples
 
@@ -58,14 +59,28 @@ def Process(path, what, debug):
     run.ProcessTestTrace(debug)
   run.Save()
 
-
 def RunTests(glob, debug, options):
   if os.path.exists(state_file) and not options.update_config:
     system = pickle.load(open(state_file, "r"))
   else:
     system = OptofidelityTestSystem(config_file)
+    if os.path.exists(state_file):
+      old_system = pickle.load(open(state_file, "r"))
+      system.led_calibration = old_system.led_calibration
 
   runner = TestRunner(system, script_dir, options.dump_all, options.skip_calib)
+
+  if options.led_calib or system.led_calibration is None:
+    system.led_calibration = LEDCalibration()
+    system.led_calibration.Calibrate(system.calibration_dut, system.camera,
+                                     debug)
+    print "Calibration Results:"
+    print "  Finger down: %f %s" % (system.led_calibration.finger_down_delay,
+                                    system.led_calibration.finger_down_delays)
+    print "  Finger up: %f %s" % (system.led_calibration.finger_up_delay,
+                                  system.led_calibration.finger_up_delays)
+
+  pickle.dump(system, open(state_file, "w"), protocol=-1)
   results = runner.RunTests(glob, debug)
 
   print "Latency Results:"
@@ -90,6 +105,9 @@ def Main():
   parser.add_option("--skip-calib",
                     dest="skip_calib", default=False, action="store_true",
                     help="Skip screen calibration.")
+  parser.add_option("--led-calib",
+                    dest="led_calib", default=False, action="store_true",
+                    help="Perform LED calibration before tests.")
 
   AddDebugOptions(parser)
   (options, args) = parser.parse_args()

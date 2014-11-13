@@ -42,18 +42,22 @@ class LEDDetector(Detector):
     is stateless and can be called on any frames out of order.
     """
     # Create mask showing everything outside the active screen.
-    margin = self.led_test_area_margin
-    mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
+    if frame.test_area:
+      margin = self.led_test_area_margin
+      mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
+    else:
+      mask = np.ones(frame.original.shape, dtype=np.bool)
 
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
     # LED events during this time.
-    screen_delta = frame.test_area.shape.mask * frame.delta
-    screen_avg_delta = np.mean(np.abs(screen_delta))
-    if screen_avg_delta > self.screen_max_avg_delta:
-      if debug:
-        print "Suspending LED detection"
-      return None
+    if frame.test_area:
+      screen_delta = frame.test_area.shape * frame.delta
+      screen_avg_delta = np.mean(np.abs(screen_delta))
+      if screen_avg_delta > self.screen_max_avg_delta:
+        if debug:
+          print "Suspending LED detection"
+        return None
 
     # Look for an LED shaped large change in the masked area.
     delta = np.abs(frame.delta * mask)

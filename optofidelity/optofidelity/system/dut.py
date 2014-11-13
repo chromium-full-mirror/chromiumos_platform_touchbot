@@ -145,3 +145,10 @@ class AndroidDUT(DeviceUnderTest):
 
   def Home(self):
     self.Tap(*self.home_coords)
+
+class CalibrationDUT(DeviceUnderTest):
+  """Represents the led calibration device."""
+  type_name = "calibration"
+
+  def __init__(self, tnt, name, flip):
+    DeviceUnderTest.__init__(self, tnt, name, flip)

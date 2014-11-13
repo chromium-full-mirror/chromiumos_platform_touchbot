@@ -11,7 +11,6 @@ import time
 
 from optofidelity.detection.detector import Frame, Video, Detector
 from optofidelity.detection.trace import Trace
-from optofidelity.system import CameraCalibration
 from optofidelity.videoproc import (Canvas, Filter, VideoException, VideoReader,
                                     Viewer)
 
@@ -47,6 +46,7 @@ class ProcessorDebugger(object):
 
   def InitFrame(self, frame, test_area):
     """Fill the debug canvas with a background from the current frame."""
+    tform = test_area.Unrectify if test_area else None
     if not self.HasFlag("video"):
       return
     if self.HasFlag("normalized"):
@@ -55,10 +55,11 @@ class ProcessorDebugger(object):
       self.canvas.Fill(frame.rectified)
     else:
       if self.HasFlag("diff"):
-        self.canvas.Fill(0.5 + frame.delta, test_area.Unrectify)
+        self.canvas.Fill(0.5 + frame.delta, tform)
       else:
-        self.canvas.Fill(frame.original, test_area.Unrectify)
-      self.canvas.DrawContour(Canvas.GREEN, test_area.shape)
+        self.canvas.Fill(frame.original, tform)
+      if test_area:
+        self.canvas.DrawContour(Canvas.GREEN, test_area.shape)
 
   def Display(self, video):
     """Display the debug canvas of the current frame."""
@@ -94,8 +95,13 @@ class FlagDebugger(ProcessorDebugger):
   def __nonzero__(self):
     return self.flag in self.flags
 
+def VideoProcessor(test_area, debug):
+  if debug["video"]:
+    return SinglethreadedVideoProcessor(test_area)
+  else:
+    return MultithreadedVideoProcessor(test_area)
 
-class VideoProcessor(object):
+class SinglethreadedVideoProcessor(object):
   """Processes and accumulates events from video into a trace."""
 
   inter_frame_unchanged_max_diff = 0.05
@@ -110,7 +116,6 @@ class VideoProcessor(object):
   """Distances from the current frame to peek at when looking for frames to
      skip."""
 
-  @contract(test_area=CameraCalibration)
   def __init__(self, test_area):
     self.test_area = test_area
     self.detectors = {}
@@ -122,7 +127,8 @@ class VideoProcessor(object):
   def Initialize(self, video_reader, debug):
     # verify in the first frame that the test area is still valid
     first_frame = video_reader.FrameAt(0)
-    self.test_area.VerifyFrame(first_frame, debug["verification"])
+    if self.test_area:
+      self.test_area.VerifyFrame(first_frame, debug["verification"])
 
     # initialize all detectors
     video = Video(video_reader, self.test_area)
@@ -297,16 +303,16 @@ class PreprocessWorker(multiprocessing.Process):
       self.buffer_list[index].done.set()
 
 
-class MultithreadedVideoProcessor(VideoProcessor):
+class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
   """Processes and accumulates events from video into a trace.
 
   This implementation uses multiple processes to do the most computational
   intensive operations in parallel.
   """
-  @contract(test_area=CameraCalibration, num_processes=">=0|None")
+  @contract(num_processes=">=0|None")
   def __init__(self, test_area, num_processes=None):
     self.num_processes = num_processes or multiprocessing.cpu_count()
-    VideoProcessor.__init__(self, test_area)
+    SinglethreadedVideoProcessor.__init__(self, test_area)
 
   def ProcessVideo(self, video, debug):
     video.perf = True

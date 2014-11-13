@@ -9,8 +9,7 @@ import shutil
 import time
 
 from optofidelity.system import TestApp, CameraCalibration
-from optofidelity.detection import (VideoProcessor,
-                                    MultithreadedVideoProcessor)
+from optofidelity.detection import VideoProcessor
 from optofidelity.videoproc import VideoException, VideoWriter, FileVideoReader
 
 
@@ -67,6 +66,7 @@ class TestRun(object):
 
     self.calibration = app.calibration
     self.calibration_video = calibration.video
+    self.led_calibration = None
 
     self.test_video = None
     self.test_trace = None
@@ -129,10 +129,7 @@ class TestRun(object):
       start_t = time.time()
       self.test_video.perf_enabled = True
 
-    if debug["video"]:
-      processor = VideoProcessor(self.calibration)
-    else:
-      processor = MultithreadedVideoProcessor(self.calibration)
+    processor = VideoProcessor(self.calibration, debug)
     self.test_class.InitializeProcessor(processor)
     processor.Initialize(self.test_video, debug=debug)
     self.test_trace = processor.ProcessVideo(self.test_video, debug=debug)
@@ -159,7 +156,15 @@ class TestRun(object):
     metadata_file = os.path.join(path, cls.metadata_filename)
     if not os.path.exists(metadata_file):
       raise ValueError("No test run data at %s" % path)
-    return pickle.load(open(metadata_file))
+    self = pickle.load(open(metadata_file))
+    self.path = path
+    if os.path.exists(self.calibration_file):
+      self.calibration = CameraCalibration.Load(self.calibration_file)
+    if os.path.exists(self.calibration_video_file):
+      self.calibration_video = FileVideoReader(self.calibration_video_file)
+    if os.path.exists(self.test_video_file):
+      self.test_video = FileVideoReader(self.test_video_file)
+    return self
 
   def Save(self, save_as=None):
     """Stores all local data from this test run into a folder."""
@@ -186,7 +191,8 @@ class TestRun(object):
         self.app_name,
         self.error,
         self.test_trace,
-        self.test_results
+        self.test_results,
+        self.led_calibration
     )
 
   def __setstate__(self, state):
@@ -197,18 +203,12 @@ class TestRun(object):
         self.app_name,
         self.error,
         self.test_trace,
-        self.test_results
+        self.test_results,
+        self.led_calibration
     ) = state
     self.calibration = None
     self.calibration_video = None
     self.test_video = None
-
-    if os.path.exists(self.calibration_file):
-      self.calibration = CameraCalibration.Load(self.calibration_file)
-    if os.path.exists(self.calibration_video_file):
-      self.calibration_video = FileVideoReader(self.calibration_video_file)
-    if os.path.exists(self.test_video_file):
-      self.test_video = FileVideoReader(self.test_video_file)
 
   def _SaveVideo(self, video_reader, filename):
     if hasattr(video_reader, "filename"):

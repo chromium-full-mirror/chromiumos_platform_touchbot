@@ -2,6 +2,8 @@
   <robot host="192.168.0.5" port="8000" />
   <camera host="192.168.0.4" />
 
+  <calibration-device tnt_name="calibration" />
+
   <app-variant name="clank_tablet" type="clank" margin="(30, 15)" />
   <app-variant name="clank_phone" type="clank" margin="(20, 15)" />
 

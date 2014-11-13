@@ -16,7 +16,7 @@ from optofidelity.system.util import DUTException
 from optofidelity.system.system import OptofidelityTestSystem
 from optofidelity.system.calibration import CameraCalibration
 from optofidelity.system.app import TestApp, ClankTestApp
-from optofidelity.system.dut import DeviceUnderTest, AndroidDUT
+from optofidelity.system.dut import DeviceUnderTest, AndroidDUT, CalibrationDUT
 
 OptofidelityTestSystem.RegisterDUTClass(AndroidDUT)
 OptofidelityTestSystem.RegisterAppClass(ClankTestApp)
