@@ -4,6 +4,7 @@
 """This module provides classes that generate traces from video files."""
 from contracts import contract
 import ctypes
+import gc
 import multiprocessing
 import numpy as np
 import sys
@@ -227,24 +228,6 @@ class SinglethreadedVideoProcessor(object):
       prev_image = image
     return trace
 
-
-def PreProcessProcess(generator, frame_queue, data_queue):
-  """Method to be called by subprocesses to run the pre-process step.
-
-  This method reads images from the frame_queue, runs the pre-processing
-  step of the Finger and Line detection code on them and outputs
-  the results into the data_queue.
-
-  See MultithreadedVideoProcessor.ProcessVideo().
-  """
-  while True:
-    i, image, prev_image = frame_queue.get()
-    if image is None:
-      break
-    frame = Frame(image, prev_image, generator.test_area, i)
-    debug = ProcessorDebugger(None)
-    data_queue.put(generator.Preprocess(frame, debug))
-
 class Buffer(object):
   """A buffer stores a video frame to be processed.
 
@@ -283,6 +266,8 @@ class PreprocessWorker(multiprocessing.Process):
     self.processor = processor
 
   def run(self):
+    debugger = ProcessorDebugger(None)
+
     while True:
       i, index, prev_index = self.input_queue.get()
       if index is None:
@@ -296,12 +281,13 @@ class PreprocessWorker(multiprocessing.Process):
       frame = Frame(image, prev_image, self.processor.test_area, i)
 
       # Pre-process
-      result = self.processor.Preprocess(frame, ProcessorDebugger(None))
+      result = self.processor.Preprocess(frame, debugger)
       self.output_queue.put(result)
 
       # Notify processing of this buffer is done.
       self.buffer_list[index].done.set()
 
+      gc.collect()
 
 class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
   """Processes and accumulates events from video into a trace.
@@ -338,14 +324,27 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     prev_idx = None
 
     for i, frame in self.ReadRelevantFrames(video, debug):
+      def visualize(waiting_on=""):
+        sys.stdout.write("\r")
+        for b in buffer_list:
+          sys.stdout.write("*" if b.done.is_set() else "-")
+        sys.stdout.write(" %d / %d" % (i, video.num_frames))
+        if debug["perf"] and waiting_on:
+          sys.stdout.write(" (waiting on %s)" % waiting_on)
+        sys.stdout.flush()
+      visualize()
+
       # Wait for all operations accessing the current buffer to be done.
       # We are waiting for next_idx too since it will use the current_idx
       # as a prev_image.
       next_idx = (current_idx + 1) % len(buffer_list)
-      buffer_list[current_idx].done.wait()
-      buffer_list[next_idx].done.wait()
+      while not buffer_list[current_idx].done.wait():
+        visualize("current buffer")
+      while not buffer_list[next_idx].done.wait():
+        visualize("next buffer")
 
       # Write into current buffer and create a job to process it.
+      visualize("queue")
       buffer_list[current_idx].image[:] = frame[:]
       buffer_list[current_idx].done.clear()
       frame_queue.put((i, current_idx, prev_idx))
@@ -354,13 +353,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       prev_idx = current_idx
       current_idx = next_idx
       num_frames += 1
-
-      # Visualize status of buffer
-      sys.stdout.write("\r")
-      for b in buffer_list:
-        sys.stdout.write("-" if b.done.is_set() else "*")
-      sys.stdout.write(" %d / %d" % (i, video.num_frames))
-      sys.stdout.flush()
+      visualize("phantom")
 
     # Terminate worker threads by passing None into the queue
     for i in range(self.num_processes):
