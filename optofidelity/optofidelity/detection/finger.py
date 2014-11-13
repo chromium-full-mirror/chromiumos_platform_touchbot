@@ -32,8 +32,16 @@ class LEDDetector(Detector):
   screen_max_avg_delta = 0.001
   """Maximum average delta of the screen before suppressing LED events."""
 
+  debounce_duration = 5
+  """Number of camera frames to ignore after an LED switched."""
+
   def __init__(self):
     self.led_switching = False
+    self.last_flash_time = None
+
+  def Initialize(self, video, debug):
+    self.last_flash_time = np.zeros(video.frame_shape)
+    return True
 
   def Preprocess(self, frame, debug):
     """Preprocessing step to process frame into more compact data.
@@ -44,9 +52,9 @@ class LEDDetector(Detector):
     # Create mask showing everything outside the active screen.
     if frame.test_area:
       margin = self.led_test_area_margin
-      mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
+      off_screen_mask = ~frame.test_area.shape.WithMargin(margin, margin).mask
     else:
-      mask = np.ones(frame.original.shape, dtype=np.bool)
+      off_screen_mask = np.ones(frame.original.shape, dtype=np.bool)
 
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
@@ -59,19 +67,27 @@ class LEDDetector(Detector):
           print "Suspending LED detection"
         return None
 
+    # Mask out previous LED flashes for the duration of debounce_duration. This
+    # is required as LEDs might flash multiple times if the mechanical contact
+    # activating the LED is not clean.
+    ignore_mask = ((frame.index - self.last_flash_time) <
+                   self.debounce_duration)
+
     # Look for an LED shaped large change in the masked area.
-    delta = np.abs(frame.delta * mask)
+    delta = np.abs(frame.delta * off_screen_mask * ~ignore_mask)
     delta = Filter.Median(delta, disk_size=self.led_median_filter_kernel_size)
     binary = delta > self.led_diff_strength_treshold
 
     if np.sum(binary) < self.led_min_size:
       return None
 
+    self.last_flash_time[binary] = frame.index
+
     if debug:
       debug.canvas.Draw(Canvas.BLUE, binary)
 
     # Determine on/off state of the LED.
-    led_color = np.mean(frame.original[binary])
+    led_color = np.mean(frame.delta[binary])
     return led_color
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
@@ -85,7 +101,7 @@ class LEDDetector(Detector):
       # Use the led_switching flag to prevent multiple events
       if not self.led_switching:
         self.led_switching = True
-        if led_color > 0.5:
+        if led_color > 0:
           return [Event(timestamp, Event.LED_ON)]
         else:
           return [Event(timestamp, Event.LED_OFF)]
