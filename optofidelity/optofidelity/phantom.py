@@ -216,6 +216,10 @@ class Phantom(object):
 
   def Trigger(self, cine_number=DEFAULT_CINE):
     self.SendCommand('trig %d' % cine_number)
+    while True:
+      state = self.SendCommand('get c%d.state' % cine_number)
+      if "TRG" in state:
+        break
 
   def PrepareRecording(self, num_frames=MAX_PTFRAMES, cine_number=DEFAULT_CINE):
     """Record num_frames into the cine slot.
@@ -229,6 +233,11 @@ class Phantom(object):
 
     self._SetProperty("defc.ptframes", num_frames)
     self.SendCommand('rec %d' % cine_number)
+
+    while True:
+      state = self.SendCommand('get c%d.state' % cine_number)
+      if "WTR" in state:
+        break
 
   def SendCommandAsync(self, cmd):
     """Send command without waiting for the response.
