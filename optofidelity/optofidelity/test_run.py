@@ -109,6 +109,7 @@ class TestRun(object):
     dut = system[self.dut_name]
     app = dut[self.app_name]
     camera = system.camera
+    self.led_calibration = system.led_calibration
     self.test_video = self.test_class.ExecuteTest(app, dut, camera)
     return self.test_video
 
@@ -146,6 +147,7 @@ class TestRun(object):
     assert self.test_trace, "No test trace"
     start_t = time.time()
     self.test_results = self.test_class.ProcessTrace(self.test_trace,
+                                                     self.led_calibration,
                                                      debug["trace"])
     if debug["perf"]:
       print "PERF: Trace processing: %f s" % (time.time() - start_t)

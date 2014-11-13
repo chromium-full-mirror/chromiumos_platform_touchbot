@@ -70,7 +70,7 @@ class TouchMoveLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, traces, debug):
+  def ProcessTrace(self, traces, led_calibration, debug):
     start_lat = []
     end_lat = []
 
@@ -183,7 +183,7 @@ class ScrollStartLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace, debug):
+  def ProcessTrace(self, trace, led_calibration, debug):
     start_lat = []
     end_lat = []
 
@@ -286,7 +286,7 @@ class TapLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace, debug):
+  def ProcessTrace(self, trace, led_calibration, debug):
     down_start = []
     down_end = []
     up_start = []
@@ -296,8 +296,8 @@ class TapLatencyTest(TestClass):
       if not trace.Events(Event.LED_ON):
         continue
 
-      finger_down = trace.Time(Event.LED_ON)
-      finger_up = trace.Time(Event.LED_OFF)
+      finger_down = trace.Time(Event.LED_ON) - led_calibration.finger_down_delay
+      finger_up = trace.Time(Event.LED_OFF) + led_calibration.finger_up_delay
 
       screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
       screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
