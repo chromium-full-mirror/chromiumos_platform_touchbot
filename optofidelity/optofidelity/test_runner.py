@@ -155,6 +155,11 @@ class TestRunner(object):
         app_results = self._RunAppTests(results, dut, app, cases, debug, safe)
         dut.ExitApp()
       return results
+    except KeyboardInterrupt as e:
+      print "Keyboard interrupt received."
+      print "Resetting device before exiting app."
+      dut.Reset()
+      raise e
     except:
       traceback.print_exc()
       if not safe:
@@ -194,6 +199,8 @@ class TestRunner(object):
             case_results = self._RunTest(results, dut, app, case, debug)
             num_failures = 0
             break
+          except KeyboardInterrupt as e:
+            raise e
           except:
             num_failures += 1
             traceback.print_exc()

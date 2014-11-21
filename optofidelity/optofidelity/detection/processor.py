@@ -7,6 +7,8 @@ import ctypes
 import gc
 import multiprocessing
 import numpy as np
+import os
+import signal
 import sys
 import time
 
@@ -274,6 +276,9 @@ class PreprocessWorker(multiprocessing.Process):
     self.processor = processor
 
   def run(self):
+    # Ignore keyboard interrupts. The parent process is killing all subprocess.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
     debugger = ProcessorDebugger(None)
 
     while True:
@@ -321,54 +326,65 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     frame_queue = multiprocessing.Queue()
     data_queue = multiprocessing.Queue()
     processes = []
-    for i in range(self.num_processes):
-      process = PreprocessWorker(self, buffer_list, frame_queue, data_queue)
-      process.start()
-      processes.append(process)
 
-    # Read frames into shared memory buffer and create jobs to process them.
-    num_frames = 0
-    current_idx = 0
-    prev_idx = None
+    try:
+      for i in range(self.num_processes):
+        process = PreprocessWorker(self, buffer_list, frame_queue, data_queue)
+        process.start()
+        processes.append(process)
 
-    for i, frame in self.ReadRelevantFrames(video, debug):
-      def visualize(waiting_on=""):
-        sys.stdout.write("\r")
-        for b in buffer_list:
-          sys.stdout.write("*" if b.done.is_set() else "-")
-        sys.stdout.write(" %d / %d" % (i, video.num_frames))
-        if debug["perf"] and waiting_on:
-          sys.stdout.write(" (waiting on %s)" % waiting_on)
-        sys.stdout.flush()
-      visualize()
+      # Read frames into shared memory buffer and create jobs to process them.
+      num_frames = 0
+      current_idx = 0
+      prev_idx = None
 
-      # Wait for all operations accessing the current buffer to be done.
-      # We are waiting for next_idx too since it will use the current_idx
-      # as a prev_image.
-      next_idx = (current_idx + 1) % len(buffer_list)
-      while not buffer_list[current_idx].done.wait():
-        visualize("current buffer")
-      while not buffer_list[next_idx].done.wait():
-        visualize("next buffer")
+      for i, frame in self.ReadRelevantFrames(video, debug):
+        def visualize(waiting_on=""):
+          sys.stdout.write("\r")
+          for b in buffer_list:
+            sys.stdout.write("*" if b.done.is_set() else "-")
+          sys.stdout.write(" %d / %d" % (i, video.num_frames))
+          if debug["perf"] and waiting_on:
+            sys.stdout.write(" (waiting on %s)" % waiting_on)
+          sys.stdout.flush()
+        visualize()
 
-      # Write into current buffer and create a job to process it.
-      visualize("queue")
-      buffer_list[current_idx].image[:] = frame[:]
-      buffer_list[current_idx].done.clear()
-      frame_queue.put((i, current_idx, prev_idx))
+        # Wait for all operations accessing the current buffer to be done.
+        # We are waiting for next_idx too since it will use the current_idx
+        # as a prev_image.
+        next_idx = (current_idx + 1) % len(buffer_list)
+        while not buffer_list[current_idx].done.wait():
+          visualize("current buffer")
+        while not buffer_list[next_idx].done.wait():
+          visualize("next buffer")
 
-      # Update counters.
-      prev_idx = current_idx
-      current_idx = next_idx
-      num_frames += 1
-      visualize("phantom")
+        # Write into current buffer and create a job to process it.
+        visualize("queue")
+        buffer_list[current_idx].image[:] = frame[:]
+        buffer_list[current_idx].done.clear()
+        frame_queue.put((i, current_idx, prev_idx))
 
-    print
+        # Update counters.
+        prev_idx = current_idx
+        current_idx = next_idx
+        num_frames += 1
+        visualize("phantom")
+      print
 
-    # Terminate worker threads by passing None into the queue
-    for i in range(self.num_processes):
-      frame_queue.put((None, None, None))
-    frame_queue.close()
+      # Terminate worker threads by passing None into the queue
+      for i in range(self.num_processes):
+        frame_queue.put((None, None, None))
+      frame_queue.close()
+
+    except:
+      # Make sure all processes are killed in case of errors
+      print
+      print "Killing child processes"
+      for process in processes:
+        if process.pid:
+          os.kill(process.pid, signal.SIGKILL)
+      raise
+
 
     # Read pre-processing results and put them into a dict by frame index
     data_map = {}
