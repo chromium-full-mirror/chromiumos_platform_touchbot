@@ -7,11 +7,29 @@
   <app-variant name="clank_tablet" type="clank" margin="(30, 15)" />
   <app-variant name="clank_phone" type="clank" margin="(20, 15)" />
 
-  <dut name="nexus7" type="android" tnt_name="Nexus7">
+  <!-- Right column on robot tray -->
+  <dut name="nexus5" type="android" orientation="left">
+    <app type="clank_phone" />
+  </dut>
+
+  <dut name="tinno" type="android" orientation="left">
+    <app type="clank_phone" />
+  </dut>
+
+  <!-- Left column on robot tray -->
+  <dut name="nexus9" type="android" orientation="right">
     <app type="clank_tablet" />
   </dut>
 
-  <dut name="nexus5" type="android" orientation="left" tnt_name="Nexus5">
+  <dut name="nexus7" type="android" orientation="right">
+    <app type="clank_tablet" />
+  </dut>
+
+  <dut name="nexus4" type="android" orientation="right">
+    <app type="clank_phone" />
+  </dut>
+
+  <dut name="longcheer" type="android" orientation="right">
     <app type="clank_phone" />
   </dut>
 
