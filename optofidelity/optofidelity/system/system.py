@@ -32,7 +32,7 @@ class OptofidelityTestSystem(object):
     self.duts = {}
     self.tnt = None
     self.camera = None
-    self.led_calibration = LEDCalibration()
+    self.led_calibration = None
     self.calibration_dut = None
     self.ReadConfig(config_file)
 
@@ -57,8 +57,8 @@ class OptofidelityTestSystem(object):
     root = ElementTree.parse(config_file).getroot()
 
     def ParseCoord(element, attrib_name, default=None):
-      if attrib_name in variant_elem.attrib:
-        string = variant_elem.attrib[attrib_name]
+      if attrib_name in element.attrib:
+        string = element.attrib[attrib_name]
         match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
         return int(match.group(1)), int(match.group(2))
       return default

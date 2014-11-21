@@ -109,8 +109,12 @@ class VideoReader(object):
 
   def FrameAt(self, frame):
     """Return image at a location as a grayscale float image."""
+    start = time.time()
     self.Seek(to=frame)
-    return self.Read()
+    res = self.Read()
+    if self.perf_enabled:
+      self.transfer_times.append(time.time() - start)
+    return res
 
   def Next(self):
     """Go to the next frame."""
@@ -151,15 +155,10 @@ class VideoReader(object):
       if i < 0 or i >= len(frames):
         break
 
-      start = time.time()
-
       if self.prefetch_enabled and not self.interactive and i + 1 < len(frames):
         self.Prefetch(frames[i + 1])
 
       frame = self.FrameAt(frames[i])
-
-      if self.perf_enabled:
-        self.transfer_times.append(time.time() - start)
 
       yield frames[i], frame
 

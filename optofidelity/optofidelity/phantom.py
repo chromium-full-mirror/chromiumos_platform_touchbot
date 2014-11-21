@@ -170,7 +170,7 @@ class Phantom(object):
 
   @property
   def fps(self):
-    return self._GetProperty("defc.rate")
+    return int(self._GetProperty("defc.rate"))
 
   @fps.setter
   def fps(self, value):

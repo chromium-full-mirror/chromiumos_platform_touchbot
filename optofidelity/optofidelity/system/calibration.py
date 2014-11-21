@@ -181,7 +181,7 @@ class CameraCalibration(object):
     """Record calibration video on the app using the specified camera."""
     camera.PrepareRecording(60)
     app.EnterPage(app.PAGE_FLASH)
-    app.dut.ClearScreen()
+    app.dut.ClearScreen(blocking=True)
     camera.Trigger()
     camera.WaitUntilReady()
     app.ExitPage()
@@ -254,6 +254,7 @@ class CameraCalibration(object):
       i, prev_frame = frames.next()
       mean_accum = np.zeros(prev_frame.shape)
       mean_accum_num = 0
+      last_frame_below_thresh = 0
 
       for i, frame in frames:
         # Calculate the mid-range value of the inter-frame difference.
@@ -265,7 +266,8 @@ class CameraCalibration(object):
           # Add frame to accumulator
           mean_accum += frame
           mean_accum_num += 1
-        else:
+          last_frame_below_thresh = i
+        elif i - last_frame_below_thresh > self.diff_change_min_duration:
           # The screen is in the process of switching colors.
           if mean_accum_num > self.reference_min_num_frames:
             # We collected enough samples for a solid reference image.
@@ -309,6 +311,7 @@ class CameraCalibration(object):
 
     # Find screen shape
     margin_kernel = morphology.disk(self.test_area_margin)
+    binary = delta > self.diff_threshold
     binary = morphology.binary_closing(binary, self.test_area_closing_kernel)
     binary = morphology.binary_erosion(binary, margin_kernel)
     shapes = Shape.Shapes(binary)

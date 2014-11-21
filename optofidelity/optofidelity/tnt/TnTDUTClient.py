@@ -564,10 +564,6 @@ class TnTDUTClient(TnTClientObject):
 
         Top left coordinates of the DUT are x=0, y=0 and z=0.
         """
-        print "x ", x
-        print "y ", y
-        print "z ", z
-
         r = Request('Jump')
         r.set('x', x)
         r.set('y', y)

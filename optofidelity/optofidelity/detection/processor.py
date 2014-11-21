@@ -363,6 +363,8 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       num_frames += 1
       visualize("phantom")
 
+    print
+
     # Terminate worker threads by passing None into the queue
     for i in range(self.num_processes):
       frame_queue.put((None, None, None))
@@ -377,9 +379,9 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     # Generate events from frames in order
     trace = Trace()
     for i in sorted(data_map.keys()):
-      sys.stdout.write("\rProcessing frame %d/%d" % (i, video.num_frames))
+      sys.stdout.write("\rGenerating events %d/%d" % (i, video.num_frames))
       sys.stdout.flush()
       preprocessed_data = data_map[i]
       self.GenerateEvents(trace, i, preprocessed_data, debug)
-    print ""
+    print
     return trace

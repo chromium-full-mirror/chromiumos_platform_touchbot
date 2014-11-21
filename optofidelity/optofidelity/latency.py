@@ -51,9 +51,8 @@ class TouchMoveLatencyTest(TestClass):
     up = 10
 
     # Tap to reset the screen, then draw from left to right.
-    app.Tap(left)
-    if i == 0:
-      camera.Trigger()
+    app.Tap(left, blocking=True)
+    camera.Trigger()
     app.Move(left, down)
     app.Move(left_calib_stop, down)
     app.Move(right, down)
@@ -172,7 +171,7 @@ class ScrollStartLatencyTest(TestClass):
 
     # Scroll by scroll_distance, lift finger, then scroll again until
     # the end of the page is reached.
-    app.Tap(0)
+    app.Tap(0, blocking=True)
     camera.Trigger()
     for i in range(self.scroll_distance, int(app.height), self.scroll_distance):
       app.Move(i - self.scroll_distance, down)
@@ -279,10 +278,12 @@ class TapLatencyTest(TestClass):
                 self.per_tap_record_duration * self.num_measurements)
     camera.PrepareRecording(duration)
     app.EnterPage("Tap")
-    dut.Move(dut.test_plane, app.height/2, 10)
+    app.Move(app.height / 2, 10, blocking=True)
+
     camera.Trigger()
-    dut.Tap(dut.test_plane, app.height/2, count=self.num_measurements)
+    app.Tap(app.height / 2, count=self.num_measurements)
     camera.WaitUntilReady()
+
     app.ExitPage()
     return camera.GetVideoReader()
 

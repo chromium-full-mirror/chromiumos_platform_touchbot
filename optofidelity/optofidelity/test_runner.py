@@ -144,10 +144,10 @@ class TestRunner(object):
       dut.Reset()
     else:
       dut.Home()
-    dut.LocateButtons(force=safe)
 
     # Group test cases by app and run all of them
     try:
+      dut.LocateButtons(force=safe)
       for app, cases in IterGroups(test_cases, lambda c: c.app):
         mode = "(safe mode)" if safe else ""
         print "Running tests for: %s %s" % (str(app), mode)

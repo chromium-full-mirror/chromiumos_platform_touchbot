@@ -65,7 +65,7 @@ class TestRun(object):
     self.error = None
 
     self.calibration = app.calibration
-    self.calibration_video = calibration.video
+    self.calibration_video = app.calibration.video
     self.led_calibration = None
 
     self.test_video = None
@@ -137,7 +137,10 @@ class TestRun(object):
 
     if debug["perf"]:
       transfer_time = np.mean(self.test_video.transfer_times)
-      print "PERF: Processing: %f s" % (time.time() - start_t)
+      delta_t = (time.time() - start_t)
+      delta_t_per_frame = delta_t / self.test_video.num_frames
+      print "PERF: Processing: %f s" % delta_t
+      print "PERF:             %f ms / frame" % (delta_t_per_frame * 1000)
       print "PERF: Transfer: %f ms / frame" % (transfer_time * 1000)
 
     return self.test_trace
@@ -146,6 +149,8 @@ class TestRun(object):
     """Process the trace into latency results."""
     assert self.test_trace, "No test trace"
     start_t = time.time()
+    if debug["trace"]:
+      print self.test_trace
     self.test_results = self.test_class.ProcessTrace(self.test_trace,
                                                      self.led_calibration,
                                                      debug["trace"])

@@ -80,7 +80,8 @@ class ScreenFlash(Detector):
         debug.Print("error=%s", error_msg)
         canvas = Canvas(frame.rectified)
         canvas.Plot(Canvas.BLUE, profile)
-        Viewer.DebugView(profile=canvas.image)
+        Viewer.DebugView(profile=canvas.image, off=frame.test_area.off_image,
+                         on=frame.test_area.on_image, rectified=frame.rectified)
       raise VideoException(error_msg)
     return True
 
@@ -89,8 +90,7 @@ class ScreenFlash(Detector):
 
     This method returns data to be passed to GenerateEvents. This method
     is stateless and can be called on any frames out of order."""
-    return Filter.ExtractProfile(frame.rectified, frame.test_area.on_profile,
-                                 frame.test_area.off_profile)
+    return np.mean(frame.normalized, 0)
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Generate Screen events from sequential preprocessed data.

@@ -60,7 +60,7 @@ class LEDDetector(Detector):
     # of the robot to look like a flashing LED. So We want to suppress any
     # LED events during this time.
     if frame.test_area:
-      screen_delta = frame.test_area.shape * frame.delta
+      screen_delta = frame.test_area.shape.mask * frame.delta
       screen_avg_delta = np.mean(np.abs(screen_delta))
       debug.Print("screen_avg_delta=%.2f", screen_avg_delta)
       if screen_avg_delta > self.screen_max_avg_delta:
