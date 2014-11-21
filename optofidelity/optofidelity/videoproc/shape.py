@@ -166,6 +166,10 @@ class Shape(object):
     return Shape(self.Cropped(self.mask))
 
   @property
+  def area(self):
+    return self.props.area
+
+  @property
   def bbox(self):
     return self.props.bbox
 
@@ -268,24 +272,8 @@ class Shape(object):
     # horizontally by 1 pixel at max.
     return neigh1 & neigh2 & self.contour
 
-
   @staticmethod
-  def Find(binary_im, match_fn, required=False, debug=False):
-    """Search for a unique shape in a binary image that fits match_fn.
-
-    match_fn should have the following signature:
-        match_fn(props, labels, debug=False).
-
-    If the debug flag is set, this function will stop and display debug views
-    of the data in case of errors.
-    """
-    matches = []
-    def Exit(msg, fatal):
-      if fatal:
-        raise VideoException(msg)
-      elif debug:
-        print msg
-
+  def Shapes(binary_im):
     labels = measure.label(binary_im)
     # hack: the region 0 is ignored by regionprops, but it's a valid region
     labels[labels == 0] = np.max(labels) + 1
@@ -294,41 +282,4 @@ class Shape(object):
     for props in measure.regionprops(labels, binary_im):
       if props.max_intensity < 1.0:
         continue
-      is_match = match_fn(props, labels, debug)
-      if is_match:
-        if debug:
-           print props.label, "is match"
-        matches.append(props)
-
-    # handle no matches error
-    if not matches:
-      if debug and required:
-        Viewer.DebugView(labels=labels, binary=binary_im)
-      return Exit("Cannot find match for region", required)
-
-    # handle too many matches error
-    if len(matches) > 1:
-      if debug and required:
-        mask = np.zeros(labels.shape)
-        for match in matches:
-          mask[labels == match.label] = match.label
-        Viewer.DebugView("prism", labels=labels, matches=mask, binary=binary_im)
-      return Exit("Multiple matches for region", required)
-
-    # success
-    match = matches[0]
-    return Shape(labels == match.label, match)
-
-  @staticmethod
-  def FindMax(binary_im, key_fn):
-    """Search for an shape in a binary image featuring a maximum value.
-
-    All shape in the binary image are compared by the value returned by
-    key_fn e.g. use this to find the largest shape in the image.
-    """
-    match = None
-    labels = measure.label(binary_im)
-
-    props = measure.regionprops(labels, binary_im)
-    match = max(props, key=key_fn)
-    return Shape(labels == match.label, match)
+      yield Shape(labels == props.label, props)

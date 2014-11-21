@@ -144,31 +144,24 @@ class FingerMove(Detector):
     # we are looking for a big object that is not very elongated
     # (i.e. not the line). It is also expected to touch the top of the image,
     # but not the bottom of the image.
-    def is_finger(region, labels, debug):
-      if debug:
-        print (region.label, region.area, region.eccentricity, region.bbox[0],
-               region.bbox[2])
+    shapes = Shape.Shapes(binary)
+    max_top = self.border_max_touching_distance
+    max_bottom = binary.shape[0] - self.border_max_touching_distance
+    shapes = [s for s in shapes
+                if (s.area > self.finger_min_area and
+                    s.top < max_top and s.bottom < max_bottom)]
+    if shapes:
+      finger_shape = max(shapes, key=lambda s: s.area)
 
-      top = region.bbox[0]
-      bottom = region.bbox[2]
-      image_bottom = labels.shape[0]
-      return (region.area > self.finger_min_area and
-              region.eccentricity < self.finger_max_eccentricity and
-              top < self.border_max_touching_distance and
-              bottom < image_bottom - self.border_max_touching_distance)
-    finger_shape = Shape.Find(binary, is_finger, debug=debug)
-    location = None
-
-    # the finger location is the bottom tip of the detected shape
-    if finger_shape:
+      # the finger location is the bottom tip of the detected shape
       coords = finger_shape.coords
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
       if debug:
         debug.canvas.DrawContour(Canvas.GREEN, finger_shape)
         debug.canvas.DrawHLine(Canvas.GREEN, location, finger_shape.bottom)
-
-    return location
+      return location
+    return None
 
   def GenerateEvents(self, preprocessed_data, timestamp, debug):
     """Search for the current location of the finger.

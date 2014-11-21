@@ -308,17 +308,16 @@ class CameraCalibration(object):
     delta = Filter.Truncate(on_frame - off_frame)
 
     # Find screen shape
-    def is_screen(region, labels, debug=False):
-      if debug:
-        print region.label, region.area, region.solidity
-      return (region.area > self.test_area_min_area and
-              region.solidity > self.test_area_min_solidity)
-    binary = delta > self.diff_threshold
-
     margin_kernel = morphology.disk(self.test_area_margin)
     binary = morphology.binary_closing(binary, self.test_area_closing_kernel)
     binary = morphology.binary_erosion(binary, margin_kernel)
-    self.shape = Shape.Find(binary, is_screen, required=True, debug=debug)
+    shapes = Shape.Shapes(binary)
+    shapes = [s for s in shapes
+                if (s.area > self.test_area_min_area and
+                    s.props.solidity > self.test_area_min_solidity)]
+    if not shapes:
+      raise VideoException("Cannot find screen shape")
+    self.shape = max(shapes, key=lambda s: s.area)
 
     # create a 1px rectangle mask along the edge of the video frame
     # if the screen mask overlaps in too many pixels with this rectangle,
