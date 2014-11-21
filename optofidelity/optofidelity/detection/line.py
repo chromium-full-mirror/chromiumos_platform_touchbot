@@ -150,6 +150,7 @@ class Line(Detector):
     self.last_no_draw_map[no_draw_indices] = timestamp
 
     if self.suppress_until and timestamp < self.suppress_until:
+      debug.Print("Suppressing. until=%d", self.suppress_until)
       return []
 
     # Segment line in current frame
@@ -189,6 +190,7 @@ class Line(Detector):
       # Wait until the median color level meets the draw_end_min_color
       # requirement, then generate draw events.
       level = np.median(profile[new_slice])
+      debug.Print("New segment. level=%d", level)
       if level > self.draw_end_min_color:
         last_no_draw = np.max(self.last_no_draw_map[new_slice])
         events = []

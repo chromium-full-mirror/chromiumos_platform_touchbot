@@ -45,6 +45,10 @@ class ProcessorDebugger(object):
     if flags_string:
       self.flags = flags_string.split(",")
 
+  def Print(self, msg, *args):
+    if self:
+      print "DEBUG:", msg % args
+
   def InitFrame(self, frame, test_area):
     """Fill the debug canvas with a background from the current frame."""
     tform = test_area.Unrectify if test_area else None
@@ -95,6 +99,10 @@ class FlagDebugger(ProcessorDebugger):
 
   def __nonzero__(self):
     return self.flag in self.flags
+
+  def Print(self, msg, *args):
+    if self:
+      print "DEBUG(%s):" % self.flag, msg % args
 
 def VideoProcessor(test_area, debug):
   if debug["video"]:

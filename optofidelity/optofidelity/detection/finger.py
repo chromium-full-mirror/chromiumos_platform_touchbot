@@ -62,9 +62,9 @@ class LEDDetector(Detector):
     if frame.test_area:
       screen_delta = frame.test_area.shape * frame.delta
       screen_avg_delta = np.mean(np.abs(screen_delta))
+      debug.Print("screen_avg_delta=%.2f", screen_avg_delta)
       if screen_avg_delta > self.screen_max_avg_delta:
-        if debug:
-          print "Suspending LED detection"
+        debug.Print("Suspending LED detection")
         return None
 
     # Mask out previous LED flashes for the duration of debounce_duration. This
@@ -98,6 +98,7 @@ class LEDDetector(Detector):
     led_color = preprocessed_data
 
     if led_color is not None:
+      debug.Print("led_color=%.2f", led_color)
       # Use the led_switching flag to prevent multiple events
       if not self.led_switching:
         self.led_switching = True
@@ -157,6 +158,7 @@ class FingerMove(Detector):
       coords = finger_shape.coords
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
+      debug.Print("location=%.2f", location)
       if debug:
         debug.canvas.DrawContour(Canvas.GREEN, finger_shape)
         debug.canvas.DrawHLine(Canvas.GREEN, location, finger_shape.bottom)

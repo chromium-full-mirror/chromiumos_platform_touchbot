@@ -236,7 +236,7 @@ class CameraCalibration(object):
       res = self.rect_transform(coords)
       return res[0, 0], res[0, 1]
 
-  def FindReferenceFrames(self, video_reader, debug=False):
+  def FindReferenceFrames(self, video_reader, debug):
     """Find black and white reference frames in a video of the flashing screen.
 
     This method averages multiple frames of the video showing the black and
@@ -277,7 +277,7 @@ class CameraCalibration(object):
           mean_accum = np.zeros(prev_frame.shape)
 
         if debug:
-          print i, midrange, mean_accum_num
+          debug.Print("%4d: midrange=%.2f, N=%d", i, midrange, mean_accum_num)
           Viewer.VideoFrame(0.5 + diff)
         prev_frame = frame
 
@@ -329,6 +329,7 @@ class CameraCalibration(object):
     frame_border[0, :] = True
     frame_border[width - 1, :] = True
     border_overlap = np.sum(frame_border * self.shape.mask)
+    debug.Print("border_overlap=%.2f", border_overlap)
 
     if border_overlap > self.out_of_view_edge_pixels:
       raise VideoException("Screen out of camera view")
@@ -345,6 +346,7 @@ class CameraCalibration(object):
     # Check dynamic range. We need enough resolution to distinguish shades
     # between black and white during later processing.
     dynamic_range = np.mean(self.on_image - self.off_image)
+    debug.Print("dynamic_range=%.2f", dynamic_range)
     if dynamic_range <  self.min_dynamic_range:
       raise VideoException("Not enough dynamic range.")
 
@@ -388,10 +390,8 @@ class CameraCalibration(object):
     bottom_mean = self.NormalizedBrightness(rectified, np.s_[:, height - 1])
     right_mean = self.NormalizedBrightness(rectified, np.s_[width - 1, :])
     edge_means = [top_mean, left_mean, bottom_mean, right_mean]
-
-    if debug:
-      print "Overall mean:", mean
-      print "Edge means:", edge_means
+    debug.Print("mean=%.2f", mean)
+    debug.Print("edge_means=%s", edge_means)
 
     # The brightness is normalized to the black screen being 0 and the white
     # screen being 1. If the lighting changed, the normalized brightness will
@@ -403,5 +403,6 @@ class CameraCalibration(object):
     # If the bezel shifted into the screen the deviation of the edge means
     # from the overall mean will be strong.
     deviations = np.abs(edge_means - mean)
+    debug.Print("deviations=%s", deviations)
     if np.any(deviations > self.max_edge_deviation):
       raise VideoException("Camera shifted.")

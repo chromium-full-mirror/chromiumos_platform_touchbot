@@ -57,6 +57,7 @@ class ScreenFlash(Detector):
     # level of the screen.
     # The thresholds are very strict to catch any inconsistencies at this point.
     median = np.median(profile)
+    debug.Print("median=%.2f", median)
     if median < 1.0 - self.no_change_thresh:
       self.color = self.BLACK
     elif median > self.no_change_thresh:
@@ -69,13 +70,14 @@ class ScreenFlash(Detector):
     # This is not the case if the camera shifted slightly or the robot is in the
     # wrong app.
     edge_mean = np.mean([profile[:self.edge_width], profile[-self.edge_width:]])
+    debug.Print("edge_mean=%.2f", edge_mean)
     if ((self.color == self.BLACK and edge_mean > self.no_change_thresh) or
         (self.color == self.WHITE and edge_mean < 1.0 - self.no_change_thresh)):
       error_msg = "Inconsistent edge profile."
 
     if error_msg:
       if debug:
-        print "ERROR:", error_msg
+        debug.Print("error=%s", error_msg)
         canvas = Canvas(frame.rectified)
         canvas.Plot(Canvas.BLUE, profile)
         Viewer.DebugView(profile=canvas.image)
