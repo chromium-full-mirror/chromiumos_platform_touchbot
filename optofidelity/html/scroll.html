@@ -35,8 +35,7 @@
 
       // Scroll to location of click
       $("body").animate({
-          scrollTop: ($("#block_a").height() - event.clientY +
-                      document.body.scrollTop)
+          scrollTop: $("#block_a").height() - event.clientY
       }, 0);
     }
     $(document).ready(function() {
