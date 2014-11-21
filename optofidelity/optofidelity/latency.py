@@ -154,7 +154,7 @@ class ScrollStartLatencyTest(TestClass):
   finger_min_speed = 0.2
   """Minimum speed for the robot finger to be considered moving."""
 
-  repetitions = 3
+  repetitions = 4
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
@@ -258,13 +258,13 @@ class TapLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
   name = "TapLatency"
 
-  base_record_duration = 300
+  base_record_duration = 200
   """Duration at beginning of each recording (in number of frames)."""
 
-  per_tap_record_duration = 300
+  per_tap_record_duration = 160
   """Duration of each tap in recording (in number of frames)."""
 
-  num_measurements = 6
+  num_measurements = 10
   """Number of tap latency measurements (i.e. number of taps)."""
 
   repetitions = 4

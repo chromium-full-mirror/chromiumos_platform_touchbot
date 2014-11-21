@@ -20,7 +20,7 @@ class LEDCalibration(object):
   per_tap_record_duration = 160
   """Duration of each tap in recording (in number of frames)."""
 
-  num_measurements = 6
+  num_measurements = 2
   """Number of tap latency measurements (i.e. number of taps)."""
 
   def __init__(self):
@@ -93,7 +93,7 @@ class CameraCalibration(object):
   """Factor by which the rectified image will be enlarged to make sure we are
      not losing any information due to interpolation."""
 
-  test_area_min_area = 10000
+  test_area_min_area = 5000
   """Minimum area of a test area in square pixels."""
 
   test_area_min_solidity = 0.9
@@ -107,7 +107,7 @@ class CameraCalibration(object):
   """The test area is reduced in size by this margin to account for potential
      camera shake."""
 
-  diff_threshold = 0.5
+  diff_threshold = 0.2
   """Threshold used on the difference between the on and off image to find
      the test area."""
 
@@ -131,8 +131,12 @@ class CameraCalibration(object):
   reference_min_num_frames = 6
   """Minimum number of frames to use for building a reference frame."""
 
-  min_dynamic_range = 0.5
+  min_dynamic_range = 0.3
   """Minimum range between black and white."""
+
+  diff_change_min_duration = 2
+  """Minimum number of frames that have to show change to accept it as as
+     changing."""
 
   def __init__(self):
     self.shape = None

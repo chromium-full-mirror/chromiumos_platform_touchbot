@@ -14,7 +14,7 @@ class Frame(object):
   """Brightness that is out of range by this threshold amout will raise an
      exception."""
 
-  foreground_max_brightness = 0.8
+  foreground_max_brightness = 0.9
   """Everything below this threshold is considered to be the foreground
      objects on the screen."""
 
