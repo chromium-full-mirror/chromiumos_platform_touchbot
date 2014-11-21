@@ -86,6 +86,7 @@ class DeviceUnderTest(object):
       yield match["text"], x, y
 
   def Tap(self, x, y, count=1, blocking=False):
+    self.JumpToDevice(x, y)
     if count == 1:
       self.client.tap(x, y)
     else:
@@ -94,11 +95,23 @@ class DeviceUnderTest(object):
       self.client.complete_requests()
 
   def Move(self, x, y, z, blocking=False):
+    self.JumpToDevice(x, y)
     self.client.move(x, y, z)
     if blocking:
       self.client.complete_requests()
 
+  def JumpToDevice(self, x=None, y=None):
+    if x is None:
+      x = self.width / 2
+    if y is None:
+      y = self.height / 2
+    coords = self.client.get_position()
+    if (coords.x < 0 or coords.x > self.width or
+        coords.y < 0 or coords.y > self.height):
+      self.client.jump(x, y, 10, height=40)
+
   def Swipe(self, from_x, from_y, to_x, to_y, blocking=False):
+    self.JumpToDevice(from_x, from_y)
     self.client.swipe(from_x, from_y, to_x, to_y)
     if blocking:
       self.client.complete_requests()
