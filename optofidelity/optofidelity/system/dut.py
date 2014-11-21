@@ -147,8 +147,20 @@ class AndroidDUT(DeviceUnderTest):
 
   def __init__(self, tnt, name, flip):
     DeviceUnderTest.__init__(self, tnt, name, flip)
+
+    screen_min_width = 50
+    button_distance_scale_factor = 0.75
+    button_min_distance = 10
+    button_max_distance = 20
+
+
+    back_location = (button_min_distance + (self.width - screen_min_width) *
+                     button_distance_scale_factor)
+    back_location = min((back_location, button_max_distance))
+
+    print self.width, back_location
     self.home_coords = (self.width / 2, self.height - 3)
-    self.back_coords = (self.width / 2 - 20, self.height - 3)
+    self.back_coords = (self.width / 2 - back_location, self.height - 3)
 
   def Back(self):
     self.Tap(*self.back_coords)
