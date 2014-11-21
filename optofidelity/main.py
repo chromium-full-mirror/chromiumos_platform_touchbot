@@ -83,11 +83,8 @@ def RunTests(glob, debug, options):
   pickle.dump(system, open(state_file, "w"), protocol=-1)
   results = runner.RunTests(glob, debug)
 
-  print "Latency Results:"
-  for name, result in results.iteritems():
-    std = np.std(result)
-    mean = np.mean(result)
-    print "  %s: %f (std=%f)" % (name, mean, std)
+  ms_per_frame = 1.0 / system.camera.fps * 1000
+  results.PrintResults(ms_per_frame)
 
   pickle.dump(system, open(state_file, "w"), protocol=-1)
 
