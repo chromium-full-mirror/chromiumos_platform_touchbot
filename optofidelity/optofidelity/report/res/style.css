@@ -1,0 +1,23 @@
+.card-table {
+  padding: 0.3em;
+  padding-top: 0;
+}
+
+div.card-table tr {
+  border: 0 !important;
+  background-color: white !important;
+}
+.card-table td {
+  border: 1px solid #f0f0f0;
+  text-align: center;
+}
+
+.tabs li.tab a {
+  color: #1976D2 !important;
+}
+.tabs li.tab a:hover {
+  color: #1976D2 !important;
+}
+.tabs .indicator {
+  background-color: #1976D2 !important;
+}

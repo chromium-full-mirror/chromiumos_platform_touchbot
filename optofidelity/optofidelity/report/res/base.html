@@ -1,0 +1,95 @@
+<!doctype html>
+<html>
+<head>
+  <title>
+    {% block title %}{% endblock %}
+  </title>
+  <!-- CDN hosted bootstrap -->
+  <link rel="stylesheet" href="report_data/css/materialize.min.css"  media="screen,projection"/>
+  <link rel="stylesheet" href="report_data/css/style.css"  media="screen,projection"/>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+  <script type="text/javascript" src="report_data/js/materialize.min.js"></script>
+  <script>
+    $(document).ready(function(){
+      $('ul.tabs').tabs();
+      $('.help').leanModal();
+
+      toast("<strong>TIP</strong>&nbsp; Click the" +
+            "&nbsp;<i class='mdi-action-help'></i>&nbsp;icons for help on " +
+            "reading this report!", 4000)
+    });
+  </script>
+
+</head>
+<body>
+
+  {% macro help_icon(modal_id, class="", right=False) -%}
+    <a href="#help_{{ modal_id }}" class="help {{ class }}"
+       {% if right %}style="position: absolute; right: 0;" {% endif %}>
+       <i class="mdi-action-help small"></i>
+   </a>
+  {%- endmacro %}
+
+  {% macro hist_subtitle(measurements) -%}
+    <div class="card-table">
+      <table>
+        <tr>
+          <td>
+            <strong>&mu; =</strong> {{ measurements.mean | as_ms }}
+          </td>
+          <td>
+            <strong>&mu;<sub>ds</sub> =</strong>
+            {{ measurements.draw_start_mean | as_ms }}
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <strong>&sigma; =</strong> {{ measurements.std | as_ms }}
+          </td>
+          <td>
+            <strong>&sigma;<sub>ds</sub> =</strong>
+            {{ measurements.draw_start_std | as_ms }}
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <strong>N =</strong> {{ "%d" % (measurements | count) }}
+          </td>
+        </tr>
+      </table>
+    </div>
+  {%- endmacro %}
+
+  {% macro plotcard(id, src, title=None, subtitle=None, centered=False) -%}
+  <div class="col">
+    <div class="card-panel"
+         {% if centered %}
+            style="text-align: center;"
+         {% endif %} >
+      {% if title %}
+        <h5 style="padding-bottom: 0; position: relative;">
+          {{ title }} {{ help_icon(id, "grey-text text-lighten-3", True) }}</h5>
+      {% endif %}
+      <img src="{{src}}.png"
+           onmouseover="this.src='{{src}}_legend.png'"
+           onmouseout="this.src='{{src}}.png'" />
+      {% if subtitle %}
+        {{ subtitle }}
+      {% endif %}
+    </div>
+  </div>
+  {%- endmacro %}
+
+  {% include 'help_dialogs.html' %}
+
+  <div class="section blue darken-2 z-depth-2">
+    <div class="container white-text">
+      <h1 class="white-text">{% block title %}{% endblock %}</h1>
+      <h4 class="blue-text text-lighten-4" style="position: relative">
+        {% block subtitle %}{% endblock %}
+      </h4>
+    </div>
+  </div>
+  {% block content %}{% endblock %}
+</body>
+</html>

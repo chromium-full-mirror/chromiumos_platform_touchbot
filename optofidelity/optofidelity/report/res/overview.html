@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Overview Report{% endblock %}
+
+{% block subtitle %}
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+
+    <!-- Info Section -->
+    <ul class="collection" style="margin-top: 1em;">
+      {% for subject, subject_measurements in measurements.IterBySubject() %}
+        <li class="collection-item">
+          <strong>{{subject}}</strong>
+          <ul>
+            {% for class, class_measurements in subject_measurements.IterByClass() %}
+            <li>
+              {{class}}:
+              <ul>
+                {% for rep, rep_measurements in class_measurements.IterByClass() %}
+                <li>
+                  {{rep}}
+                </li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+          </ul>
+        </li>
+      {% endfor %}
+
+      <li class="collection-item">Device: {{test_run.dut_name}}</li>
+      <li class="collection-item">App: {{test_run.app_name}}</li>
+    </ul>
+
+    <!-- Results Section -->
+    <h2 class="blue-text text-darken-2">Results</h2>
+
+    <!-- Overview Histograms -->
+    <div class="row">
+      {% for mid, id_measurements in measurements.IterByID() %}
+        {{ plotcard(id = "histogram",
+                    src = "%s/%s_histogram" % (data_dir, mid),
+                    title = mid,
+                    subtitle = hist_subtitle(id_measurements),
+                    centered = True) }}
+      {% endfor %}
+    </div>
+
+    <!-- Overview Trace -->
+    <div class="row">
+      {{ plotcard(id = "trace",
+                  src = "%s/trace_overview" % (data_dir),
+                  title = "Trace Overview") }}
+    </div>
+
+    <h2 class="blue-text text-darken-2" style="position: relative;">
+      Measurements {{ help_icon("measurements", "grey-text text-lighten-3") }}
+    </h2>
+
+    <!-- Tabs -->
+    {% if passes|count > 1 %}
+      <div class="row">
+        <div class="col s12">
+          <ul class="tabs z-depth-1">
+            {% for pass in passes %}
+              <li class="tab col">
+                <a href="#pass_{{pass}}">Pass {{pass}}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- For each pass -->
+  {% for pass, pass_measurements in measurements.IterByPass() %}
+    {% set pass_path = "%s/pass_%d" % (data_dir, pass) %}
+
+    <div id="pass_{{pass}}">
+
+      <div class="container">
+        <div class="row">
+          <!-- Optional Pass Histograms -->
+          {% if passes|count > 1 %}
+            {% for mid, id_measurements in pass_measurements.IterByID() %}
+              {{ plotcard(id = "histogram",
+                          src = "%s_%s_histogram" % (pass_path, mid),
+                          title = mid,
+                          subtitle = hist_subtitle(id_measurements),
+                          centered = True) }}
+            {% endfor %}
+          {% endif %}
+
+          <!-- Pass Trace -->
+          {{ plotcard(id = "pass_trace",
+                      src = "%s_trace" % (pass_path),
+                      title = "Pass %d Measurements" % pass) }}
+        </div>
+      </div>
+
+      <!-- Pass Measurement Details -->
+      <div class="section blue darken-2 z-depth-1">
+        <div class="container">
+          <h4 class="white-text" style="position: relative;">
+            Measurement Details
+            {{ help_icon("measurements_details", "blue-text text-lighten-2") }}
+          </h4>
+        </div>
+      </div>
+
+      <table class="responsive-table striped centered">
+        <thead>
+          <th></th>
+          <th>Input Event</th>
+          <th>Output Event (Draw Start)</th>
+          <th>Output Event (Draw End)</th>
+        </thead>
+
+        <tbody>
+          {% for msrmnt in pass_measurements %}
+            {% set msrmnt_name = "%s_%s" % (msrmnt.measurement_id,
+                                            msrmnt.measurement_number) %}
+            <tr>
+              <!-- Heading -->
+              <th>#{{msrmnt.measurement_number}}: {{msrmnt.measurement_id}}</th>
+
+              {% macro detail(src, time, delta, type) %}
+              <td>
+                <div class="card">
+                  <div class="card-image">
+                    <img src="{{src}}.png"
+                         onmouseover="this.src='{{src}}_prev.png'"
+                         onmouseout="this.src='{{src}}.png'" />
+                  </div>
+                    <div class="card-table">
+                      <table>
+                        <tr>
+                          <td><strong>&delta;T =</strong> {{delta | as_ms}}</td>
+                          <td><strong>T =</strong> {{time | as_ms}}</td>
+                          <td><strong>Type =</strong> {{type}}</td>
+                        </tr>
+                      </table>
+                    </div>
+                </div>
+              </td>
+              {% endmacro %}
+
+              <!-- Input Event -->
+              {{ detail("%s_%s_input" % (pass_path, msrmnt_name),
+                        msrmnt.input_event.time,
+                        0,
+                        msrmnt.input_event.type_name) }}
+
+              <!-- Optional Output Start Draw Event -->
+              {% if msrmnt.output_event.start_time %}
+              {{ detail("%s_%s_output_start" % (pass_path, msrmnt_name),
+                        msrmnt.output_event.start_time,
+                        msrmnt.output_event.start_time - msrmnt.input_event.time,
+                        msrmnt.output_event.type_name) }}
+              {% endif %}
+
+              <!-- Output Event -->
+              {{ detail("%s_%s_output" % (pass_path, msrmnt_name),
+                        msrmnt.output_event.time,
+                        msrmnt.output_event.time - msrmnt.input_event.time,
+                        msrmnt.output_event.type_name) }}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+{% endblock %}
