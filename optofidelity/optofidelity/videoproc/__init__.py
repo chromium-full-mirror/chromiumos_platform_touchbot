@@ -9,6 +9,7 @@ new_contract('image', 'array[HxW](float),H>0,W>0')
 new_contract('binary_image', 'array[HxW](bool),H>0,W>0')
 
 from optofidelity.videoproc.filter import Filter
-from optofidelity.videoproc.io import FileVideoReader, VideoReader, VideoWriter
+from optofidelity.videoproc.io import (FileVideoReader, VideoReader, VideoWriter,
+                                       MockVideoReader)
 from optofidelity.videoproc.shape import Shape
 from optofidelity.videoproc.util import VideoException, Viewer, Canvas

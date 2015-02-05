@@ -2,17 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """This module implements test cases to measure touch latency."""
-import matplotlib.pyplot as plt
-import time
-
 from optofidelity.test_runner import TestClass
 from optofidelity.detection import (Event, LEDDetector, FingerMove, Line,
-                                    ScreenFlash)
-
-
-def PlotEvent(trace, event_type):
-  plt.plot(trace.Times(event_type), trace.Locations(event_type))
-
+                                    ScreenFlash, FingerEvent, LineDrawEvent,
+                                    ScreenDrawEvent, LEDEvent)
+from optofidelity.videoproc import MockVideoReader
 
 class TouchMoveLatencyTest(TestClass):
   """Calculates latency from a line draw video."""
@@ -69,63 +63,32 @@ class TouchMoveLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, traces, led_calibration, debug):
-    start_lat = []
-    end_lat = []
-
-    if debug:
-      plt.figure()
-      PlotEvent(traces, Event.FINGER_MOVED)
-      plt.title("Finger/Line draw locations")
-
-    for trace in traces.Split(Event.LINE_RESET):
-      trace.RequireEvents(Event.FINGER_MOVED,
-                          Event.LINE_DRAW_END,
-                          Event.LINE_DRAW_END)
+  def ProcessTrace(self, traces, results, debug):
+    for pass_num, trace in enumerate(traces.SegmentedByLineReset()):
+      trace.RequireEventTypes(FingerEvent, LineDrawEvent)
 
       # Find pause after first movement to calibrate the offset between
       # finger and line location.
-      calib_start, calib_end = trace.FindStaticMotionRange(Event.FINGER_MOVED)
-      finger_at_calib = calib_end.location
-      line_at_calib = trace.LocationAt(Event.LINE_DRAW_END, calib_end.time)
-      calib_offset = finger_at_calib - line_at_calib
-
-      if debug:
-        print "Calibration Offset:", calib_offset
+      calib_start, calib_end = trace.FindStationaryFinger()
+      line_at_calib = trace.Find(LineDrawEvent, calib_end.time, "before")
+      results.AddCalibration(calib_end, line_at_calib, pass_num)
+      calib_offset = calib_end.location - line_at_calib.location
 
       # Find linear motion range and trim draw events to this range.
-      start_event, end_event = trace.FindLinearMotionRange(Event.FINGER_MOVED)
+      start_event, end_event = trace.FindLinearFingerMotion()
       start_location = start_event.location - calib_offset
       end_location = end_event.location - calib_offset
-      trace = trace.TrimByLocation(start_location, end_location,
-                                   Event.LINE_DRAW_START)
-      trace = trace.TrimByLocation(start_location, end_location,
-                                   Event.LINE_DRAW_END)
+      if start_location > end_location:
+        (start_location, end_location) = (end_location, start_location)
 
-      # Add trimmed line draw events to plot
-      if debug:
-        PlotEvent(trace, Event.LINE_DRAW_START)
-        PlotEvent(trace, Event.LINE_DRAW_END)
-
-      # For each draw event, calculate difference to time when the finger
-      # moved through the line location.
-      finger_loc_time = trace.LocationTimeMap(Event.FINGER_MOVED)
-      start_lat.extend([e.time - finger_loc_time(e.location + calib_offset)
-                        for e in trace.Events(Event.LINE_DRAW_START)])
-      end_lat.extend([e.time - finger_loc_time(e.location + calib_offset)
-                      for e in trace.Events(Event.LINE_DRAW_END)])
-
-    if debug:
-      plt.figure()
-      plt.plot(start_lat)
-      plt.plot(end_lat)
-      plt.title("Start/End Latencies")
-      plt.show()
-
-    return {
-        "DrawStartLatency": start_lat,
-        "DrawEndLatency": end_lat
-    }
+      # Filter draw events to only use locations during which the finger was
+      # moving linearly.
+      draw_events = trace.Events(LineDrawEvent)
+      draw_events = [e for e in draw_events if e.location >= start_location and
+                                               e.location < end_location]
+      for draw_event in draw_events:
+        finger_event = trace.FindFingerCrossing(draw_event, offset=calib_offset)
+        results.Add("Line Draw Latency", finger_event, draw_event, pass_num)
 
 
 class ScrollLatencyTest(TouchMoveLatencyTest):
@@ -154,7 +117,7 @@ class ScrollStartLatencyTest(TestClass):
   finger_min_speed = 0.2
   """Minimum speed for the robot finger to be considered moving."""
 
-  repetitions = 4
+  repetitions = 2
 
   def InitializeProcessor(self, processor):
     processor.AddDetector(Line())
@@ -182,76 +145,28 @@ class ScrollStartLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace, led_calibration, debug):
-    start_lat = []
-    end_lat = []
+  def ProcessTrace(self, traces, results, debug):
+    for trace in traces.SegmentedByLED():
+      debug.Print("-" * 80)
 
-    finger_moved_events = trace.Events(Event.FINGER_MOVED)
-    finger_speed = trace.Speed(Event.FINGER_MOVED)
-    current_time = 0
-
-    if debug:
-      plt.figure()
-      PlotEvent(trace, Event.FINGER_MOVED)
-      PlotEvent(trace, Event.LINE_DRAW_START)
-      PlotEvent(trace, Event.LINE_DRAW_END)
-      plt.title("Finger/Line draw locations")
-
-    while True:
-      if debug:
-        print "-" * 80
-
-      # Search for finger down event
-      (_, finger_down) = trace.Find(Event.LED_ON, current_time)
-      if not finger_down:
+      # Find first line draw start in this segment
+      line_draw = trace.Find(LineDrawEvent, 0, "after")
+      if not line_draw:
         break
-      if debug:
-        print finger_down
+      debug.Print(line_draw)
 
-      # Find first line draw start after finger_down
-      (_, line_draw_start) = trace.Find(Event.LINE_DRAW_START, finger_down.time)
-      if not line_draw_start:
-        break
-      if debug:
-        print line_draw_start
-
-      # Find first line draw end after finger_down
-      (_, line_draw_end) = trace.Find(Event.LINE_DRAW_END, finger_down.time)
-      if not line_draw_end:
-        break
-      if debug:
-        print line_draw_end
-
-      # Search for first significant finger movement after finger down
-      (finger_down_idx, _) = trace.Find(Event.FINGER_MOVED, finger_down.time)
-      finger_moved = None
-      for i in range(finger_down_idx, len(finger_speed)):
-        if finger_speed[i] > self.finger_min_speed:
-          finger_moved = finger_moved_events[i]
+      # Search for first significant finger movement in this segment
+      finger_moved_time = None
+      for i, speed in enumerate(trace.finger_speed):
+        if speed > self.finger_min_speed:
+          finger_moved_time = i
           break
-      if not finger_moved:
+      if finger_moved_time is None:
         break
-      if debug:
-        print finger_moved
+      debug.Print("finger_moved_time=%d", finger_moved_time)
 
-      # Calculate latency
-      start_lat.append(line_draw_start.time - finger_moved.time)
-      end_lat.append(line_draw_end.time - finger_moved.time)
-
-      # Progress time and repeat until one of the events cannot be found.
-      current_time = line_draw_end.time
-
-    if debug:
-      plt.figure()
-      plt.plot(start_lat)
-      plt.plot(end_lat)
-      plt.title("Start/End Latencies")
-      plt.show()
-
-    return {
-        "DrawStartLatency": start_lat,
-        "DrawEndLatency": end_lat
-    }
+      finger_moved_event = trace.Find(FingerEvent, finger_moved_time)
+      results.Add("ScrollStartLatency", finger_moved_event, line_draw)
 
 
 class TapLatencyTest(TestClass):
@@ -287,33 +202,37 @@ class TapLatencyTest(TestClass):
     app.ExitPage()
     return camera.GetVideoReader()
 
-  def ProcessTrace(self, trace, led_calibration, debug):
-    down_start = []
-    down_end = []
-    up_start = []
-    up_end = []
+  def ProcessTrace(self, traces, results, debug):
+    for trace in traces.SegmentedByLED():
+      trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
 
-    for trace in trace.Split(Event.LED_ON):
-      if not trace.Events(Event.LED_ON):
-        continue
+      finger_down = trace.FindStateSwitch(LEDEvent, Event.STATE_ON)
+      finger_up = trace.FindStateSwitch(LEDEvent, Event.STATE_OFF)
 
-      finger_down = trace.Time(Event.LED_ON) - led_calibration.finger_down_delay
-      finger_up = trace.Time(Event.LED_OFF) + led_calibration.finger_up_delay
+      screen_black = trace.FindStateSwitch(ScreenDrawEvent, Event.STATE_BLACK)
+      screen_white = trace.FindStateSwitch(ScreenDrawEvent, Event.STATE_WHITE)
 
-      screen_off_start = trace.Time(Event.SCREEN_DRAW_START, color="Black")
-      screen_off_end = trace.Time(Event.SCREEN_DRAW_END, color="Black")
+      results.Add("DownLatency", finger_down, screen_black)
+      results.Add("UpLatency", finger_up, screen_white)
 
-      screen_on_start = trace.Time(Event.SCREEN_DRAW_START, color="White")
-      screen_on_end = trace.Time(Event.SCREEN_DRAW_END, color="White")
 
-      down_start.append(screen_off_start - finger_down)
-      down_end.append(screen_off_end - finger_down)
-      up_start.append(screen_on_start - finger_up)
-      up_end.append(screen_on_end - finger_up)
+class MockLatencyTest(TestClass):
+  """Calculates latency from a line draw video."""
+  name = "MockLatency"
+  repetitions = 1
 
-    return {
-        "DownStartLatency": down_start,
-        "DownEndLatency": down_end,
-        "UpStartLatency": up_start,
-        "UpEndLatency": up_end,
-    }
+  def InitializeProcessor(self, processor):
+    pass
+
+  def ExecuteTest(self, app, dut, camera):
+    return MockVideoReader(3000, (720, 1280))
+
+  def ProcessTrace(self, traces, results, debug):
+    for i in range(20):
+      time = i * 100
+      results.Add("TapMockLatency", LEDEvent(time, state=Event.STATE_ON),
+                  ScreenDrawEvent(time + 20, state=Event.STATE_WHITE,
+                                  start_time=time + 10))
+      results.Add("LineMockLatency", FingerEvent(time, location=i * 10),
+                  LineDrawEvent(time + 20, location=i * 10,
+                                start_time=time + 10))

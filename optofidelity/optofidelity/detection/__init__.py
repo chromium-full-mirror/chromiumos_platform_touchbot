@@ -13,5 +13,7 @@ from optofidelity.detection.finger import FingerMove, LEDDetector
 from optofidelity.detection.detector import Frame, Video
 from optofidelity.detection.line import Line
 from optofidelity.detection.screen import ScreenFlash
-from optofidelity.detection.trace import Trace, Event
+from optofidelity.detection.trace import (Trace, Event, FingerEvent,
+                                          LineDrawEvent, ScreenDrawEvent,
+                                          LEDEvent)
 from optofidelity.detection.processor import VideoProcessor, ProcessorDebugger

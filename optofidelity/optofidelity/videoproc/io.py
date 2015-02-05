@@ -8,14 +8,13 @@ video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
 import cv2
+import numpy as np
 import skimage
 import skimage.color
 import sys
 import time
 
-CODEC = cv2.cv.CV_FOURCC(*"xvid")
-if sys.platform == "darwin":
-  CODEC = cv2.cv.CV_FOURCC(*"mp4v")
+CODEC = cv2.cv.CV_FOURCC(*"mp4v")
 
 
 class PrefetchEnabled(object):
@@ -41,7 +40,7 @@ class VideoReader(object):
   Provides common functionality for accessing videos.
   """
   def __init__(self, num_frames, perf_enabled=False):
-    self.current_frame = 0
+    self.current_frame = -1
     self.interactive = False
     self.num_frames = num_frames
     self.transfer_times = []
@@ -222,6 +221,17 @@ class FileVideoReader(VideoReader):
         raise Exception("Cannot read frame")
     return skimage.img_as_float(self.frame_cache[:, :, 0])
 
+class MockVideoReader(VideoReader):
+  """Mock VideoReader returning nothing but black frames."""
+  def __init__(self, num_frames, size):
+    self.size = size
+    VideoReader.__init__(self, num_frames)
+
+  def _SeekTo(self, frame):
+    return (frame < self.num_frames and frame >= 0)
+
+  def Read(self):
+    return np.zeros(self.size, dtype=np.float)
 
 class VideoWriter(object):
   def __init__(self, filename):

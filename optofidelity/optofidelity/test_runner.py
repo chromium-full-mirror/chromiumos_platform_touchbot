@@ -7,21 +7,16 @@ Provides the TestCase and TestRunner class. The TestRunner can be fed
 with multiple TestCases and execute these on the robot fully automatically while
 handling potential error cases by resetting or recalibrating the device.
 """
-from collections import defaultdict
 from contracts import contract
 from fnmatch import fnmatch
 import itertools
-import numpy as np
 import os
-import sys
 import time
 import traceback
 
 from optofidelity.system import TestApp, CameraCalibration
-from optofidelity.system import DUTException
-from optofidelity.videoproc import VideoException
-from optofidelity.test_run import TestClass, TestRun
-
+from optofidelity.test_run import TestClass, TestRun, MeasurementList
+from optofidelity.report import Reporter
 
 def IterGroups(iterable, key):
   return itertools.groupby(sorted(iterable, key=key), key=key)
@@ -43,42 +38,6 @@ class TestCase(object):
     return "%s/%s" % (self.app, self.test_class.name)
 
 
-class TestResult(object):
-  def __init__(self, case, value_name):
-    self.app = case.app.name
-    self.dut = case.app.dut.name
-    self.case_name = case.test_class.name
-    self.value_name = value_name
-    self.values = []
-
-
-class TestResults(object):
-  def __init__(self):
-    self.results = {}
-
-  def AddTestResults(self, case, results_map):
-    for name, values in results_map.items():
-      key = "%s/%s" % (case, name)
-      if key not in self.results:
-        self.results[key] = TestResult(case, name)
-      self.results[key].values.extend(values)
-
-  def PrintResults(self, ms_per_frame):
-    all_results = self.results.values()
-    for case_name, case_results in IterGroups(all_results,
-                                              lambda r: r.case_name):
-      print "Test Case %s:" % case_name
-      for value_name, value_results in IterGroups(case_results,
-                                                  lambda r: r.value_name):
-        print "  Measurement %s:" % value_name
-        for result in sorted(value_results, key=lambda r: np.mean(r.values)):
-          std = np.std(result.values) * ms_per_frame
-          mean = np.mean(result.values) * ms_per_frame
-          N = len(result.values)
-          format = "    %s: %.2f ms (std=%.2f ms, N=%d)"
-          print format % (result.dut, mean, std, N)
-
-
 class TestRunner(object):
   """Runs a collection of TestCases and handles potential error cases.
 
@@ -97,6 +56,7 @@ class TestRunner(object):
     self.skip_calib = skip_calib
     self.results_path = os.path.join(path, "results")
     self.failures_path = os.path.join(path, "failures")
+    self.timestamp = time.strftime("%Y_%m_%d-%H%M")
 
     for dut in system:
       for app in dut:
@@ -130,15 +90,15 @@ class TestRunner(object):
 
     # Group test cases by DUT and run all of them
     start_t = time.time()
-    results = TestResults()
+    measurement_list = MeasurementList()
     for dut, cases in IterGroups(test_cases, lambda c: c.app.dut):
       print "Running tests for: " + str(dut)
-      dut_results = self._RunDUTTests(results, dut, cases, debug, False)
+      self._RunDUTTests(measurement_list, dut, cases, debug, False)
 
     PrintPerf("All tests", start_t, debug)
-    return results
+    return measurement_list
 
-  def _RunDUTTests(self, results, dut, test_cases, debug, safe):
+  def _RunDUTTests(self, measurement_list, dut, test_cases, debug, safe):
     # Reset device
     if safe:
       dut.Reset()
@@ -152,9 +112,8 @@ class TestRunner(object):
         mode = "(safe mode)" if safe else ""
         print "Running tests for: %s %s" % (str(app), mode)
         dut.EnterApp(app)
-        app_results = self._RunAppTests(results, dut, app, cases, debug, safe)
+        self._RunAppTests(measurement_list, dut, app, cases, debug, safe)
         dut.ExitApp()
-      return results
     except KeyboardInterrupt as e:
       print "Keyboard interrupt received."
       print "Resetting device before exiting app."
@@ -163,10 +122,9 @@ class TestRunner(object):
     except:
       traceback.print_exc()
       if not safe:
-        return self._RunDUTTests(results, dut, cases, debug, True)
-      return {}
+        return self._RunDUTTests(measurement_list, dut, cases, debug, True)
 
-  def _RunAppTests(self, results, dut, app, cases, debug, safe):
+  def _RunAppTests(self, measurement_list, dut, app, cases, debug, safe):
     app.LocateButtons(force=safe)
 
     # Calibrate camera by making the screen flash
@@ -187,16 +145,33 @@ class TestRunner(object):
     # Run all test cases on this app
     for case in cases:
       num_failures = 0
+      results_path = os.path.join(self.results_path, self.timestamp, str(case))
+      run = TestRun(case.test_class, app, results_path)
+
+      led_latency = 0
+      if run.led_calibration:
+        led_latency = (run.led_calibration.finger_down_delay +
+                       run.led_calibration.finger_up_delay) / 2
+      reporter = Reporter(run.path, led_latency)
+      reporter.CopyResources()
+
+      if self.dump_all:
+        run.SaveCalibrationVideo()
+
       # Each test class defines how often the test should be repeated
       for i in range(case.test_class.repetitions):
         # Retry until it failed max_tries consecutive times
         while num_failures < self.max_tries:
           try:
             # Run test and collect results
+            rep_name = "rep%02d_retry%02d" % (i + 1, num_failures)
+            rep = run.AddRepetition(rep_name)
             mode = "(safe mode)" if safe else ""
-            print "Running test: %s (rep %d retry %d) %s" % (
-                case, i + 1, num_failures, mode)
-            case_results = self._RunTest(results, dut, app, case, debug)
+            print "Running test: %s (%s) %s" % (
+                case, rep_name, mode)
+            rep_measurements = self._RunTest(rep, dut, app, case, debug)
+            reporter.GenerateRepetitionReport(rep, rep_measurements)
+            measurement_list.extend(rep_measurements)
             num_failures = 0
             break
           except KeyboardInterrupt as e:
@@ -204,32 +179,30 @@ class TestRunner(object):
           except:
             num_failures += 1
             traceback.print_exc()
+          finally:
+            run.Save()
 
-  def _RunTest(self, results, dut, app, case, debug):
-    # Path to store results in
-    timestamp = time.strftime("%Y_%m_%d-%H%M")
-    result_path = os.path.join(self.results_path, str(case), timestamp)
-    failure_path = os.path.join(self.failures_path, str(case), timestamp)
-
+  def _RunTest(self, rep, dut, app, case, debug):
     # Record test video on the robot
     start_t = time.time()
-    run = TestRun(case.test_class, app, self.results_path)
-    run.RecordTestVideo(self.system)
+
+    rep.RecordTestVideo(self.system)
     try:
       # Process video and trace, return latency results
-      run.ProcessTestVideo(debug)
-      run.ProcessTestTrace(debug)
+      rep.ProcessTestVideo(debug)
+      rep_measurements = rep.ProcessTestTrace(debug)
+      print str(rep_measurements)
+
       if self.dump_all:
-        run.SaveAll(result_path)
-      print "Results:"
-      for key, value in run.test_results.iteritems():
-        print "  %s: %s" % (key, value)
-      results.AddTestResults(case, run.test_results)
+        rep.SaveTestVideo()
+      print
       PrintPerf(str(case), start_t, debug)
+      return rep_measurements
     except Exception, e:
       print "%s: Processing failed: %s" % (case, e)
       traceback.print_exc()
-      run.SaveAll(failure_path)
+      rep.error = traceback.format_exc()
+      rep.SaveTestVideo()
       raise e
 
 

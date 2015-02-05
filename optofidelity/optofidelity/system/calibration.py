@@ -1,7 +1,6 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import h5py
 import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
@@ -28,6 +27,24 @@ class LEDCalibration(object):
     self.finger_up_delays = []
     self.finger_down_delay = 0
     self.finger_up_delay = 0
+    self.video = None
+
+  def __getstate__(self):
+    return (
+        self.finger_down_delays,
+        self.finger_up_delays,
+        self.finger_down_delay,
+        self.finger_up_delay
+    )
+
+  def __setstate__(self, state):
+    (
+        self.finger_down_delays,
+        self.finger_up_delays,
+        self.finger_down_delay,
+        self.finger_up_delay
+    ) = state
+    self.video = None
 
   def Calibrate(self, dut, camera, debug):
     self.RecordVideo(dut, camera)
@@ -149,33 +166,15 @@ class CameraCalibration(object):
     self.video = None
     self.video_cache_file = None
 
-  def Save(self, filename):
-    with h5py.File(filename, "w") as hdf5:
-      hdf5.create_dataset("shape", data=self.shape.mask)
-      hdf5.create_dataset("on_image", data=self.on_image)
-      hdf5.create_dataset("on_profile", data=self.on_profile)
-      hdf5.create_dataset("off_image", data=self.off_image)
-      hdf5.create_dataset("off_profile", data=self.off_profile)
-
-  @classmethod
-  def Load(self, filename):
-    with h5py.File(filename, "r") as hdf5:
-      test_area = CameraCalibration()
-      test_area.shape = Shape(mask=hdf5["shape"][()])
-      test_area.on_image = hdf5["on_image"][()]
-      test_area.on_profile = hdf5["on_profile"][()]
-      test_area.off_image = hdf5["off_image"][()]
-      test_area.off_profile = hdf5["off_profile"][()]
-    test_area.rect_transform = test_area.EstimateRectTransform()
-    return test_area
-
   def Calibrate(self, app, camera, debug):
     self.RecordVideo(app, camera)
     self.Process(debug)
 
   def CacheVideo(self):
     """Download video from the camera to a temporary file."""
-    self.video_cache_file = tempfile.NamedTemporaryFile()
+    if isinstance(self.video, FileVideoReader):
+      return
+    self.video_cache_file = tempfile.NamedTemporaryFile(suffix=".mov")
     print "Downloading calibration video"
     writer = VideoWriter(self.video_cache_file.name)
     writer.Write(self.video)

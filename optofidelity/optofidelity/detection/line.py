@@ -4,7 +4,7 @@
 from contracts import contract
 import numpy as np
 
-from optofidelity.detection.trace import Event
+from optofidelity.detection.trace import Event, LineDrawEvent
 from optofidelity.videoproc import Viewer, Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
@@ -136,7 +136,7 @@ class Line(Detector):
     def Reset():
       self.line_obj = None
       self.suppress_until = timestamp + self.reset_suppress_duration
-      return [Event(timestamp, Event.LINE_RESET)]
+      return [LineDrawEvent(timestamp, location=None, start_time=timestamp)]
 
     if debug:
       debug.canvas.Plot(Canvas.BLUE, profile.array)
@@ -193,14 +193,10 @@ class Line(Detector):
       debug.Print("New segment. level=%d", level)
       if level > self.draw_end_min_color:
         last_no_draw = np.max(self.last_no_draw_map[new_slice])
-        events = []
-        events.append(Event(last_no_draw + 1, Event.LINE_DRAW_START,
-                            location=new_location))
-        events.append(Event(timestamp, Event.LINE_DRAW_END,
-                            location=new_location))
         self.line_obj = new_line
         self.location = new_location
-        return events
+        return [LineDrawEvent(timestamp, location=new_location,
+                              start_time=int(last_no_draw + 1))]
 
     if debug:
       debug.canvas.DrawHLine(Canvas.BLUE, self.location, 0)

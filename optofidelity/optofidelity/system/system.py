@@ -1,15 +1,13 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from ConfigParser import SafeConfigParser
 from contracts import contract
 
-import h5py
+import cPickle as pickle
 import re
 import xml.etree.ElementTree as ElementTree
 
 from optofidelity.phantom import Phantom
-from optofidelity.system.calibration import LEDCalibration
 from optofidelity.system.dut import CalibrationDUT
 from optofidelity.tnt.TnTClient import TnTClient
 
@@ -27,6 +25,7 @@ class OptofidelityTestSystem(object):
   """
   dut_classes = {}
   app_classes = {}
+  is_mock = False
 
   def __init__(self, config_file):
     self.duts = {}
@@ -51,6 +50,13 @@ class OptofidelityTestSystem(object):
       return self.duts.values().__getitem__(key)
     else:
       return self.duts.__getitem__(key)
+
+  def SaveState(self, filename):
+    pickle.dump(self, open(filename, "w"), protocol=-1)
+
+  @staticmethod
+  def LoadState(filename):
+    return pickle.load(open(filename, "r"))
 
   def ReadConfig(self, config_file):
     """Read robot configuration from file."""
@@ -100,7 +106,6 @@ class OptofidelityTestSystem(object):
 
       for app_elem in dut_elem.iter("app"):
         (app_type, predef_margin) = app_variants[app_elem.attrib["type"]]
-        button = ParseCoord(app_elem, "button")
         margin = ParseCoord(app_elem, "margin", predef_margin)
         app = app_type(dut)
         if margin:

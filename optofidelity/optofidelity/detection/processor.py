@@ -49,7 +49,7 @@ class ProcessorDebugger(object):
 
   def Print(self, msg, *args):
     if self:
-      print "DEBUG:", msg % args
+      print "DEBUG:", str(msg) % args
 
   def InitFrame(self, frame, test_area):
     """Fill the debug canvas with a background from the current frame."""
@@ -104,7 +104,7 @@ class FlagDebugger(ProcessorDebugger):
 
   def Print(self, msg, *args):
     if self:
-      print "DEBUG(%s):" % self.flag, msg % args
+      print "DEBUG(%s):" % self.flag, str(msg) % args
 
 def VideoProcessor(test_area, debug):
   if debug["video"]:
@@ -155,14 +155,16 @@ class SinglethreadedVideoProcessor(object):
       preprocessed_data[detector.name] = data
     return (frame.index, preprocessed_data)
 
-  def GenerateEvents(self, trace, i, preprocessed_data, debug):
+  def GenerateEvents(self, i, preprocessed_data, debug):
+    all_events = []
     for detector in self.detectors.itervalues():
       data = preprocessed_data[detector.name]
       flag_debug = debug[detector.name]
       events = detector.GenerateEvents(data, i, flag_debug)
       if flag_debug and events:
         print events
-      trace.AddAll(events)
+      all_events.extend(events)
+    return all_events
 
   @contract(video=VideoReader)
   def ReadRelevantFrames(self, video, debug):
@@ -211,7 +213,6 @@ class SinglethreadedVideoProcessor(object):
               # The peeked at frame shows little difference, jump ahead.
               i = peek_i
               image = peek_image
-              last_peek = peek_ahead
               break
           # Don't peek again for a while.
           dont_peek_before = i + min(self.peek_distances)
@@ -223,7 +224,10 @@ class SinglethreadedVideoProcessor(object):
 
   def ProcessVideo(self, video, debug):
     """Process video and return a trace of all detected events."""
-    trace = Trace()
+    if not self.detectors:
+      return Trace([])
+
+    events = []
     prev_image = None
     for i, image in self.ReadRelevantFrames(video, debug):
       print "Processing frame %d/%d" % (i, video.num_frames)
@@ -232,11 +236,11 @@ class SinglethreadedVideoProcessor(object):
       debug.InitFrame(frame, self.test_area)
 
       i, preprocessed_data = self.Preprocess(frame, debug)
-      self.GenerateEvents(trace, i, preprocessed_data, debug)
+      events.extend(self.GenerateEvents(i, preprocessed_data, debug))
 
       debug.Display(video)
       prev_image = image
-    return trace
+    return Trace(events)
 
 class Buffer(object):
   """A buffer stores a video frame to be processed.
@@ -314,6 +318,9 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     SinglethreadedVideoProcessor.__init__(self, test_area)
 
   def ProcessVideo(self, video, debug):
+    if not self.detectors:
+      return Trace([])
+
     video.perf = True
 
     # Create shared memory buffer. This is a ring buffer.
@@ -349,6 +356,10 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
           sys.stdout.flush()
         visualize()
 
+        for process in processes:
+          if not process.is_alive():
+            raise Exception("PreprocessWorker died")
+
         # Wait for all operations accessing the current buffer to be done.
         # We are waiting for next_idx too since it will use the current_idx
         # as a prev_image.
@@ -381,7 +392,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       print
       print "Killing child processes"
       for process in processes:
-        if process.pid:
+        if process.pid  and process.is_alive():
           os.kill(process.pid, signal.SIGKILL)
       raise
 
@@ -393,11 +404,11 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       data_map[data_entry[0]] = data_entry[1]
 
     # Generate events from frames in order
-    trace = Trace()
+    events = []
     for i in sorted(data_map.keys()):
       sys.stdout.write("\rGenerating events %d/%d" % (i, video.num_frames))
       sys.stdout.flush()
       preprocessed_data = data_map[i]
-      self.GenerateEvents(trace, i, preprocessed_data, debug)
+      events.extend(self.GenerateEvents(i, preprocessed_data, debug))
     print
-    return trace
+    return Trace(events)

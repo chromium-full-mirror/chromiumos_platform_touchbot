@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 import numpy as np
 
-from optofidelity.detection.trace import Event
+from optofidelity.detection.trace import FingerEvent, LEDEvent, Event
 from optofidelity.videoproc import Filter, Shape, Canvas
 from optofidelity.detection.detector import Detector
 
@@ -103,9 +103,9 @@ class LEDDetector(Detector):
       if not self.led_switching:
         self.led_switching = True
         if led_color > 0:
-          return [Event(timestamp, Event.LED_ON)]
+          return [LEDEvent(timestamp, state=Event.STATE_ON)]
         else:
-          return [Event(timestamp, Event.LED_OFF)]
+          return [LEDEvent(timestamp, state=Event.STATE_OFF)]
     else:
       self.led_switching = False
     return []
@@ -179,5 +179,5 @@ class FingerMove(Detector):
         (self.location is None or
          np.abs(self.location - new_location) < self.finger_max_move_speed)):
       self.location = new_location
-      return [Event(timestamp, Event.FINGER_MOVED, location=new_location)]
+      return [FingerEvent(timestamp, location=new_location)]
     return []

@@ -5,13 +5,13 @@
 """Main module for command line interface to optofidelity latency tests."""
 
 from optparse import OptionParser
-import cPickle as pickle
 import numpy as np
 import os
 import warnings
 
-from optofidelity import (OptofidelityTestSystem, TestRunner, TestRun,
-                          ProcessorDebugger)
+from optofidelity import (OptofidelityTestSystem, TestRunner, TestRun, Reporter,
+                          ProcessorDebugger, MockTestSystem, MockLatencyTest,
+                          MeasurementList)
 from optofidelity.system.calibration import LEDCalibration
 
 usage = """TestRunner usage examples
@@ -43,50 +43,70 @@ def BuildDebugger(options):
   return ProcessorDebugger(options.debug, options.start, options.stop)
 
 
-def Process(path, what, debug):
-  run = TestRun.Load(path)
-  if what == "calibration":
-    run.ProcessCalibrationVideo(debug)
-  elif what == "video":
-    run.ProcessTestVideo(debug)
-    print run.test_trace
-  elif what == "trace":
-    run.ProcessTestTrace(debug)
-    print run.test_results
-  elif what == "all":
-    run.ProcessCalibrationVideo(debug)
-    run.ProcessTestVideo(debug)
-    run.ProcessTestTrace(debug)
-  run.Save()
+def Process(path, what, repetition_name, debug):
+  test_run = TestRun.Load(path)
+  measurements = MeasurementList()
+  led_latency = 0
+  if test_run.led_calibration:
+    led_latency = (test_run.led_calibration.finger_down_delay +
+                   test_run.led_calibration.finger_up_delay) / 2
+  reporter = Reporter("test_report", led_latency)
+  reporter.CopyResources()
+  if repetition_name:
+    repetitions = [test_run.repetitions[repetition_name]]
+  else:
+    repetitions = test_run.repetitions.values()
+
+  if what == "calibration" or what == "all":
+    test_run.ProcessCalibrationVideo(debug)
+
+  for repetition in repetitions:
+    print "Processing repetition", repetition
+
+    if what == "video" or what == "all":
+      repetition.ProcessTestVideo(debug)
+      print repetition.test_trace
+    elif what == "trace" or what == "all":
+      repetition_measurements = repetition.ProcessTestTrace(debug)
+      print str(repetition_measurements)
+      measurements.extend(repetition_measurements)
+      reporter.GenerateRepetitionReport(repetition, repetition_measurements)
+
+  reporter.PrintSummary(measurements)
+  test_run.Save()
+
 
 def RunTests(glob, debug, options):
-  if os.path.exists(state_file) and not options.update_config:
-    system = pickle.load(open(state_file, "r"))
+  if options.mock:
+    system = MockTestSystem(options.mock)
+    TestRunner.RegisterTestClass(MockLatencyTest)
+  elif os.path.exists(state_file) and not options.update_config:
+    system = OptofidelityTestSystem.LoadState(state_file)
   else:
     system = OptofidelityTestSystem(config_file)
     if os.path.exists(state_file):
-      old_system = pickle.load(open(state_file, "r"))
+      old_system = OptofidelityTestSystem.LoadState(state_file)
       system.led_calibration = old_system.led_calibration
 
   runner = TestRunner(system, script_dir, options.dump_all, options.skip_calib)
-
   if options.led_calib or system.led_calibration is None:
     system.led_calibration = LEDCalibration()
-    system.led_calibration.Calibrate(system.calibration_dut, system.camera,
-                                     debug)
+    #system.led_calibration.Calibrate(system.calibration_dut, system.camera,
+    #                                 debug)
     print "Calibration Results:"
     print "  Finger down: %f %s" % (system.led_calibration.finger_down_delay,
                                     system.led_calibration.finger_down_delays)
     print "  Finger up: %f %s" % (system.led_calibration.finger_up_delay,
                                   system.led_calibration.finger_up_delays)
 
-  pickle.dump(system, open(state_file, "w"), protocol=-1)
+  system.SaveState(state_file)
   results = runner.RunTests(glob, debug)
 
   ms_per_frame = 1.0 / system.camera.fps * 1000
-  results.PrintResults(ms_per_frame)
+  reporter = Reporter("", ms_per_frame)
+  reporter.PrintSummary(results)
 
-  pickle.dump(system, open(state_file, "w"), protocol=-1)
+  system.SaveState(state_file)
 
 def Main():
   parser = OptionParser(usage=usage)
@@ -96,6 +116,10 @@ def Main():
   parser.add_option("--process",
                     dest="process", default=None,
                     help="Process local files")
+  parser.add_option("--repetition",
+                    dest="repetition", default=None,
+                    help="Use with --process. Pick which repetition to" +
+                         "process. Defaults to all.")
   parser.add_option("--update-config",
                     dest="update_config", default=False, action="store_true",
                     help="Update robot configuration.")
@@ -105,6 +129,9 @@ def Main():
   parser.add_option("--led-calib",
                     dest="led_calib", default=False, action="store_true",
                     help="Perform LED calibration before tests.")
+  parser.add_option("--mock",
+                    dest="mock", default=None,
+                    help="Use mock robot system using data from provided path.")
 
   AddDebugOptions(parser)
   (options, args) = parser.parse_args()
@@ -119,7 +146,7 @@ def Main():
 
   debug = BuildDebugger(options)
   if options.process:
-    Process(glob, options.process, debug)
+    Process(glob, options.process, options.repetition, debug)
   else:
     RunTests(glob, debug, options)
 
