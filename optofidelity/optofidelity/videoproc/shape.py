@@ -7,14 +7,17 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
-from contracts import contract
 import math
+
 import numpy as np
 import skimage.measure as measure
 import skimage.morphology as morphology
 
-from optofidelity.videoproc.util import Viewer, VideoException
-from optofidelity.videoproc.filter import Filter
+from contracts import contract
+
+from .filter import Filter
+from .util import VideoException, Viewer
+
 
 class Shape(object):
   """Describes a segmented shape in an image.
@@ -191,11 +194,15 @@ class Shape(object):
 
   @property
   def center_x(self):
-    return (self.right - self.left) / 2
+    return self.left + (self.right - self.left) / 2
 
   @property
   def center_y(self):
-    return (self.bottom - self.top) / 2
+    return self.top + (self.bottom - self.top) / 2
+
+  @property
+  def center(self):
+    return np.asarray([self.center_x, self.center_y], dtype=np.float)
 
   @property
   def width(self):

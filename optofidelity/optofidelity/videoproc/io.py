@@ -7,12 +7,18 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
-import cv2
+import os
+import shutil
+import sys
+import time
+
 import numpy as np
 import skimage
 import skimage.color
-import sys
-import time
+
+import cv2
+
+from .util import Viewer
 
 CODEC = cv2.cv.CV_FOURCC(*"mp4v")
 
@@ -39,18 +45,29 @@ class VideoReader(object):
 
   Provides common functionality for accessing videos.
   """
-  def __init__(self, num_frames, perf_enabled=False):
+  def __init__(self, num_frames, framerate, perf_enabled=False):
     self.current_frame = -1
     self.interactive = False
     self.num_frames = num_frames
     self.transfer_times = []
     self.perf_enabled = perf_enabled
     self.prefetch_enabled = False
+    self.framerate = framerate
+    self.frametime = 1.0 / framerate
 
   @property
   def frame_shape(self):
     frame = self.FrameAt(self.current_frame)
     return frame.shape
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, type, value, traceback):
+    self.Close()
+
+  def Close():
+    pass
 
   def PrefetchEnabled(self):
     """Safely enables prefetch in combination with the with statement.
@@ -148,7 +165,6 @@ class VideoReader(object):
       if stop is None:
         stop = self.num_frames
       frames = range(start, stop, step)
-
     i = 0
     while True:
       if i < 0 or i >= len(frames):
@@ -181,6 +197,40 @@ class VideoReader(object):
       else:
         i += 1
 
+  def DebugView(self):
+    print "Press p to enter interactive mode"
+    print "Press c to close"
+    for i, frame in self.Frames():
+      key = Viewer.VideoFrame(frame)
+      if key == ord('p'):
+        print "Entering Interactive Mode"
+        print "  Press j/k to move by 1 frame"
+        print "  Press h/l to move by 10 frames"
+        print "  Press c to continue playback"
+        self.EnterInteractive()
+      if key == ord('c'):
+        break
+
+  def Save(self, filename, print_progress):
+    width = self.frame_shape[1]
+    height = self.frame_shape[0]
+    writer = cv2.VideoWriter(filename, CODEC, self.framerate,
+                             (width, height))
+
+    for i, frame in self.Frames():
+      if print_progress:
+        sys.stdout.write("\rWriting frame %d/%d" % (i, self.num_frames))
+        sys.stdout.flush()
+      frame = skimage.img_as_ubyte(frame)
+      frame = skimage.color.gray2rgb(frame)
+      writer.write(frame)
+    if print_progress:
+      print ""
+    writer.release()
+
+  def __getstate__(self):
+    raise Exception("VideoReader cannot be pickled")
+
 
 class FileVideoReader(VideoReader):
   """Implementation of a VideoReader for reading from files using OpenCV.
@@ -189,19 +239,25 @@ class FileVideoReader(VideoReader):
   the video has to be re-opened and walked through until the requested
   frame.
   """
-  def __init__(self, filename):
+  def __init__(self, filename, framerate):
     self.cap = cv2.VideoCapture(filename)
     self.filename = filename
     self.frame_cache = None
 
     num_frames = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_COUNT))
-    VideoReader.__init__(self, num_frames)
+    VideoReader.__init__(self, num_frames, framerate)
+
+  @property
+  def frame_shape(self):
+    width = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH))
+    height = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
+    return (height, width)
 
   def _SeekTo(self, frame):
     if frame < self.current_frame:
-      self.cap.release()
-      self.cap = cv2.VideoCapture(self.filename)
-      self.current_frame = 0
+      self.cap.open(self.filename)
+      self.current_frame = -1
+      frame = frame + 1
     else:
       frame = frame - self.current_frame
 
@@ -221,17 +277,25 @@ class FileVideoReader(VideoReader):
         raise Exception("Cannot read frame")
     return skimage.img_as_float(self.frame_cache[:, :, 0])
 
-class MockVideoReader(VideoReader):
-  """Mock VideoReader returning nothing but black frames."""
-  def __init__(self, num_frames, size):
+  def Close(self):
+    self.cap.release()
+
+  def Save(self, filename, print_progress):
+    if os.path.abspath(self.filename) != os.path.abspath(filename):
+      shutil.copyfile(self.filename, filename)
+
+class FakeVideoReader(VideoReader):
+  """Fake VideoReader returning nothing but black frames."""
+  def __init__(self, num_frames, size, framerate):
     self.size = size
-    VideoReader.__init__(self, num_frames)
+    VideoReader.__init__(self, num_frames, framerate)
 
   def _SeekTo(self, frame):
     return (frame < self.num_frames and frame >= 0)
 
   def Read(self):
     return np.zeros(self.size, dtype=np.float)
+
 
 class VideoWriter(object):
   def __init__(self, filename):
@@ -246,7 +310,7 @@ class VideoWriter(object):
   def Initialize(self, frame):
       width = frame.shape[1]
       height = frame.shape[0]
-      self.writer = cv2.VideoWriter(self.filename, CODEC, 15, (width, height))
+      self.writer = cv2.VideoWriter(self.filename, None, 15, (width, height))
 
   def Write(self, reader):
     if not self.writer:

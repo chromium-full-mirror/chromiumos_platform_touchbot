@@ -8,34 +8,12 @@ video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-import skimage.color
-import skimage.transform as transform
 
 
 class VideoException(Exception):
-  """Exceptions during video processing.
+  pass
 
-  This exception generally tells the system that the image processing failed
-  and cannot continue. The system can decide wether to retry the test, or to
-  store the associated video for debugging purposes.
-  """
-  def __init__(self, error, frame=None, image=None):
-    Exception.__init__(self)
-    self.error = error
-    self.image = image
-    self.frame = frame
-
-  def DebugView(self):
-    print "Video Processing Error:"
-    print self
-    if self.image:
-      Viewer.DebugView(error=self.image)
-
-  def __str__(self):
-    frame = "Frame %d: " % self.frame if self.frame else ""
-    return frame + self.error
 
 class Viewer(object):
   """Helper for viewing image data."""
@@ -48,20 +26,21 @@ class Viewer(object):
     return cv2.waitKey(1) & 0xFF
 
   @staticmethod
-  def DebugView(cmap_name="gray", **kwargs):
+  def DebugView(title="", cmap_name="gray", **kwargs):
     """Display any number of images using matplotlib.
 
     The images are provided using keyword arguments, with the argument
     name being used as the image title.
     Optionally you can specify a colormap name as a first argument.
     """
+    import matplotlib.pyplot as plt
     cmap = plt.get_cmap(cmap_name)
 
     num_plots = float(len(kwargs))
     num_rows = np.ceil(np.sqrt(num_plots))
     num_cols = np.ceil(num_plots / num_rows)
 
-    plt.figure()
+    figure = plt.figure()
     for i, arg in enumerate(kwargs.items()):
       image = arg[1]
       if image is None:
@@ -74,82 +53,68 @@ class Viewer(object):
       else:
         plt.imshow(arg[1], cmap=cmap)
       plt.title(arg[0])
+    figure.canvas.set_window_title(title)
     plt.show()
 
 
 class Canvas(object):
-  """Helper class for drawing contours, lines and masks.
+  """Helper class for drawing contours, lines and masks and simple graphs"""
 
-  Allows the use of a transform function tform_fn that is called as
-  tform_fn(image=) or tform_fn(coords=) to transform an image or coordinates
-  before drawing them. This is used in combination with the Screen.Unrectify
-  method to draw shapes and lines that were calculated on rectified images into
-  full frame images.
-  """
-
-  plot_padding = 10
+  PLOT_PADDING = 10
   """Padding at top and bottom of plots in pixels."""
 
   # A collection of colors for drawing. Chosen to be clearly visible on black
   # and white video streams. Colors are denoted in [blue, green, red].
-  WHITE = [1, 1, 1]
-  BLUE = [1, 0, 0]
-  GREEN = [0, 0.7, 0]
-  RED = [0, 0, 1]
-  YELLOW = [0.7, 0.7, 0]
-  BLACK = [0, 0, 0]
+  WHITE = [1, 1, 1, 1]
+  BLUE = [1, 0, 0, 1]
+  GREEN = [0, 0.7, 0, 1]
+  RED = [0, 0, 1, 1]
+  YELLOW = [0.7, 0.7, 0, 1]
+  BLACK = [0, 0, 0, 1]
 
-  def __init__(self, image=None, tform_fn=None):
-    self.image = None
-    if image is not None:
-      self.image = skimage.color.gray2rgb(image)
-    self.tform_fn = tform_fn
+  def __init__(self, buffer):
+    self._buffer = buffer
 
-  def __nonzero__(self):
-    return self.image is not None
+  @classmethod
+  def FromShape(cls, shape):
+    return cls(np.zeros((shape[0], shape[1], 4)))
 
-  def Scaled(self, scale):
-    return transform.rescale(self.image, scale)
+  def Transformed(self, transform_function):
+    return Canvas(transform_function(self._buffer))
+
+  def BlendWithImage(self, image):
+    assert(len(image.shape) == 3)
+    assert(image.shape[0] == self._buffer.shape[0])
+    assert(image.shape[1] == self._buffer.shape[1])
+    assert(image.shape[2] == 3)
+
+    weight = np.zeros(image.shape)
+    for i in (0, 1, 2):
+      weight[:, :, i] = self._buffer[:, :, 3]
+    weighted_image = image * (1 - weight)
+    weighted_buffer = self._buffer[:, :, 0:3] * weight
+    return weighted_image + weighted_buffer
 
   def Plot(self, color, plot):
     plot[plot > 1] = 1
     plot[plot < 0] = 0
-    if len(plot) > self.image.shape[1]:
-      plot = plot[:self.image.shape[1]]
+    if len(plot) > self._buffer.shape[1]:
+      plot = plot[:self._buffer.shape[1]]
 
-    height = self.image.shape[0] - self.plot_padding * 2
-    cols = (height - (plot * height)).astype(np.int) + self.plot_padding
+    height = self._buffer.shape[0] - self.PLOT_PADDING * 2
+    cols = (height - (plot * height)).astype(np.int) + self.PLOT_PADDING
     rows = range(len(plot))
-    self.image[cols, rows] = color
+    self._buffer[cols, rows] = color
 
-  def DrawHLine(self, color, x, y):
-    if self.tform_fn:
-      (x, y) = self.tform_fn(coords=(x, y))
-    for i in (0, 1, 2):
-      self.image[:, x, i] = color[i]
+  def DrawHLine(self, color, x):
+    for i in (0, 1, 2, 3):
+      self._buffer[:, x, i] = color[i]
 
-  def DrawVLine(self, color, x, y):
-    if self.tform_fn:
-      (x, y) = self.tform_fn(coords=(x, y))
-    for i in (0, 1, 2):
-      self.image[y, :, i] = color[i]
+  def DrawVLine(self, color, y):
+    for i in (0, 1, 2, 3):
+      self._buffer[y, :, i] = color[i]
 
-  def Draw(self, color, mask):
-    if self.tform_fn and (self.image.shape[0] != mask.shape[0] or
-                          self.image.shape[1] != mask.shape[1]):
-      mask = self.tform_fn(image=mask)
-    self.image[mask] = color
-
-  def DrawContour(self, color, shape):
-    if shape is None:
-      return
-    self.Draw(color, shape.contour)
-
-  def DrawShape(self, color, shape):
-    if shape is None:
-      return
-    self.Draw(color, shape.mask)
-
-  def Fill(self, image, tform_fn=None):
-    self.image = skimage.color.gray2rgb(image)
-    self.tform_fn = tform_fn
+  def DrawMask(self, color, mask):
+    assert(mask.shape[0] == self._buffer.shape[0])
+    assert(mask.shape[1] == self._buffer.shape[1])
+    self._buffer[mask] = color
