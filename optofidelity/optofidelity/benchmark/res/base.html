@@ -35,20 +35,20 @@
       <table>
         <tr>
           <td>
-            <strong>&mu; =</strong> {{ measurements.mean | as_ms }}
+            <strong>&mu; =</strong> {{ measurements.mean | FormatTime }}
           </td>
           <td>
             <strong>&mu;<sub>ds</sub> =</strong>
-            {{ measurements.draw_start_mean | as_ms }}
+            {{ measurements.draw_start_mean | FormatTime }}
           </td>
         </tr>
         <tr>
           <td>
-            <strong>&sigma; =</strong> {{ measurements.std | as_ms }}
+            <strong>&sigma; =</strong> {{ measurements.std | FormatTime }}
           </td>
           <td>
             <strong>&sigma;<sub>ds</sub> =</strong>
-            {{ measurements.draw_start_std | as_ms }}
+            {{ measurements.draw_start_std | FormatTime }}
           </td>
         </tr>
         <tr>
@@ -84,7 +84,7 @@
 
   <div class="section blue darken-2 z-depth-2">
     <div class="container white-text">
-      <h1 class="white-text">{% block title %}{% endblock %}</h1>
+      <h1 class="white-text">{% block header %}{% endblock %}</h1>
       <h4 class="blue-text text-lighten-4" style="position: relative">
         {% block subtitle %}{% endblock %}
       </h4>

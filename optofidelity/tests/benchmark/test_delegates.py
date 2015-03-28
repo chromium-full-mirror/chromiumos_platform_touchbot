@@ -1,0 +1,116 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""Tests of all delegates implementations.
+
+Most importantly this includes tests of trace processing, which processes
+recorded traces into measurements.
+"""
+import cPickle as pickle
+import os
+
+import numpy as np
+import unittest2
+
+from optofidelity.benchmark._line_delegates import (ScrollDelegate,
+                                                    ScrollStartDelegate,
+                                                    TouchMoveDelegate,
+                                                    TouchMoveStartDelegate)
+from optofidelity.benchmark._tap_delegate import TapDelegate
+from optofidelity.benchmark.results import BenchmarkResults
+from optofidelity.system import BenchmarkSystem
+from optofidelity.system.fake import FakeBenchmarkSystem
+
+from . import test_data
+
+
+class AbstractDelegateTests(unittest2.TestCase):
+  """Abstract base class for BenchmarkDelegate tests.
+
+  Provides a methods for testing ExecuteOnSubject on a live robot as well as
+  a method for testing the results of ProcessTrace.
+  In order to run tests on a live robot you have to update CONFIG_FILE to point
+  to the filename of an BenchmarkSystem config file and specify which
+  SUBJECT_NAME to use for the test.
+  """
+  CONFIG_FILE = "optofidelity.xml"
+  SUBJECT_NAME = None
+
+  def createTestSubject(self, config_file, subject_name):
+    subject = None
+    if (subject_name is not None and config_file is not None and
+        os.path.exists(config_file)):
+      system = BenchmarkSystem(config_file)
+      subject = system.subjects.get(subject_name, None)
+    if not subject:
+      print ("Running test offline. Update CONFIG_FILE and SUBJECT_NAME in " +
+             "optofidelity.benchmark.test_delegate to run live tests.")
+      system = FakeBenchmarkSystem()
+      subject = system.subjects.values()[0]
+    return subject
+
+  def runExecuteOnSubjectTest(self, delegate):
+    subject = self.createTestSubject(self.CONFIG_FILE, self.SUBJECT_NAME)
+    subject.Open(False)
+    delegate.ExecuteOnSubject(subject)
+    subject.Close()
+
+  def runTraceProcessingTest(self, delegate, trace_file, expected_latencies):
+    trace_path = test_data.Path(trace_file)
+    trace = pickle.load(open(trace_path, "r"))
+
+    results = BenchmarkResults("", "", {})
+    delegate.ProcessTrace(trace, results)
+    print "Trace file:", trace_file
+    print "Calculated Latencies:", results.measurement_list.latencies
+    print "Expected Latencies:", expected_latencies
+    self.assertTrue(np.allclose(results.measurement_list.latencies,
+                                expected_latencies))
+
+
+class LineDrawDelegateTests(AbstractDelegateTests):
+  TRACE_EXPECTED_LATENCIES = {
+    "line_draw_basic.trace":
+        [37, 37, 45, 44, 42, 46, 48, 48, 50, 48,
+         42, 48, 46, 43, 44, 43, 43, 39, 44],
+    "line_draw_incomplete.trace":
+        [29, 28, 28, 29, 29, 30, 31, 35, 35, 35, 40, 40, 45, 44, 46, 47]
+  }
+
+  def testExecuteOnSubject(self):
+    for delegate in (ScrollDelegate(), TouchMoveDelegate()):
+      self.runExecuteOnSubjectTest(delegate)
+
+  def testTraceProcessing(self):
+    for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
+      delegate = ScrollDelegate()
+      self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
+
+
+class LineDrawStartDelegateTests(AbstractDelegateTests):
+  TRACE_EXPECTED_LATENCIES = {
+  }
+
+  def testExecuteOnSubject(self):
+    for delegate in (ScrollStartDelegate(), TouchMoveStartDelegate()):
+      self.runExecuteOnSubjectTest(delegate)
+
+  def testTraceProcessing(self):
+    for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
+      delegate = ScrollStartDelegate()
+      self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
+
+
+class TapDelegateTests(AbstractDelegateTests):
+  TRACE_EXPECTED_LATENCIES = {
+    "tap_unfinished.trace": [31, 31, 28, 29, 31, 26, 28],
+    "tap_basic.trace": [31, 32, 28, 30, 31, 27, 28, 25]
+  }
+
+  def testExecuteOnSubject(self):
+    self.runExecuteOnSubjectTest(TapDelegate())
+
+  def testTraceProcessing(self):
+    for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
+      delegate = TapDelegate()
+      self.runTraceProcessingTest(delegate, trace_file, expected_latencies)

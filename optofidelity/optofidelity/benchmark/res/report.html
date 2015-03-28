@@ -1,20 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}{{ test_run.test_class.name }} Report{% endblock %}
+{% block title %}{{benchmark_type}} Latency Report{% endblock %}
+
+{% block header %}{{benchmark_type}} Latency Report{% endblock %}
 
 {% block subtitle %}
-  Device: {{test_run.subject_name}}
-  {{ help_icon("overview", "white-text", True) }}
+  Device: {{subject_name}}
+  {{help_icon("overview", "white-text", True)}}
 {% endblock %}
 
 {% block content %}
   <div class="container">
 
-    <!-- Info Section -->
+    <!-- Info and Metadata Section -->
     <ul class="collection" style="margin-top: 1em;">
-      <li class="collection-item">Repetition: {{repetition.name}}</li>
-      <li class="collection-item">Device: {{test_run.dut_name}}</li>
-      <li class="collection-item">App: {{test_run.app_name}}</li>
+      <li class="collection-item">
+        <strong>Benchmark Type:</strong> {{benchmark_type}}
+      </li>
+      <li class="collection-item">
+        <strong>Subject:</strong> {{subject_name}}
+      </li>
+      {% for key, value in metadata.items() %}
+        <li class="collection-item"><strong>{{key}}:</strong> {{value}}</li>
+      {% endfor %}
     </ul>
 
     <!-- Results Section -->
@@ -22,7 +30,7 @@
 
     <!-- Overview Histograms -->
     <div class="row">
-      {% for mid, id_measurements in measurements.IterByID() %}
+      {% for mid, id_measurements in measurement_list.IterByMeasurementID() %}
         {{ plotcard(id = "histogram",
                     src = "%s/%s_histogram" % (data_dir, mid),
                     title = mid,
@@ -30,7 +38,6 @@
                     centered = True) }}
       {% endfor %}
     </div>
-
     <!-- Overview Trace -->
     <div class="row">
       {{ plotcard(id = "trace",
@@ -47,9 +54,9 @@
       <div class="row">
         <div class="col s12">
           <ul class="tabs z-depth-1">
-            {% for pass in passes %}
+            {% for pass_num in passes %}
               <li class="tab col">
-                <a href="#pass_{{pass}}">Pass {{pass}}</a>
+                <a href="#pass_{{pass_num}}">Pass {{pass_num}}</a>
               </li>
             {% endfor %}
           </ul>
@@ -59,7 +66,7 @@
   </div>
 
   <!-- For each pass -->
-  {% for pass, pass_measurements in measurements.IterByPass() %}
+  {% for pass, pass_measurements in measurement_list.IterByPass() %}
     {% set pass_path = "%s/pass_%d" % (data_dir, pass) %}
 
     <div id="pass_{{pass}}">
@@ -68,7 +75,7 @@
         <div class="row">
           <!-- Optional Pass Histograms -->
           {% if passes|count > 1 %}
-            {% for mid, id_measurements in pass_measurements.IterByID() %}
+            {% for mid, id_measurements in pass_measurements.IterByMeasurementID() %}
               {{ plotcard(id = "histogram",
                           src = "%s_%s_histogram" % (pass_path, mid),
                           title = mid,
@@ -104,8 +111,6 @@
 
         <tbody>
           {% for msrmnt in pass_measurements %}
-            {% set msrmnt_name = "%s_%s" % (msrmnt.measurement_id,
-                                            msrmnt.measurement_number) %}
             <tr>
               <!-- Heading -->
               <th>#{{msrmnt.measurement_number}}: {{msrmnt.measurement_id}}</th>
@@ -121,8 +126,8 @@
                     <div class="card-table">
                       <table>
                         <tr>
-                          <td><strong>&delta;T =</strong> {{delta | as_ms}}</td>
-                          <td><strong>T =</strong> {{time | as_ms}}</td>
+                          <td><strong>&delta;T =</strong> {{delta | FormatTime}}</td>
+                          <td><strong>T =</strong> {{time | FormatTime}}</td>
                           <td><strong>Type =</strong> {{type}}</td>
                         </tr>
                       </table>
@@ -132,28 +137,30 @@
               {% endmacro %}
 
               <!-- Input Event -->
-              {{ detail("%s_%s_input" % (pass_path, msrmnt_name),
+              {{ detail("%s/%d_input" % (data_dir, msrmnt.measurement_number),
                         msrmnt.input_event.time,
                         0,
-                        msrmnt.input_event.type_name) }}
+                        msrmnt.input_event.EVENT_TYPE_NAME) }}
 
               <!-- Optional Output Start Draw Event -->
               {% if msrmnt.output_event.start_time %}
-              {{ detail("%s_%s_output_start" % (pass_path, msrmnt_name),
+              {{ detail("%s/%d_output_start" % (data_dir, msrmnt.measurement_number),
                         msrmnt.output_event.start_time,
                         msrmnt.output_event.start_time - msrmnt.input_event.time,
-                        msrmnt.output_event.type_name) }}
+                        msrmnt.output_event.EVENT_TYPE_NAME) }}
               {% endif %}
 
               <!-- Output Event -->
-              {{ detail("%s_%s_output" % (pass_path, msrmnt_name),
+              {{ detail("%s/%d_output" % (data_dir, msrmnt.measurement_number),
                         msrmnt.output_event.time,
                         msrmnt.output_event.time - msrmnt.input_event.time,
-                        msrmnt.output_event.type_name) }}
+                        msrmnt.output_event.EVENT_TYPE_NAME) }}
+
             </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   {% endfor %}
+
 {% endblock %}
