@@ -1,23 +1,16 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""Classes to manage and operate multiple OptoFidelity robots.
+"""Classes to operate touch devices on the Optofidelity robot.
 
-The classes in this module build a tree with a root of OptofidelityTestSystem,
-which contains DeviceUnderTests. Whereas each DeviceUnderTest contains
-multiple TestApps and a TestApp can have multiple pages.
+This package is responsible to navigate devices via the Optofidelity robot,
+perform gestures on them and record these interactions using a high speed
+camera.
 
-During the calibration phase, the robot will automatically detect how to access
-all those apps and pages, and access the high speed camera to calibrate the
-screen location in the camera space. All this calibration data can then be
-stored and read from a file to skip the lengthy calibration process.
+The main entry point for this package is the BenchmarkSystem class, and a list
+of BenchmarkSubject objects. Each subject has a reference to a HighSpeedCamera
+object to allow the recording of interactions.
 """
-from optofidelity.system.util import DUTException
-from optofidelity.system.system import OptofidelityTestSystem
-from optofidelity.system.calibration import CameraCalibration
-from optofidelity.system.app import TestApp, ClankTestApp
-from optofidelity.system.dut import DeviceUnderTest, AndroidDUT, CalibrationDUT
-from optofidelity.system.mock import MockTestSystem
-
-OptofidelityTestSystem.RegisterDUTClass(AndroidDUT)
-OptofidelityTestSystem.RegisterAppClass(ClankTestApp)
+from .system import BenchmarkSystem
+from .subject import BenchmarkSubject
+from .camera import HighSpeedCamera

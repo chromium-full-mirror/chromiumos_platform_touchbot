@@ -1,115 +1,185 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from contracts import contract
+"""Implementation of the BenchmarkSystem class."""
 
 import cPickle as pickle
 import re
 import xml.etree.ElementTree as ElementTree
 
-from optofidelity.phantom import Phantom
-from optofidelity.system.dut import CalibrationDUT
-from optofidelity.tnt.TnTClient import TnTClient
+from safetynet import TypecheckMeta
 
-class OptofidelityTestSystem(object):
+from ._fake_backend import FakeHighSpeedCamera, FakeRobotBackend
+from ._phantom import PhantomCamera
+from ._tnt_backend import TnTRobotBackend
+from .subject import BenchmarkSubject
+
+
+class BenchmarkSystem(object):
   """Robot system which manages multiple DUTs.
 
-  The system is setup using ReadConfig, followed by either a call to
-  Calibrate to run the calibration process, or LoadCalibration to load
-  calibration data previously saved using SaveCalibration.
-
-  After the calibration you can access devices by name and execute commands on
-  them such as:
-    >>> system["Nexus7"].Reset()
-    >>> system["Nexus7"].EnterApp("Clank")
+  This provides the following properties:
+    subjects: A dictionary mapping subject names to BenchmarkSubject instances.
+    camera: A HighSpeedCamera instance
+    led_calibration_subject: A BenchmarkSubject for the LED calibration plate.
   """
-  dut_classes = {}
-  app_classes = {}
-  is_mock = False
+  __metaclass__ = TypecheckMeta
 
-  def __init__(self, config_file):
-    self.duts = {}
-    self.tnt = None
+  def __init__(self, config_file, fake_backend=False):
+    """Creates new system from configuration file:
+
+    The configuration file should look like this:
+
+    <optofidelity>
+      <robot host="192.168.0.5" />
+      <camera host="192.168.0.4" />
+
+      <led-calibration-subject backend-name="calibration" />
+
+      <subject-type type-name="clank_tablet" name="clank" margin="(100, 0)" />
+      <subject-type type-name="clank_phone" name="clank" margin="(0, 50)" />
+
+      <dut name="some_phone" backend-name="tnt_id">
+        <subject type="clank_phone" />
+      </dut>
+
+      <dut name="some_tablet">
+        <subject type="clank_tablet" />
+      </dut>
+
+    </optofidelity>
+
+    Explanation of tags in configuration file:
+
+    <robot host="" port="" />
+    Defines the host/port of the machine running the Optofidelity server.
+
+    <camera host="" port="" />
+    Defines the host/port of the phantom high speed camera.
+
+    <led-calibration-subject backend-name="" />
+    Defines a subject for the LED calibration plate.
+
+    <subject-type type-name="" * />
+    Defines a type of subject to reduce duplicate configuration values. All
+    attributes from this element are copied to the <subject> elements that
+    specify using this type.
+
+    <subject type="" name="" margin=(top, bottom)" icon="" />
+    Defines a test subject:
+      type: Optional. Name of <subject-type> element to copy attributes from.
+      name: Descriptional name of this subject.
+      margin: Margin at top and bottom of the screen to account for potential
+              UI bars obstructing the testable area.
+      icon: Path to icon file that descibes this apps icon.
+
+    <dut name="" backend-name="" />
+    Defines a device under test and can contain any number of <subject>s.
+      name: Descriptional name..
+      backend-name: Name of the device in the backend (on the Optofidelity
+                    robot).
+
+    :param str config_file: Path to configuration file.
+    :param bool fake_backend: Use fake backend for robot and camera for testing.
+    """
+    self.subjects = {}
     self.camera = None
-    self.led_calibration = None
-    self.calibration_dut = None
-    self.ReadConfig(config_file)
+    self.led_calibration_subject = None
 
-  @classmethod
-  @contract(dut_class=type)
-  def RegisterDUTClass(cls, dut_class):
-    cls.dut_classes[dut_class.type_name] = dut_class
+    self._backend = None
+    self._ReadConfig(config_file, fake_backend)
 
-  @classmethod
-  @contract(app_class=type)
-  def RegisterAppClass(cls, app_class):
-    cls.app_classes[app_class.name] = app_class
+  def SaveState(self, state_file):
+    """Save current state to file.
 
-  def __getitem__(self, key):
-    if isinstance(key, int):
-      return self.duts.values().__getitem__(key)
-    else:
-      return self.duts.__getitem__(key)
+    This mostly includes locations of buttons and icons on devices.
+    :param str state_file: File to save into.
+    """
+    subject_states = {k: s.state for k, s in self.subjects.items()}
+    state = {"subjects": subject_states}
+    pickle.dump(state, open(state_file, "w"), protocol=-1)
 
-  def SaveState(self, filename):
-    pickle.dump(self, open(filename, "w"), protocol=-1)
+  def LoadState(self, state_file):
+    """Load state from file.
 
-  @staticmethod
-  def LoadState(filename):
-    return pickle.load(open(filename, "r"))
+    This mostly includes locations of buttons and icons on devices.
+    :param str state_file: File to load from.
+    """
+    state = pickle.load(open(state_file, "r"))
+    subject_states = state["subjects"]
+    for key, subject in self.subjects.items():
+      state = subject_states.get(key, None)
+      if state:
+        subject.state = state
 
-  def ReadConfig(self, config_file):
-    """Read robot configuration from file."""
+  def Reset(self):
+    """Reset system.
+
+    Moves the robot to it's home location and closes any potentially still
+    open subjects.
+    """
+    self._backend.Reset()
+
+  def Cleanup(self):
+    """Cleanup after any subjects that might still be open.
+
+    This method should be called any time the program exits unexpectedly.
+    It will try to get all devices back into a neutral state.
+    """
+    for subject in self.subjects.values():
+      subject.Cleanup()
+
+  def _ReadConfig(self, config_file, fake_backend):
     root = ElementTree.parse(config_file).getroot()
 
-    def ParseCoord(element, attrib_name, default=None):
-      if attrib_name in element.attrib:
-        string = element.attrib[attrib_name]
-        match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
-        return int(match.group(1)), int(match.group(2))
-      return default
-
-    def ParseFlip(element):
-      orientation = element.get("orientation", "right")
-      if orientation == "right":
-        return False
-      elif orientation == "left":
-        return True
-      raise Exception("Orientation must be left or right")
-
-    app_variants = {}
-    for name, cls in self.app_classes.iteritems():
-      app_variants[name] = (cls, None)
-    for variant_elem in root.iter("app-variant"):
-      name = variant_elem.attrib["name"]
-      cls = self.app_classes[variant_elem.attrib["type"]]
-      margin = ParseCoord(variant_elem, "margin")
-      app_variants[name] = (cls, margin)
+    subject_types = {}
+    for type_elem in root.iter("subject-type"):
+      type_name = type_elem.attrib["type-name"]
+      subject_types[type_name] = type_elem.attrib
 
     robot = root.find("robot")
-    self.tnt = TnTClient(robot.attrib["host"], robot.attrib["port"])
-
     camera = root.find("camera")
-    self.camera = Phantom(camera.attrib["host"])
+    if fake_backend:
+      self._backend = FakeRobotBackend()
+      self.camera = FakeHighSpeedCamera()
+    else:
+      self._backend = TnTRobotBackend(robot.attrib["host"],
+                                      robot.attrib.get("port", None))
+      self.camera = PhantomCamera(camera.attrib["host"],
+                                  camera.attrib.get("port", None))
 
-    calib_elem = root.find("calibration-device")
+    calib_elem = root.find("led-calibration-subject")
     if calib_elem is not None:
-      tnt_name = calib_elem.get("tnt_name", "calibration")
-      self.calibration_dut = CalibrationDUT(self.tnt.dut(tnt_name), name, False)
+      backend_name = calib_elem.get("backend-name", "calibration")
+      backend = self._backend.GetDUTBackend(backend_name)
+      subject = BenchmarkSubject("calibration", "calibration", backend,
+                                 self.camera, {})
+      self.led_calibration_subject = subject
 
     for dut_elem in root.iter("dut"):
-      name = dut_elem.attrib["name"]
-      dut_type = self.dut_classes[dut_elem.attrib["type"]]
-      tnt_name = dut_elem.get("tnt_name", name)
-      flip = ParseFlip(dut_elem)
-      dut = dut_type(self.tnt.dut(tnt_name), name, flip)
+      self._ReadDUTConfig(dut_elem, subject_types)
 
-      for app_elem in dut_elem.iter("app"):
-        (app_type, predef_margin) = app_variants[app_elem.attrib["type"]]
-        margin = ParseCoord(app_elem, "margin", predef_margin)
-        app = app_type(dut)
-        if margin:
-          app.ApplyMargin(margin)
-        dut.RegisterApp(app)
+  def _ReadDUTConfig(self, dut_elem, subject_types):
+    def ParseCoord(string, default=None):
+      if string:
+        match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
+        return float(match.group(1)), float(match.group(2))
+      return default
 
-      self.duts[dut.name] = dut
+    dut_name = dut_elem.attrib["name"]
+    tnt_name = dut_elem.get("backend-name", dut_name)
+    dut_backend = self._backend.GetDUTBackend(tnt_name)
+
+    for subject_elem in dut_elem.iter("subject"):
+      type_name = subject_elem.attrib.get("type", None)
+      attribs = {}
+      if type_name in subject_types:
+        attribs.update(subject_types[type_name])
+      attribs.update(subject_elem.attrib)
+
+      subject_name = attribs["name"]
+      margin = ParseCoord(attribs.get("margin", None), (0, 0))
+      config = dict(margin=margin, icon=attribs.get("icon", None))
+      subject = BenchmarkSubject(dut_name, subject_name, dut_backend,
+                                 self.camera, config)
+      self.subjects[subject.name] = subject

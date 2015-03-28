@@ -1,0 +1,50 @@
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""Unit tests for Phantom camera using a live connection to the camera."""
+
+import unittest2
+
+from optofidelity.system._phantom import PhantomCamera
+
+
+class PhantomTests(unittest2.TestCase):
+  CAMERA_IP = None
+  CAMERA_PORT = 7115
+
+  skip_if_offline = unittest2.skipIf(CAMERA_IP is None,
+      "This test requires CAMERA_IP to be set.")
+
+  @skip_if_offline
+  def test_recording(self):
+    camera = PhantomCamera(self.CAMERA_IP, self.CAMERA_PORT, 300)
+    camera.Prepare(1000, 100)
+    camera.Trigger()
+    video = camera.ReceiveVideo()
+    self.assertEqual(video.num_frames, 100)
+    self.assertEqual(video.fps, 100)
+
+    print "Please verify that the recorded video is correct"
+    video.DebugView()
+
+  @skip_if_offline
+  def test_state_checking(self):
+    camera = PhantomCamera(self.CAMERA_IP, self.CAMERA_PORT, 300)
+    self.assertRaises(Exception, lambda: camera.Trigger())
+    self.assertRaises(Exception, lambda: camera.ReceiveVideo())
+
+    # Too many frames
+    self.assertRaises(Exception, lambda: camera.Prepare(10000))
+
+    # Can't receive video without triggering
+    camera.Prepare(1000)
+    self.assertRaises(Exception, lambda: camera.ReceiveVideo())
+
+    # Can trigger multiple times or prepare multiple times
+    camera.Trigger()
+    camera.Trigger()
+    camera.Prepare(1000)
+    camera.Prepare(1000)
+
+    # Still can't receive video before trigger.
+    self.assertRaises(Exception, lambda: camera.ReceiveVideo())

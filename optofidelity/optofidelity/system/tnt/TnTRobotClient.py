@@ -25,9 +25,6 @@ from collections import namedtuple
 import TnTClient
 from TnTClient import TnTClientObject
 from TnTClient import Request
-from TnTEffectorClient import TnTEffectorClient
-from TnTRackClient import TnTRackClient
-from TnTFingerClient import TnTFingerClient
 
 class TnTRobotClient(TnTClientObject):
     """

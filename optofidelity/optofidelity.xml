@@ -1,36 +1,38 @@
 <optofidelity>
-  <robot host="192.168.0.5" port="8000" />
+  <robot host="192.168.0.11" port="8000" />
   <camera host="192.168.0.4" />
 
   <calibration-device tnt_name="calibration" />
 
-  <app-variant name="clank_tablet" type="clank" margin="(30, 15)" />
-  <app-variant name="clank_phone" type="clank" margin="(20, 15)" />
+  <subject-type type-name="clank_tablet" name="clank" margin="(30, 15)"
+                icon="icons/clank_tests.shm" />
+  <subject-type type-name="clank_phone" name="clank" margin="(20, 15)"
+                icon="icons/clank_tests.shm" />
 
   <!-- Right column on robot tray -->
-  <dut name="nexus5" type="android" orientation="left">
-    <app type="clank_phone" />
+  <dut name="nexus5" orientation="left">
+    <subject type="clank_phone" />
   </dut>
 
   <dut name="tinno" type="android" orientation="left">
-    <app type="clank_phone" />
+    <subject type="clank_phone" />
   </dut>
 
   <!-- Left column on robot tray -->
   <dut name="nexus9" type="android" orientation="right">
-    <app type="clank_tablet" />
+    <subject type="clank_tablet" />
   </dut>
 
   <dut name="nexus7" type="android" orientation="right">
-    <app type="clank_tablet" />
+    <subject type="clank_tablet" />
   </dut>
 
   <dut name="nexus4" type="android" orientation="right">
-    <app type="clank_phone" />
+    <subject type="clank_phone" />
   </dut>
 
   <dut name="longcheer" type="android" orientation="right">
-    <app type="clank_phone" />
+    <subject type="clank_phone" />
   </dut>
 
 </optofidelity>

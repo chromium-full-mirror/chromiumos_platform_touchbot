@@ -102,7 +102,7 @@ class TnTDUTClient(TnTClientObject):
         else:
             k = delta_y / delta_x
             radians = math.atan2(delta_y, delta_x)
-            if delta_x < 0 and delta_y > 0:
+            if delta_x < 0 < delta_y:
                 angle = (360 + 90) - math.degrees(radians)
             else:
                 angle = 90 - math.degrees(radians)
