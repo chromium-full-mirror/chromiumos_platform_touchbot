@@ -1,164 +1,119 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from contracts import contract, new_contract
 import numpy as np
+
+from optofidelity.util import const_property
 import scipy.signal as signal
 
-
-class Event(object):
-  """Describes an event detected in the camera stream."""
-  type_name = None
-
-  STATE_ON = True
-  STATE_OFF = False
-  STATE_WHITE = False
-  STATE_BLACK = True
-
-  @contract(time=int, location="number|None", start_time="int|None",
-            state="bool|None")
-  def __init__(self, time, location=None, start_time=None, state=None):
-    self.time = time
-    self.location = float(location) if location is not None else None
-    self.start_time = start_time
-    self.state = state
-
-  def __repr__(self):
-    optional = []
-    if self.location is not None:
-      optional.append("location=%.1f" % self.location)
-    if self.start_time is not None:
-      optional.append("start_time=%d" % self.start_time)
-    if self.state is not None:
-      optional.append("state=On" if self.state else "state=Off")
-
-    optional_str = ""
-    if optional:
-      optional_str = " (%s)" % (", ".join(optional))
-    return "%d\t%s\t%s" % (self.time, self.type_name, optional_str)
-new_contract('Event', Event)
+from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
+                     ScreenDrawEvent)
 
 
-class LineDrawEvent(Event):
-  type_name = "LineDraw"
-
-  @contract(time=int, location="number|None", start_time=int)
-  def __init__(self, time, location, start_time):
-    Event.__init__(self, time, location, start_time)
-
-
-class FingerEvent(Event):
-  type_name = "Finger"
-
-  @contract(time=int, location="number")
-  def __init__(self, time, location):
-    Event.__init__(self, time, location)
-
-
-class ScreenDrawEvent(Event):
-  type_name = "ScreenDraw"
-
-  @contract(time=int, start_time=int, state=bool)
-  def __init__(self, time, start_time, state):
-    Event.__init__(self, time, None, start_time, state)
-
-
-class LEDEvent(Event):
-  type_name = "LED"
-
-  @contract(time=int, state=bool)
-  def __init__(self, time, state):
-    Event.__init__(self, time, None, None, state)
-
-
-class Trace(object):
+class Trace(list):
   """Contains a list of events ordered by time.
 
   Allows the trace to be modified or information to be extracted from it.
   It exposes multiple time-series arrays plotting events over time.
-
-  finger: finger location
-  finger_speed: low pass filtered first derivative of finger location
-  line_draw_start: Location of start of line draws
-  line_draw_end: Location of end of line draws
-  screen_draw_start: Step function that switches to 1 when the screen starts
-                     switching to black, and back to 0 when it starts switching
-                     to white.
-  screen_draw_end: Step function that switches to 1 when the screen finished
-                   switching to black, and back to 0 when it finished switching
-                   to white.
-  led: Step function that increases by 1 with every LED that turns on, and
-       decreases with every LED that turns off.
   """
 
-  speed_smoothing_kernel = 8
+  SPEED_SMOOTHING_KERNEL = 8
   """Kernel size for smoothing the movement in linear motion detection."""
 
-  linear_motion_max_speed_deviation = 0.2
+  LINEAR_MOTION_MAX_SPEED_DEVIATION = 0.2
   """How much can the speed deviate from the target speed to be considered
      part of the linear motion area."""
 
-  @contract(events="list(Event)")
-  def __init__(self, events):
-    """Create a new trace from a list of events.
-
-    The list of events is expected to be sorted by time.
-    """
-    self._events = events
-
-    if events:
-      self.start_time = self._events[0].start_time or self._events[0].time
-      self.end_time = self._events[-1].time
-
-      self.finger = self._TimeSeries(FingerEvent, interpolate=True)
-      self.finger_speed = self._CalculateSpeed(self.finger)
-      self.line_draw_start = self._TimeSeries(LineDrawEvent, True)
-      self.line_draw_end = self._TimeSeries(LineDrawEvent, False)
-      self.screen_draw_start = self._TimeSeries(ScreenDrawEvent, True)
-      self.screen_draw_end = self._TimeSeries(ScreenDrawEvent, False)
-      self.led = self._TimeSeries(LEDEvent)
-
   def __str__(self):
-    return "\n".join([str(e) for e in self._events])
+    return "\n".join([str(e) for e in self])
 
   def __repr__(self):
     return str(self)
 
-  @property
-  def begin(self):
-    return self._events[0].time
+  @const_property
+  def start_time(self):
+    """:returns int: start time of first event."""
+    return self[0].start_time or self[0].time
 
-  @property
-  def end(self):
-    return self._events[-1].time
+  @const_property
+  def end_time(self):
+    """:returns int: end time of last event."""
+    return self[-1].time
+
+  @const_property
+  def finger(self):
+    """:returns np.ndarray: time-series array of the finger location."""
+    return self._TimeSeries(FingerEvent, interpolate=True)
+
+  @const_property
+  def finger_speed(self):
+    """:returns np.ndarray: time-series array of finger speed."""
+    return self._CalculateSpeed(self.finger)
+
+  @const_property
+  def line_draw_start(self):
+    """:returns np.ndarray: time-series array of where line draws start."""
+    return self._TimeSeries(LineDrawEvent, True)
+
+  @const_property
+  def line_draw_end(self):
+    """:returns np.ndarray: time-series array of where line draws end."""
+    return self._TimeSeries(LineDrawEvent, False)
+
+  @const_property
+  def screen_draw_start(self):
+    """:returns np.ndarray: binary time-series of when screen draws start."""
+    return self._TimeSeries(ScreenDrawEvent, True)
+
+  @const_property
+  def screen_draw_end(self):
+    """:returns np.ndarray: binary time-series of when screen draws end."""
+    return self._TimeSeries(ScreenDrawEvent, False)
+
+  @const_property
+  def led(self):
+    """:returns np.ndarray: time-series of how many LEDs are on at any given
+                time."""
+    return self._TimeSeries(LEDEvent)
 
   def RequireEventTypes(self, *event_types):
-    """Raise an exception if any of the event types is not present."""
+    """Raise an exception if any of the event types is not present.
+
+    :param List[type] event_types
+    """
     for event_type in event_types:
-      if len(self.Events(event_type)) == 0:
+      if len(self.FilteredByType(event_type)) == 0:
         raise Exception("Trace does not show the events of type " + event_type)
 
   def HasEventTypes(self, *event_types):
-    """Return True only if all event types are present."""
+    """Return True only if all event types are present.
+
+    :param List[type] event_types
+    :returns bool
+    """
     for event_type in event_types:
-      if len(self.Events(event_type)) == 0:
+      if len(self.FilteredByType(event_type)) == 0:
         return False
     return True
 
-  @contract(start=int, end=int)
   def Trimmed(self, start, end):
-    """Return a copy of the trace trimmed by start and end time."""
-    return Trace([e for e in self._events if e.time >= start and e.time < end])
+    """Return a copy of the trace trimmed by start and end time.
 
-  @contract(event_type=type, time=">=0", where=str)
+    :param int start: start time of trim
+    :param int end: end time of trim.
+    :returns Trace
+    """
+    return Trace([e for e in self if start <= e.time < end])
+
   def Find(self, event_type, time, where="closest"):
     """Find first event of event_type around time.
 
-    'where' can be either before, closest or after to determine in which
-    direction should be searched.
+    :param type event_type: event type to find.
+    :param int time: target time around which to search.
+    :param str where: either "closest", "before" or "after".
     """
     prev_event = None
-    for event in self.Events(event_type):
+    for event in self.FilteredByType(event_type):
       if event.time == time:
         return event
       elif event.time > time:
@@ -176,23 +131,30 @@ class Trace(object):
         elif where == "after":
           return event
       prev_event = event
+    if where == "before":
+      return prev_event
     return None
 
-  @contract(event_type=type, target_state=bool)
   def FindStateSwitch(self, event_type, target_state):
-    """Return first event at which event_type switches to target_state."""
-    for event in self.Events(event_type):
+    """Return first event at which event_type switches to target_state.
+
+    :param type event_type: Event type to find.
+    :param bool target_state: Target state to find.
+    """
+    for event in self.FilteredByType(event_type):
       if event.state == target_state:
         return event
     return None
 
-  def FindFingerCrossing(self, target_event, offset=0):
-    """Return time at which the finger crossed the location of target_event."""
-    target_time = target_event.time
+  def FindFingerCrossing(self, target_location, target_time):
+    """Return time at which the finger crossed the location of target_event.
 
+    :param float target_location: location which the finger should cross
+    :param int target_time: time at which to start searching.
+    """
     # Shift finger location to be zero at the target location and positive
     # at the target time.
-    shifted = self.finger - target_event.location - offset
+    shifted = self.finger - target_location
     if shifted[target_time] < 0:
       shifted *= -1
 
@@ -201,16 +163,16 @@ class Trace(object):
       left = target_time - i
       right = target_time + i
       if left > 0 and left < len(shifted) and shifted[left] <= 0:
-        return FingerEvent(int(left), target_event.location)
+        return FingerEvent(int(left), target_location)
       if right > 0 and right < len(shifted) and shifted[right] <= 0:
-        return FingerEvent(int(right), target_event.location)
+        return FingerEvent(int(right), target_location)
 
     return None
 
   def SegmentedByLineReset(self):
     """Segment into multiple traces separated by line reset events."""
     events = []
-    for event in self._events:
+    for event in self:
       if isinstance(event, LineDrawEvent) and event.location is None:
         if events:
           yield Trace(events)
@@ -223,7 +185,7 @@ class Trace(object):
   def SegmentedByLED(self):
     """Segment into traces starting with each LED on event."""
     events = None
-    for event in self._events:
+    for event in self:
       if isinstance(event, LEDEvent) and event.state == Event.STATE_ON:
         if events:
           yield Trace(events)
@@ -233,25 +195,26 @@ class Trace(object):
     if events:
       yield Trace(events)
 
-  def Events(self, event_type=None):
-    """Return list of events of event_type."""
-    if event_type is None:
-      return self._events
-    else:
-      return [e for e in self._events if isinstance(e, event_type)]
+  def FilteredByType(self, event_type):
+    """
+    :param type event_type
+    :returns Trace: filtered to only include events of event_type.
+    """
+    return Trace([e for e in self if isinstance(e, event_type)])
 
   def FindLinearFingerMotion(self):
     """Return (start, end) event of range in which event shows linear motion.
 
-    Searches for the fastest motion of event_type and returns a (start, end)
+    Searches for the fastest motion of the finger and returns a (start, end)
     tuple of events indicating the range in which this motion is linear
     at this speed.
+    :returns Tuple[Event, Event]
     """
     # Allow 20% variation of the maximum speed in linear range.
     speed = self.finger_speed
     speed[np.isnan(speed)] = 0
     max_speed_idx = np.argmax(speed)
-    min_speed_factor = (1 - self.linear_motion_max_speed_deviation)
+    min_speed_factor = (1 - self.LINEAR_MOTION_MAX_SPEED_DEVIATION)
     min_speed = self.finger_speed[max_speed_idx] * min_speed_factor
 
     # Find area in which the robot continuously has this speed.
@@ -271,6 +234,7 @@ class Trace(object):
     """Return (start, end) event of range in which event shows no motion.
 
     The stationary range has to be enclosed between motion.
+    :returns Tuple[Event, Event]
     """
     moved = False
     start = None
@@ -289,7 +253,6 @@ class Trace(object):
       raise Exception("Cannot find static motion range")
     return self.Find(FingerEvent, start), self.Find(FingerEvent, end)
 
-  @contract(event_type=type, start_time=bool, interpolate=bool)
   def _TimeSeries(self, event_type, start_time=False, interpolate=False):
     """Turn list of events into a time series plot of this event.
 
@@ -297,9 +260,10 @@ class Trace(object):
     state-based events will be plotted as a step function, increasing by
     one for each positive state and decreasing for each negative state.
 
-    start_time: Use events start time in plot instead of time.
-    interpolate: Use linear interpolation between events instead of a step
-                 function.
+    :param type event_type: event type to turn into a time series
+    :param bool start_time: Use events start time in plot instead of time.
+    :param bool interpolate: Use linear interpolation between events instead of
+           a step function.
     """
     if event_type in (FingerEvent, LineDrawEvent):
       current_value = np.nan
@@ -312,7 +276,7 @@ class Trace(object):
     array[:] = current_value
     last_time = 0
 
-    for event in self.Events(event_type):
+    for event in self.FilteredByType(event_type):
       time = event.time
       if start_time and event.start_time is not None:
         time = event.start_time
@@ -338,11 +302,14 @@ class Trace(object):
     array[last_time:] = current_value
     return array
 
-  @contract(time_series="array[N](float),N>0")
   def _CalculateSpeed(self, time_series):
-    """Calculate a low pass filtered derivative of the time series."""
+    """Calculate a low pass filtered derivative of the time series.
+
+    :param np.ndarray time_series
+    :returns np.ndarray
+    """
     # Calculated smoothed first derivative
-    smoothing_kernel = self.speed_smoothing_kernel
+    smoothing_kernel = self.SPEED_SMOOTHING_KERNEL
     def LowPass(f, N=smoothing_kernel):
       return signal.convolve(f, np.ones(N,) / N, "valid")
 

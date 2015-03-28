@@ -1,19 +1,22 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-"""Classes for detecting objects in video streams of the OptoFidelity robot.
+"""Video processing module to detect events in video streams.
 
-The basis for this package is the Detector class from which multiple detectors
-derive. Each detector's  purpose is to process video frames and extract Events
-which are consolidated in a Trace class.
+This package is responsible for doing multithreaded processing of videos
+to detect events such as screen draws, flashing LEDs and robot finger movement
+in the video stream.
 
-These traces can then later be processed to calculate latencies.
+The VideoProcessor class is responsible for the processing and a multithreaded
+or singlethreaded variant is created using CreateVideoProcessor.
+
+You will have to pass it a ScreenCalibration instance which describes the
+location of the screen of the DUT.
+
+The result of the video processing is a list of Event objects.
 """
-from optofidelity.detection.finger import FingerMove, LEDDetector
-from optofidelity.detection.detector import Frame, Video
-from optofidelity.detection.line import Line
-from optofidelity.detection.screen import ScreenFlash
-from optofidelity.detection.trace import (Trace, Event, FingerEvent,
-                                          LineDrawEvent, ScreenDrawEvent,
-                                          LEDEvent)
-from optofidelity.detection.processor import VideoProcessor, ProcessorDebugger
+from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
+                     ScreenDrawEvent)
+from .processor import CreateVideoProcessor, VideoProcessor
+from .screen_calibration import ScreenCalibration
+from .trace import Trace

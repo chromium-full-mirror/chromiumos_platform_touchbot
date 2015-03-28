@@ -1,7 +1,6 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import cPickle as pickle
 import numpy as np
 import os
 import unittest
@@ -23,7 +22,7 @@ class TraceBuilder(object):
     np.random.seed(seed)
     self.events = []
     self.time = 0
-    self.noise = lambda: np.random.normal(0, sigma) if sigma > 0 else 0
+    self.noise = lambda: np.random.normal(0, sigma) if sigma > 0 else 0.0
 
   @property
   def trace(self):
@@ -39,6 +38,7 @@ class TraceBuilder(object):
                                        start_time = self.time - 5))
 
   def AddFingerStationary(self, location, samples):
+    location = float(location)
     for i in range(samples):
       self.time += int(1.0 / self.report_rate)
       self.events.append(FingerEvent(self.time, location + self.noise()))
@@ -46,13 +46,13 @@ class TraceBuilder(object):
   def AddFingerTransition(self, start, end, samples):
     for i in range(samples):
       self.time += int(1.0 / self.report_rate)
-      location = start + (end - start) * i / (samples - 1)
+      location = float(start + (end - start) * i / (samples - 1))
       self.events.append(FingerEvent(self.time, location + self.noise()))
 
   def AddLineDraws(self, start, end, samples):
     for i in range(samples):
       self.time += int(1.0 / self.report_rate)
-      location = start + (end - start) * i / (samples - 1)
+      location = float(start + (end - start) * i / (samples - 1))
       self.events.append(LineDrawEvent(self.time, location + self.noise(),
                                        start_time = self.time - 5))
 
@@ -64,8 +64,6 @@ class TraceBuilder(object):
 def event_time(i):
   """Returns time of event number i."""
   return (i + 1) / TraceBuilder.report_rate
-
-
 
 
 class TraceTests(unittest.TestCase):
@@ -170,9 +168,9 @@ class TraceTests(unittest.TestCase):
 
   def test_finger_interpolation(self):
     events = [
-      FingerEvent(1, 100),
-      FingerEvent(5, 200),
-      FingerEvent(7, 300),
+      FingerEvent(1, 100.0),
+      FingerEvent(5, 200.0),
+      FingerEvent(7, 300.0),
     ]
 
     # Expected time series
@@ -183,10 +181,10 @@ class TraceTests(unittest.TestCase):
 
   def test_line_draw_steps(self):
     events = [
-      LineDrawEvent(2, 100, start_time=1),
-      LineDrawEvent(4, 200, start_time=3),
+      LineDrawEvent(2, 100.0, start_time=1),
+      LineDrawEvent(4, 200.0, start_time=3),
       LineDrawEvent(6, None, start_time=5),
-      LineDrawEvent(8, 300, start_time=7),
+      LineDrawEvent(8, 300.0, start_time=7),
     ]
     trace = Trace(events)
 
@@ -264,9 +262,9 @@ class TraceTests(unittest.TestCase):
 
   def test_find(self):
     trace = self.FingerMotionTrace(0, 0)
-    prev_event = trace._events[0]
-    target_event = trace._events[1]
-    next_event = trace._events[2]
+    prev_event = trace[0]
+    target_event = trace[1]
+    next_event = trace[2]
     target_time = target_event.time
 
     def assert_correct_find(time, algorithm, target):
@@ -317,8 +315,7 @@ class TraceTests(unittest.TestCase):
 
     # Find finger crossing on first transition (time 100-300)
     for location in range(0, 200, 5):
-      target_event = Event(200, location=location)
-      finger_event = trace.FindFingerCrossing(target_event)
+      finger_event = trace.FindFingerCrossing(float(location), 200)
       finger_time = finger_event.time
 
       # check if detected time is during first transition
@@ -329,8 +326,7 @@ class TraceTests(unittest.TestCase):
 
     # Find finger crossing on second transition (time 400-600)
     for location in range(0, 200, 5):
-      target_event = Event(500, location=location)
-      finger_event = trace.FindFingerCrossing(target_event)
+      finger_event = trace.FindFingerCrossing(float(location), 500)
       finger_time = finger_event.time
 
       # check if detected time is during second transition
@@ -338,14 +334,3 @@ class TraceTests(unittest.TestCase):
 
       # check if the location at that time is close to the target location
       self.assertLess(np.abs(trace.finger[finger_time] - location), 2.0)
-
-  def test_finger_linear_motion_real_data(self):
-    filename = os.path.join(script_dir, "trace_tests_linedraw.pickle")
-    trace = pickle.load(open(filename))
-
-    start, end = trace.FindLinearFingerMotion()
-    self.assertLess(np.abs(start.time - 528), 10)
-    self.assertLess(np.abs(end.time - 659), 10)
-
-if __name__ == "__main__":
-  unittest.main()
