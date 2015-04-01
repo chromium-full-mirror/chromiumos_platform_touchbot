@@ -53,7 +53,7 @@ def TemporaryFileWithData(data):
 
 class RobotTests(unittest2.TestCase):
 
-  def test_simple_config(self):
+  def testSimpleConfig(self):
     with TemporaryFileWithData(simple_config) as tempfile:
       system = BenchmarkSystem(tempfile.name, fake_backend=True)
 
@@ -69,7 +69,7 @@ class RobotTests(unittest2.TestCase):
       self.assertAlmostEqual(subject2.top, margin)
       self.assertAlmostEqual(subject2.bottom, height)
 
-  def test_subject_type_config(self):
+  def testSubjectTypeConfig(self):
     with TemporaryFileWithData(subject_type_config) as tempfile:
       system = BenchmarkSystem(tempfile.name, fake_backend=True)
 
@@ -89,7 +89,7 @@ class RobotTests(unittest2.TestCase):
       self.assertEqual(phone_subject._backend.name, "tnt_id")
       self.assertEqual(tablet_subject._backend.name, tablet_subject.dut_name)
 
-  def test_calibration_config(self):
+  def testCalibrationConfig(self):
     with TemporaryFileWithData(calibration_config) as tempfile:
       system = BenchmarkSystem(tempfile.name, fake_backend=True)
 
@@ -98,7 +98,7 @@ class RobotTests(unittest2.TestCase):
       self.assertEqual(system.led_calibration_subject._backend.name,
                        "backend_name")
 
-  def test_open_subject_reset(self):
+  def testOpenSubjectReset(self):
     with TemporaryFileWithData(simple_config) as tempfile:
       system = BenchmarkSystem(tempfile.name, fake_backend=True)
 
@@ -114,43 +114,7 @@ class RobotTests(unittest2.TestCase):
       self.assertFalse(subject._is_open)
       self.assertEqual(subject._current_page, None)
 
-  @patch.object(FakeDUTBackend, "DetectWords")
-  @patch.object(FakeDUTBackend, "DetectIcon")
-  def test_state_restoration(self, icon_mock, words_mock):
-    icon_mock.return_value = (1.0, 1.0)
-    words_mock.return_value = {"Tap": (1.0, 1.0)}
-
-    with TemporaryFileWithData(simple_config) as tempfile:
-      system = BenchmarkSystem(tempfile.name, fake_backend=True)
-
-      # Open subject and a page once to invoke detection.
-      subject = system.subjects["device1/clank"]
-      subject.Open(safe=False)
-      subject.OpenPage("Tap")
-      system.Cleanup()
-
-      # DetectIcon and DetectWords on the backend should have been called once.
-      self.assertEqual(icon_mock.call_count, 1)
-      self.assertEqual(words_mock.call_count, 1)
-      icon_mock.reset_mock()
-      words_mock.reset_mock()
-
-      # Save state, then re-create BenchmarkSystem
-      with NamedTemporaryFile() as state_tempfile:
-        system.SaveState(state_tempfile.name)
-
-        system = BenchmarkSystem(tempfile.name, fake_backend=True)
-        system.LoadState(state_tempfile.name)
-
-      # Open subject and a page again. Detection should be skipped.
-      subject = system.subjects["device1/clank"]
-      subject.Open(safe=False)
-      subject.OpenPage("Tap")
-
-      self.assertEqual(icon_mock.call_count, 0)
-      self.assertEqual(words_mock.call_count, 0)
-
-  def test_fake_system(self):
+  def testFakeSystem(self):
     fake_system = FakeBenchmarkSystem()
     self.assertEqual(len(fake_system.subjects), 1)
     self.assertTrue(fake_system.subjects["fake_dut/fake_subject"])

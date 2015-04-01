@@ -27,7 +27,8 @@ class DUTBackend(object):
     If a word cannot be detected the entry in the returned dict will be None.
 
     :param List[str] words: List of words to detect.
-    :returns Dict[str, Tuple[float, float]]: Dict of coordinates for each word.
+    :returns Dict[str, Optional[Tuple[float, float]]]: Dict of coordinates for
+             each word.
     """
 
   @abstractmethod

@@ -7,7 +7,6 @@ from unittest import TestCase
 
 import numpy as np
 
-from mock import PropertyMock, patch
 from optofidelity.system._fake_backend import (FakeDUTBackend,
                                                FakeHighSpeedCamera,
                                                FakeRobotBackend)
@@ -15,57 +14,61 @@ from optofidelity.system.subject import BenchmarkSubject
 
 
 class SubjectTests(TestCase):
-  def create_subject(self):
-    robot_backend = FakeRobotBackend()
-    dut_backend = robot_backend.GetDUTBackend("test")
+  def setUp(self):
+    self.robot_backend = FakeRobotBackend()
+    self.dut_backend = self.robot_backend.GetDUTBackend("test")
+
+  def createSubject(self):
     camera = FakeHighSpeedCamera()
     config = dict(icon="test.shp", margin=(0, 0))
-    return BenchmarkSubject("test", "test", dut_backend, camera, config)
+    return BenchmarkSubject("test", "test", self.dut_backend, camera, config)
 
-  def assert_series_of_taps(self, tap_mock, *args):
-    arguments = [(coords,) for coords in args]
-    self.assertEqual(tap_mock.call_args_list, arguments)
-    tap_mock.reset_mock()
+  def assertSeriesOfTaps(self, *expected_taps):
+    taps = [(args[0], args[1]) for cmd, args in self.dut_backend._commands
+                               if cmd == "Tap"]
+    self.assertEqual(list(expected_taps), taps)
 
-  @patch.object(FakeDUTBackend, "DetectIcon")
-  @patch.object(FakeDUTBackend, "Tap")
-  def test_opening_closing(self, tap_mock, detect_icon_mock):
-    def assert_series_of_taps(*args):
-      self.assert_series_of_taps(tap_mock, *args)
-    def assert_called_icon_detection():
-      detect_icon_mock.assert_called_with("test.shp")
-      detect_icon_mock.reset_mock()
-    def assert_did_not_call_icon_detection():
-      self.assertEqual(detect_icon_mock.call_count, 0)
+  def assertCommandExecuted(self, command):
+    commands = [cmd for cmd, args in self.dut_backend._commands]
+    self.assertIn(command, commands)
 
-    subject = self.create_subject()
+  def assertCommandNotExecuted(self, command):
+    commands = [cmd for cmd, args in self.dut_backend._commands]
+    self.assertNotIn(command, commands)
+
+  def resetCommands(self):
+    self.dut_backend._commands = []
+
+  def testOpeningClosing(self):
+    subject = self.createSubject()
 
     home = subject._home_button_coords
     back = subject._back_button_coords
     app_icon = (42.0, 42.0)
-    detect_icon_mock.return_value = app_icon
+    self.dut_backend._detect_icon_rval = app_icon
 
     # Open and close app. Should detect icon.
     subject.Open(safe=False)
-    assert_series_of_taps(home, app_icon)
-    assert_called_icon_detection()
     subject.Close()
-    assert_series_of_taps(back)
+    self.assertSeriesOfTaps(home, app_icon, back)
+    self.assertCommandExecuted("DetectIcon")
+    self.resetCommands()
 
     # Open again. Should not detect icon.
     subject.Open(safe=False)
-    assert_series_of_taps(home, app_icon)
-    assert_did_not_call_icon_detection()
     subject.Close()
-    assert_series_of_taps(back)
+    self.assertSeriesOfTaps(home, app_icon, back)
+    self.assertCommandNotExecuted("DetectIcon")
+    self.resetCommands()
 
     # Open in safe mode. Forces icon detection and reset
     subject.Open(safe=True)
-    assert_series_of_taps(app_icon, back, back, home, app_icon)
-    assert_called_icon_detection()
+    self.assertSeriesOfTaps(app_icon, back, back, home, app_icon)
+    self.assertCommandExecuted("DetectIcon")
+    self.resetCommands()
 
-  def test_open_close_state(self):
-    subject = self.create_subject()
+  def testOpenCloseState(self):
+    subject = self.createSubject()
 
     # Can't close without opening first.
     self.assertRaises(Exception, lambda: subject.Close())
@@ -80,69 +83,55 @@ class SubjectTests(TestCase):
     # Can open again.
     subject.Open(safe=False)
 
-  @patch.object(FakeDUTBackend, "DetectIcon")
-  def test_failing_icon_detection(self, detect_icon_mock):
+  def testFailingIconDetection(self):
     # Make icon detection fail. Open should fail.
-    detect_icon_mock.return_value = None
-    subject = self.create_subject()
+    self.dut_backend._detect_icon_rval = None
+
+    subject = self.createSubject()
     ret = subject.Open(safe=False)
     self.assertEqual(ret, False)
 
     ret = subject.Open(safe=True)
     self.assertEqual(ret, False)
 
-  @patch.object(FakeDUTBackend, "DetectWords")
-  @patch.object(FakeDUTBackend, "Tap")
-  def test_page_open_close(self, tap_mock, detect_words_mock):
-    def assert_series_of_taps(*args):
-      self.assert_series_of_taps(tap_mock, *args)
-    def assert_called_word_detection():
-      self.assertEqual(detect_words_mock.call_count, 1)
-      detect_words_mock.reset_mock()
-    def assert_did_not_call_word_detection():
-      self.assertEqual(detect_words_mock.call_count, 0)
-
-    subject = self.create_subject()
+  def testPageOpenClose(self):
+    subject = self.createSubject()
     back = subject._back_button_coords
     tap_button = (1.0, 1.0)
-
-    detect_words_mock.return_value = {"Tap": tap_button}
-
-    subject.Open(safe=False)
-    tap_mock.reset_mock()
-
-    subject.OpenPage("Tap")
-    assert_series_of_taps(tap_button)
-    assert_called_word_detection()
-    subject.ClosePage()
-    assert_series_of_taps(back)
-    subject.Close()
+    self.dut_backend._detect_words_rval = tap_button
 
     subject.Open(safe=False)
+    self.resetCommands()
+
     subject.OpenPage("Tap")
-    assert_did_not_call_word_detection()
+    subject.ClosePage()
+    self.assertSeriesOfTaps(tap_button, back)
+    self.assertCommandExecuted("DetectWords")
+    self.resetCommands()
+
+    subject.OpenPage("Tap")
     subject.ClosePage()
     subject.Close()
+    self.assertCommandNotExecuted("DetectWords")
+    self.resetCommands()
 
     subject.Open(safe=True)
     subject.OpenPage("Tap")
-    assert_called_word_detection()
     subject.ClosePage()
+    self.assertCommandExecuted("DetectWords")
+    self.resetCommands()
 
-  @patch.object(FakeDUTBackend, "DetectWords")
-  def test_failing_word_detection(self, detect_words_mock):
-    subject = self.create_subject()
-    tap_button = (1.0, 1.0)
-    detect_words_mock.return_value = {"Tap": tap_button, "Scroll": None}
+  def testFailingWordDetection(self):
+    subject = self.createSubject()
+    self.dut_backend._detect_words_rval = None
 
-    # Make word detection fail on "Scroll". Should return False
-    subject = self.create_subject()
+    subject = self.createSubject()
     subject.Open(safe=False)
     self.assertEqual(subject.OpenPage("Scroll"), False)
-    self.assertEqual(subject.OpenPage("Tap"), True)
+    self.assertEqual(subject.OpenPage("Tap"), False)
 
-  def test_page_open_close_state(self):
-    subject = self.create_subject()
+  def testPageOpenCloseState(self):
+    subject = self.createSubject()
 
     self.assertRaises(Exception, lambda: subject.OpenPage())
     self.assertRaises(Exception, lambda: subject.ClosePage())
@@ -158,36 +147,31 @@ class SubjectTests(TestCase):
     self.assertRaises(Exception, lambda: subject.OpenPage())
     self.assertRaises(Exception, lambda: subject.ClosePage())
 
-  @patch.object(FakeDUTBackend, "orientation", new_callable=PropertyMock)
-  def test_plane_calculation(self, orientation_mock):
-    orientation_mock.return_value = np.pi / 2 + 0.1
-    subject = self.create_subject()
+  def testPlaneCalculation(self):
+    self.dut_backend._orientation = np.pi / 2 + 0.1
+    subject = self.createSubject()
     self.assertLess(subject._test_plane, subject.width / 2)
 
-    orientation_mock.return_value = np.pi / 2 * 3 - 0.1
-    subject = self.create_subject()
+    self.dut_backend._orientation = np.pi / 2 * 3 - 0.1
+    subject = self.createSubject()
     self.assertGreater(subject._test_plane, subject.width / 2)
 
-    orientation_mock.return_value = 0
-    self.assertRaises(Exception, lambda: self.create_subject())
+    self.dut_backend._orientation = 0
+    self.assertRaises(Exception, lambda: self.createSubject())
 
-  @patch.object(FakeDUTBackend, "Jump")
-  def test_safe_movement_via_jumping(self, jump_mock):
-    def assert_jump_called_once():
-      self.assertEqual(jump_mock.call_count, 1)
-      jump_mock.reset_mock()
-    def assert_jump_not_called():
-      self.assertEqual(jump_mock.call_count, 0)
 
+  def testSafeMovementViaJumping(self):
     # Move to a location outside of the DUT.
-    subject = self.create_subject()
+    subject = self.createSubject()
     subject.Move(-10.0, -10.0, 10.0)
-    assert_jump_not_called()
+    self.resetCommands()
 
     # Tap should savely move to device by jumping there.
     subject.Tap(10.0, 10.0)
-    assert_jump_called_once()
+    self.assertCommandExecuted("Jump")
+    self.resetCommands()
 
     # No jumping since we are already over the device.
     subject.Tap(20.0, 20.0)
-    assert_jump_not_called()
+    self.assertCommandNotExecuted("Jump")
+    self.resetCommands()

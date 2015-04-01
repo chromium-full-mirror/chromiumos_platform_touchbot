@@ -18,26 +18,31 @@ class FakeDUTBackend(DUTBackend):
   def __init__(self, name):
     self.name = name
     self._x, self._y, self._z = 0, 0, 0
+    self._commands = []
+    self._width = 500
+    self._height = 100
+    self._orientation = 90
+    self._detect_icon_rval = (1.0, 1.0)
+    self._detect_words_rval = (1.0, 1.0)
 
   def DetectIcon(self, icon_file):
-    _log.info("DetectIcon")
-    return (1.0, 1.0)
+    self._LogCommand("DetectIcon", icon_file)
+    return self._detect_icon_rval
 
   def DetectWords(self, words):
-    _log.info("DetectIcon")
-    return { word: (float(i) + 1.0, float(i) + 1.0)
-            for i, word in enumerate(words) }
+    self._LogCommand("DetectWords", words)
+    return { word: self._detect_words_rval for word in words }
 
   def Tap(self, x, y, count=1):
-    _log.info("Tap %.2f %.2f count=%d", x, y, count)
+    self._LogCommand("Tap", (x, y, count))
     self._x, self._y, self._z = x, y, 10
 
   def Move(self, x, y, z):
-    _log.info("Move %.2f %.2f %.2f", x, y, z)
+    self._LogCommand("Move", (x, y, z))
     self._x, self._y, self._z = x, y, z
 
   def Jump(self, x, y, z):
-    _log.info("Jump %.2f %.2f", x, y)
+    self._LogCommand("Jump", (x, y, z))
     self._x, self._y, self._z = x, y, z
 
   def WaitForGesturesToFinish(self):
@@ -49,15 +54,19 @@ class FakeDUTBackend(DUTBackend):
 
   @property
   def width(self):
-    return 500
+    return self._width
 
   @property
   def height(self):
-    return 100
+    return self._height
 
   @property
   def orientation(self):
-    return 90
+    return self._orientation
+
+  def _LogCommand(self, command, args):
+    _log.info("%s(%s)", command, ", ".join(str(args)))
+    self._commands.append((command, args))
 
 
 class FakeRobotBackend(RobotBackend):
