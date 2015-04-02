@@ -3,7 +3,9 @@
 # found in the LICENSE file.
 """Implementation of the BenchmarkSubject class."""
 
-from safetynet import Any, Dict, Optional, TypecheckMeta
+from abc import abstractmethod, abstractproperty
+
+from safetynet import Any, Dict, Optional, Tuple, TypecheckMeta
 import numpy as np
 
 from optofidelity.util import const_property
@@ -11,6 +13,45 @@ from optofidelity.videoproc import VideoReader
 
 from ._backend import DUTBackend
 from .camera import HighSpeedCamera
+
+
+class Navigator(object):
+  """Backend class to navigate a device to open subjects and pages."""
+
+  @abstractproperty
+  def state(self):
+    """State information. (e.g. coordinates of detected buttons)"""
+
+  @abstractmethod
+  def Open(self, safe):
+    """Open the subject.
+
+    :param bool safe: True instructs the backend to take extra precautions. At
+           the expense of more time to complete the task.
+    """
+
+  @abstractmethod
+  def Close(self):
+    """Close the subject."""
+
+  @abstractmethod
+  def Reset(self):
+    """Reset the underlying DUT.
+
+    This is a last resort after issues with opening the subject. This 'should'
+    return the DUT into a state where the subject can be opened again.
+    """
+
+  @abstractmethod
+  def OpenPage(self, page_name):
+    """Open page.
+
+    :type page_name: str
+    """
+
+  @abstractmethod
+  def ClosePage(self):
+    """Close previously opened page."""
 
 
 class BenchmarkSubject(object):
@@ -52,25 +93,24 @@ class BenchmarkSubject(object):
   HOVER_HEIGHT = 10.0
   """Height on the Z-axis at which to hover between gestures."""
 
-  def __init__(self, dut_name, subject_name, dut_backend, camera, config):
+  def __init__(self, dut_name, subject_name, dut_backend, navigator, camera,
+               margin):
     """
-    :param str dut_name
-    :param str subject_name
-    :param DUTBackend dut_backend
-    :param HighSpeedCamera camera
-    :param Dict[str, Optional[Any]] config: dictionary with additional config
-           values taken from the XML file.
+    :type dut_name: str
+    :type subject_name: str
+    :type dut_backend: DUTBackend
+    :type navigator: Navigator
+    :type camera: HighSpeedCamera
+    :param Tuple[float, float] margin: margin at top and bottom of the device.
     """
     self.name = "{}/{}".format(dut_name, subject_name)
     self.dut_name = dut_name
     self.subject_name = subject_name
     self.camera = camera
-    margin = config.get("margin", (0, 0))
-    self.app_icon_shape_file = config.get("icon", None)
 
-    self.top = float(margin[0])
-    self.left = float(0)
-    self.bottom = dut_backend.height - float(margin[1])
+    self.top = margin[0]
+    self.left = 0.0
+    self.bottom = dut_backend.height - margin[1]
     self.right = dut_backend.width
 
     def is_oriented(orientation, target):
@@ -86,10 +126,8 @@ class BenchmarkSubject(object):
     else:
       raise Exception("DUTs need to be oriented at 90 or 270 degrees.")
 
-    self._backend = dut_backend
-
-    self._page_button_coords = {}
-    self._app_icon_coords = None
+    self._dut_backend = dut_backend
+    self._navigator = navigator
 
     self._is_open = False
     self._current_page = None
@@ -97,14 +135,12 @@ class BenchmarkSubject(object):
   @property
   def state(self):
     return {
-      "page_button_coords": self._page_button_coords,
-      "app_icon_coords": self._app_icon_coords
+      "navigator": self._navigator.state
     }
 
   @state.setter
   def state(self, value):
-    self._page_button_coords = value["page_button_coords"]
-    self._app_icon_coords = value["app_icon_coords"]
+    self._navigator.state = value["navigator"]
 
   @property
   def width(self):
@@ -131,35 +167,21 @@ class BenchmarkSubject(object):
     if self._is_open:
       raise Exception("Subject already open.")
 
-    if safe:
-      self.Reset()
-      self._page_button_coords = {}
-    else:
-      self._backend.Tap(*self._home_button_coords)
-
-    if safe or self._app_icon_coords is None:
-      self._app_icon_coords = self._DetectAppIconCoords()
-    if self._app_icon_coords is None:
-      return False
-
-    self._backend.Tap(*self._app_icon_coords)
-    self._is_open = True
-    return True
+    if self._navigator.Open(safe):
+      self._is_open = True
+      return True
+    return False
 
   def Close(self):
     """Closes this subject and returns device to the home screen."""
     if not self._is_open:
       raise Exception("Subject has not been opened.")
-    self._backend.Tap(*self._back_button_coords)
+    self._navigator.Close()
     self._is_open = False
 
   def Reset(self):
     """Attempt to reset the device back to it's home location."""
-    if self._app_icon_coords:
-      self._backend.Tap(*self._app_icon_coords)
-    self._backend.Tap(*self._back_button_coords)
-    self._backend.Tap(*self._back_button_coords)
-    self._backend.Tap(*self._home_button_coords)
+    self._navigator.Reset()
     self._is_open = False
     self._current_page = None
 
@@ -185,26 +207,20 @@ class BenchmarkSubject(object):
     if page_name not in self.PAGE_NAMES:
       raise ValueError("Unknown page name '%s'" % page_name)
 
-    coords = self._page_button_coords.get(page_name, None)
-    if not coords:
-      self._page_button_coords = self._DetectPageButtonCoords()
-      coords = self._page_button_coords[page_name]
-    if not coords:
-      return False
-
-    self._backend.Tap(*coords)
-    self._current_page = page_name
-    return True
+    if self._navigator.OpenPage(page_name):
+      self._current_page = page_name
+      return True
+    return False
 
   def WaitForGesturesToFinish(self):
     """Blocks until all gestures are finished."""
-    self._backend.WaitForGesturesToFinish()
+    self._dut_backend.WaitForGesturesToFinish()
 
   def ClosePage(self):
     """Close currently opened page."""
     if not self._current_page:
       raise Exception("No page open.")
-    self._backend.Tap(*self._back_button_coords)
+    self._navigator.ClosePage()
     self._current_page = None
 
   def Tap(self, x, y, count=1, blocking=True):
@@ -215,9 +231,9 @@ class BenchmarkSubject(object):
     :param bool blocking: Block until the gesture is finished (default).
     """
     self._SavelyMoveToDevice(x, y, self.HOVER_HEIGHT)
-    self._backend.Tap(x, y, count=count)
+    self._dut_backend.Tap(x, y, count=count)
     if blocking:
-      self._backend.WaitForGesturesToFinish()
+      self._dut_backend.WaitForGesturesToFinish()
 
   def TapOnTestPlane(self, y, count=1, blocking=True):
     """Tap on test-plane to location y
@@ -236,9 +252,9 @@ class BenchmarkSubject(object):
     :param bool blocking: Block until the gesture is finished (default).
     """
     self._SavelyMoveToDevice(x, y, z)
-    self._backend.Move(x, y, z)
+    self._dut_backend.Move(x, y, z)
     if blocking:
-      self._backend.WaitForGesturesToFinish()
+      self._dut_backend.WaitForGesturesToFinish()
 
   def MoveOnTestPlane(self, y, z, blocking=True):
     """Move on test-plane to location (y, z).
@@ -263,9 +279,9 @@ class BenchmarkSubject(object):
     :param float z
     :param bool blocking: Block until the gesture is finished (default).
     """
-    self._backend.Jump(x, y, z)
+    self._dut_backend.Jump(x, y, z)
     if blocking:
-      self._backend.WaitForGesturesToFinish()
+      self._dut_backend.WaitForGesturesToFinish()
 
   def JumpOnTestPlane(self, y, z, blocking=True):
     """Jump on test-plane to location (y, z).
@@ -295,29 +311,6 @@ class BenchmarkSubject(object):
     return video
 
   def _SavelyMoveToDevice(self, target_x, target_y, target_z):
-    x, y, _ = self._backend.position
-    if (x < 0 or x > self._backend.width or y < 0 or y > self._backend.height):
+    x, y, _ = self._dut_backend.position
+    if (x < 0 or x > self._dut_backend.width or y < 0 or y > self._dut_backend.height):
       self.Jump(target_x, target_y, target_z)
-
-  def _DetectAppIconCoords(self):
-    return self._backend.DetectIcon(self.app_icon_shape_file)
-
-  def _DetectPageButtonCoords(self):
-    return self._backend.DetectWords(self.PAGE_NAMES)
-
-  @const_property
-  def _back_button_coords(self):
-    screen_min_width = 50
-    button_distance_scale_factor = 0.75
-    button_min_distance = 10
-    button_max_distance = 20
-
-    back_location = (button_min_distance + (self.width - screen_min_width) *
-                     button_distance_scale_factor)
-    back_location = min((back_location, button_max_distance))
-
-    return (float(self.width / 2 - back_location), float(self._backend.height - 3))
-
-  @const_property
-  def _home_button_coords(self):
-    return (float(self.width / 2), float(self._backend.height - 3))

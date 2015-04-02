@@ -13,7 +13,7 @@ from ._fake_backend import FakeHighSpeedCamera, FakeRobotBackend
 from ._phantom import PhantomCamera
 from ._tnt_backend import TnTRobotBackend
 from .subject import BenchmarkSubject
-
+from ._navigators import RobotNavigator, ADBNavigator
 
 class BenchmarkSystem(object):
   """Robot system which manages multiple DUTs.
@@ -151,9 +151,10 @@ class BenchmarkSystem(object):
     calib_elem = root.find("led-calibration-subject")
     if calib_elem is not None:
       backend_name = calib_elem.get("backend-name", "calibration")
-      backend = self._backend.GetDUTBackend(backend_name)
-      subject = BenchmarkSubject("calibration", "calibration", backend,
-                                 self.camera, {})
+      dut_backend = self._backend.GetDUTBackend(backend_name)
+      nav_backend = RobotNavigator(dut_backend, {})
+      subject = BenchmarkSubject("calibration", "calibration", dut_backend,
+                                 nav_backend, self.camera, (0.0, 0.0))
       self.led_calibration_subject = subject
 
     for dut_elem in root.iter("dut"):
@@ -178,8 +179,13 @@ class BenchmarkSystem(object):
       attribs.update(subject_elem.attrib)
 
       subject_name = attribs["name"]
-      margin = ParseCoord(attribs.get("margin", None), (0, 0))
-      config = dict(margin=margin, icon=attribs.get("icon", None))
+      adb_id = attribs.get("adb", None)
+      margin = ParseCoord(attribs.get("margin", None), (0.0, 0.0))
+      if adb_id:
+        nav_backend = ADBNavigator(adb_id)
+      else:
+        icon = attribs.get("icon", None)
+        nav_backend = RobotNavigator(dut_backend, icon)
       subject = BenchmarkSubject(dut_name, subject_name, dut_backend,
-                                 self.camera, config)
+                                 nav_backend, self.camera, margin)
       self.subjects[subject.name] = subject

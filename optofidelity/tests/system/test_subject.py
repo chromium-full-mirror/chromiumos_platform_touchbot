@@ -11,17 +11,18 @@ from optofidelity.system._fake_backend import (FakeDUTBackend,
                                                FakeHighSpeedCamera,
                                                FakeRobotBackend)
 from optofidelity.system.subject import BenchmarkSubject
-
+from optofidelity.system._navigators import RobotNavigator
 
 class SubjectTests(TestCase):
   def setUp(self):
     self.robot_backend = FakeRobotBackend()
     self.dut_backend = self.robot_backend.GetDUTBackend("test")
+    self.camera = FakeHighSpeedCamera()
+    self.nav_backend = RobotNavigator(self.dut_backend, "test.shp")
 
   def createSubject(self):
-    camera = FakeHighSpeedCamera()
-    config = dict(icon="test.shp", margin=(0, 0))
-    return BenchmarkSubject("test", "test", self.dut_backend, camera, config)
+    return BenchmarkSubject("test", "test", self.dut_backend, self.nav_backend,
+                            self.camera, (0.0, 0.0))
 
   def assertSeriesOfTaps(self, *expected_taps):
     taps = [(args[0], args[1]) for cmd, args in self.dut_backend._commands
@@ -42,8 +43,8 @@ class SubjectTests(TestCase):
   def testOpeningClosing(self):
     subject = self.createSubject()
 
-    home = subject._home_button_coords
-    back = subject._back_button_coords
+    home = self.nav_backend._home_button_coords
+    back = self.nav_backend._back_button_coords
     app_icon = (42.0, 42.0)
     self.dut_backend._detect_icon_rval = app_icon
 
@@ -96,7 +97,7 @@ class SubjectTests(TestCase):
 
   def testPageOpenClose(self):
     subject = self.createSubject()
-    back = subject._back_button_coords
+    back = self.nav_backend._back_button_coords
     tap_button = (1.0, 1.0)
     self.dut_backend._detect_words_rval = tap_button
 

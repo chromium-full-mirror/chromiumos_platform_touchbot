@@ -62,7 +62,7 @@ class RobotTests(unittest2.TestCase):
       subject1 = system.subjects["device1/clank"]
       subject2 = system.subjects["device2/clank"]
 
-      height = subject1._backend.height
+      height = subject1._dut_backend.height
       margin = 50
       self.assertAlmostEqual(subject1.top, 0)
       self.assertAlmostEqual(subject1.bottom, height - margin)
@@ -78,7 +78,7 @@ class RobotTests(unittest2.TestCase):
       phone_subject = system.subjects["some_phone/clank"]
       tablet_subject = system.subjects["some_tablet/clank"]
 
-      height = phone_subject._backend.height
+      height = phone_subject._dut_backend.height
       phone_margin = 50
       tablet_margin = 100
       self.assertAlmostEqual(phone_subject.top, 0)
@@ -86,8 +86,8 @@ class RobotTests(unittest2.TestCase):
       self.assertAlmostEqual(tablet_subject.top, tablet_margin)
       self.assertAlmostEqual(tablet_subject.bottom, height)
 
-      self.assertEqual(phone_subject._backend.name, "tnt_id")
-      self.assertEqual(tablet_subject._backend.name, tablet_subject.dut_name)
+      self.assertEqual(phone_subject._dut_backend.name, "tnt_id")
+      self.assertEqual(tablet_subject._dut_backend.name, tablet_subject.dut_name)
 
   def testCalibrationConfig(self):
     with TemporaryFileWithData(calibration_config) as tempfile:
@@ -95,7 +95,7 @@ class RobotTests(unittest2.TestCase):
 
       self.assertFalse(system.subjects)
       self.assertTrue(system.led_calibration_subject)
-      self.assertEqual(system.led_calibration_subject._backend.name,
+      self.assertEqual(system.led_calibration_subject._dut_backend.name,
                        "backend_name")
 
   def testOpenSubjectReset(self):
