@@ -11,10 +11,10 @@ from ._delegate import BenchmarkDelegate
 class TapDelegate(BenchmarkDelegate):
   """Contains logic to perform tap latency benchmarks."""
 
-  BASE_DURATION = 200
-  """Duration at beginning of each recording (in number of frames)."""
+  BASE_DURATION = 600
+  """Duration at beginning of each recording (in ms)."""
 
-  PER_TAP_DURATION = 160
+  PER_TAP_DURATION = 500
   """Duration of each tap in recording (in number of frames)."""
 
   NUM_MEASUREMENTS = 10

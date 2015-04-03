@@ -11,7 +11,9 @@ import sys
 import tempfile
 import webbrowser
 
-from optofidelity.benchmark.fake import FakeBenchmark
+from optofidelity.benchmark.fake import FakeBenchmarkRunner
+from optofidelity.system.fake import FakeBenchmarkSystem
+from optofidelity.detection.fake import FakeVideoProcessor
 from . import test_data
 
 
@@ -20,8 +22,14 @@ class ReportTests(TestCase):
 
   def setUp(self):
     self.tempdir = tempfile.mkdtemp()
+    self.system = FakeBenchmarkSystem()
+    self.processor = FakeVideoProcessor()
+    self.runner = FakeBenchmarkRunner(self.system, self.processor)
+    self.subject = self.system.fake_subject
+    self.subject.Open(False)
 
   def tearDown(self):
+    self.subject.Close()
     shutil.rmtree(self.tempdir)
 
   def testLineDrawReport(self):
@@ -32,10 +40,10 @@ class ReportTests(TestCase):
 
   def runReportTest(self, filename, benchmark_type):
     metadata = {"OS Version": "23.0", "App Version": "42.0"}
-    trace = test_data.LoadTrace(filename)
-    benchmark = FakeBenchmark("test_dut(test_app)", benchmark_type, metadata,
-                              None, trace, None)
-    benchmark.ProcessTrace()
+
+    self.processor.fake_trace = test_data.LoadTrace(filename)
+    benchmark = self.runner.RunBenchmark(self.subject, benchmark_type,
+                                         metadata, [])
     report = benchmark.GenerateReport(self.tempdir)
 
     self.userVerification(report.html_filename)

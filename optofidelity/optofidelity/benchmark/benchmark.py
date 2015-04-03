@@ -11,7 +11,7 @@ import time
 from safetynet import Any, Dict, List, Optional, TypecheckMeta
 import skimage.io as io
 
-from optofidelity.detection import CreateVideoProcessor, ScreenCalibration
+from optofidelity.detection import VideoProcessor, ScreenCalibration
 from optofidelity.system import BenchmarkSystem
 from optofidelity.videoproc import FileVideoReader
 
@@ -78,9 +78,9 @@ class Benchmark(object):
     :param Optional[BenchmarkDelegate] _delegate: Overrides the delegate that is
            used for the benchmark execution. For internal use only.
     """
-    self._benchmark_type = benchmark_type
+    self.benchmark_type = benchmark_type
     self._delegate = _delegate or self.BENCHMARK_TYPES[benchmark_type]()
-    self._subject_name = subject_name
+    self.subject_name = subject_name
 
     self.screen_calibration = None
     self.framerate = None
@@ -93,15 +93,16 @@ class Benchmark(object):
   def ms_per_frame(self):
     return 1000.0 / float(self.framerate)
 
-  def CalibrateScreen(self, benchmark_system):
+  def CalibrateScreen(self, benchmark_system, video_processor):
     """Execute the required screen calibration process.
 
     :type benchmark_system: BenchmarkSystem
     """
-    subject = benchmark_system.subjects[self._subject_name]
+    subject = benchmark_system.subjects[self.subject_name]
     video_reader = subject.RecordCalibrationVideo()
-    self.screen_calibration = ScreenCalibration.FromScreenFlashVideo(
+    self.screen_calibration = video_processor.CreateScreenCalibration(
         video_reader)
+    return self.screen_calibration
 
   def UseExistingCalibration(self, screen_calibration):
     """Use previously calculated screen calibration for this benchmark.
@@ -113,9 +114,9 @@ class Benchmark(object):
   def ExecuteOnSubject(self, benchmark_system):
     """Instruct the robot to execute the benchmark.
 
-    :type benchmark_system BenchmarkSystem
+    :type benchmark_system: Optional[BenchmarkSystem]
     """
-    subject = benchmark_system.subjects[self._subject_name]
+    subject = self._GetSubject(benchmark_system)
     self.video = self._delegate.ExecuteOnSubject(subject)
     self.framerate = self.video.framerate
     self.trace = None
@@ -123,7 +124,7 @@ class Benchmark(object):
     self.report = None
     return self.video
 
-  def ProcessVideo(self, debug_flags, print_progress, multithreaded):
+  def ProcessVideo(self, video_processor, debug_flags, print_progress):
     """Process the recorded video into a trace.
 
     This step requires that ExecuteOnSubject and CalibrateScreen (or
@@ -135,13 +136,13 @@ class Benchmark(object):
     :rtype Trace
     """
     assert self.video, "No test video"
-    assert self.screen_calibration, "No screen calibration"
 
-    processor = CreateVideoProcessor(self.screen_calibration, multithreaded)
-    self._delegate.InitializeProcessor(processor)
+    self._delegate.InitializeProcessor(video_processor)
 
     start_t = time.time()
-    self.trace = processor.ProcessVideo(self.video, debug_flags, print_progress)
+    self.trace = video_processor.ProcessVideo(self.video,
+                                              self.screen_calibration,
+                                              debug_flags, print_progress)
     self.results = None
     self.report = None
 
@@ -160,7 +161,7 @@ class Benchmark(object):
     assert self.trace is not None, "No test trace"
 
     start_t = time.time()
-    self.results = BenchmarkResults(self._subject_name, self._benchmark_type,
+    self.results = BenchmarkResults(self.subject_name, self.benchmark_type,
                                     self.metadata)
     self._delegate.ProcessTrace(self.trace, self.results)
     self.report = None
@@ -179,19 +180,6 @@ class Benchmark(object):
     self.report.GenerateReport(self.results, self.trace,
                                self.screen_calibration, self.video)
     return self.report
-
-  def Run(self, benchmark_system, debug_flags, print_progress=False,
-          multithreaded=True):
-    """Run the whole benchmark process.
-
-    :type benchmark_system: BenchmarkSystem
-    :param List[str] debug_flags: list of debug flags for the VideoProcessor.
-    :param bool print_progress: Print progress report to console.
-    :param bool multithreaded: Use all cores of the system to do processing.
-    """
-    self.ExecuteOnSubject(benchmark_system)
-    self.ProcessVideo(debug_flags, print_progress, multithreaded)
-    return self.ProcessTrace()
 
   def Save(self, path, debug_info=False, video=False):
     """Serialize benchmark to a folder on disk.
@@ -251,6 +239,13 @@ class Benchmark(object):
       self.video = FileVideoReader(video_file, self.framerate)
     return self
 
+  def _CreateVideoProcessor(self, multithreaded):
+    assert self.screen_calibration, "No screen calibration"
+    return CreateVideoProcessor(self.screen_calibration, multithreaded)
+
+  def _GetSubject(self, benchmark_system):
+    return benchmark_system.subjects[self.subject_name]
+
   @classmethod
   def _GetPickleFileName(cls, path):
     return os.path.join(path, "benchmark.pickle")
@@ -265,8 +260,8 @@ class Benchmark(object):
     return state
 
   def __setstate__(self, state):
-    subject_name = state["_subject_name"]
-    benchmark_type = state["_benchmark_type"]
+    subject_name = state.get("subject_name", state.get("_subject_name"))
+    benchmark_type = state.get("benchmark_type", state.get("_benchmark_type"))
     metadata = state["metadata"]
     _delegate = state["_delegate"]
     self.__init__(subject_name, benchmark_type, metadata, _delegate)

@@ -46,7 +46,7 @@ class AbstractDelegateTests(unittest2.TestCase):
       print ("Running test offline. Update CONFIG_FILE and SUBJECT_NAME in " +
              "optofidelity.benchmark.test_delegate to run live tests.")
       system = FakeBenchmarkSystem()
-      subject = system.subjects.values()[0]
+      subject = system.fake_subject
     return subject
 
   def runExecuteOnSubjectTest(self, delegate):

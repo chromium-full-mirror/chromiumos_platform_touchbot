@@ -1,44 +1,45 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from safetynet import Any, Dict, Optional
+from safetynet import Optional
 
-from optofidelity.detection import Trace
-from optofidelity.videoproc import FakeVideoReader, VideoReader
+from optofidelity.detection import Trace, VideoProcessor
+from optofidelity.detection.fake import FakeVideoProcessor
+from optofidelity.system import BenchmarkSystem
+from optofidelity.system.fake import FakeBenchmarkSystem
 
-from ._delegate import BenchmarkDelegate
 from .benchmark import Benchmark
+from .runner import BenchmarkRunner
 
 
-class FakeBenchmark(Benchmark):
-  """Fake implementation of a benchmark.
+class FakeBenchmarkRunner(BenchmarkRunner):
+  """Fake BenchmarkRunner that can return fixed instances of Benchmarks.
 
-  This class allows the user to specify a video and trace instead of relying
-  on the expensive ExecuteOnSubject and ProcessVideo calls to generate them.
+  By providing a fake_trace, the video processing can be skipped and forced
+  to return the specified trace.
+  By providing a fake_benchmark, the whole benchmark execution is skipped to
+  return the specified instance.
   """
-  FAKE_VIDEO_LENGTH = 10000
-  FAKE_VIDEO_SHAPE = (720, 1280)
-  FAKE_VIDEO_FPS = 300
 
-  def __init__(self, subject_name, benchmark_type, metadata, video, trace,
-               delegate):
+  def __init__(self, benchmark_system=None, video_processor=None,
+               fake_trace=None, fake_benchmark=None):
     """
-    :param str subject_name: Name of the subject this benchmark is going to be
-           executed on.
-    :param str benchmark_type: One of the types defined in BENCHMARK_TYPES.
-    :param Dict[str, Any] metadata: Metainformation to be stored along with the
-           benchmark.
-    :param Optional[VideoReader] video: Override video. A FakeVideoReader is
-           created if not specified.
-    :param Optional[Trace] trace: Override trace.
-    :param Optional[BenchmarkDelegate] delegate: Overrides the delegate that is
-           used for the benchmark execution.
-    """
-    super(FakeBenchmark, self).__init__(subject_name, benchmark_type, metadata,
-                                        delegate)
+    The FakeBenchmarkRunner will automatically create a FakeBenchmarkSystem
+    as well as a FakeVideoProcessor if none are provided.
 
-    self.video = video or FakeVideoReader(self.FAKE_VIDEO_LENGTH,
-                                          self.FAKE_VIDEO_SHAPE,
-                                          self.FAKE_VIDEO_FPS)
-    self.framerate = self.video.framerate
-    self.trace = trace
+    :type benchmark_system: Optional[BenchmarkSystem]
+    :type video_processor: Optional[VideoProcessor]
+    :type fake_trace: Optional[Trace]
+    :type fake_benchmark: Optional[Benchmark]
+    """
+    self.benchmark_system = benchmark_system or FakeBenchmarkSystem()
+    self.video_processor = video_processor or FakeVideoProcessor()
+    self.fake_benchmark = fake_benchmark
+    self.video_processor.fake_trace = fake_trace
+
+  def RunBenchmark(self, subject_name, benchmark_type, metadata, debug_flags,
+                   print_progress=False):
+    if self.fake_benchmark:
+      return self.fake_benchmark
+    return super(FakeBenchmarkRunner, self).RunBenchmark(subject_name,
+        benchmark_type, metadata, debug_flags, print_progress)

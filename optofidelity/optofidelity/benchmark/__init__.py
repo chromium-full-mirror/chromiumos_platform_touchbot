@@ -15,3 +15,4 @@ list of measurements, which are defined by an input and output event.
 """
 from .benchmark import Benchmark
 from .results import BenchmarkResults, Measurement, MeasurementList
+from .runner import BenchmarkRunner
