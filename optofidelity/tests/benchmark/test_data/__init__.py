@@ -8,17 +8,12 @@ import os.path as path
 import skimage.color as color
 import skimage.io as io
 
-from optofidelity.detection import ScreenCalibration
 from optofidelity.videoproc import FileVideoReader
 
 _data_dir = path.dirname(path.realpath(__file__))
 
-def Calibration():
-  return ScreenCalibration(LoadImage("calibration_black.png"),
-                           LoadImage("calibration_white.png"))
-
-def CalibrationVideo():
-  return FileVideoReader(Path("calibration.avi"), 300)
+def LoadVideo(filename):
+  return FileVideoReader(Path(filename), 300)
 
 def Path(filename):
   return path.join(_data_dir, filename)
