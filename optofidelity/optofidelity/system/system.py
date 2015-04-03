@@ -7,9 +7,8 @@ import cPickle as pickle
 import re
 import xml.etree.ElementTree as ElementTree
 
-from safetynet import TypecheckMeta
+from safetynet import TypecheckMeta, Optional
 
-from ._fake_backend import FakeHighSpeedCamera, FakeRobotBackend
 from ._phantom import PhantomCamera
 from ._tnt_backend import TnTRobotBackend
 from .subject import BenchmarkSubject
@@ -25,7 +24,7 @@ class BenchmarkSystem(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, config_file, fake_backend=False):
+  def __init__(self, config_file):
     """Creates new system from configuration file:
 
     The configuration file should look like this:
@@ -79,7 +78,7 @@ class BenchmarkSystem(object):
       backend-name: Name of the device in the backend (on the Optofidelity
                     robot).
 
-    :param str config_file: Path to configuration file.
+    :param Optional[str] config_file: Path to configuration file.
     :param bool fake_backend: Use fake backend for robot and camera for testing.
     """
     self.subjects = {}
@@ -87,7 +86,8 @@ class BenchmarkSystem(object):
     self.led_calibration_subject = None
 
     self._backend = None
-    self._ReadConfig(config_file, fake_backend)
+    if config_file:
+      self._ReadConfig(config_file)
 
   def SaveState(self, state_file):
     """Save current state to file.
@@ -129,7 +129,7 @@ class BenchmarkSystem(object):
     for subject in self.subjects.values():
       subject.Cleanup()
 
-  def _ReadConfig(self, config_file, fake_backend):
+  def _ReadConfig(self, config_file):
     root = ElementTree.parse(config_file).getroot()
 
     subject_types = {}
@@ -139,14 +139,8 @@ class BenchmarkSystem(object):
 
     robot = root.find("robot")
     camera = root.find("camera")
-    if fake_backend:
-      self._backend = FakeRobotBackend()
-      self.camera = FakeHighSpeedCamera()
-    else:
-      self._backend = TnTRobotBackend(robot.attrib["host"],
-                                      robot.attrib.get("port", None))
-      self.camera = PhantomCamera(camera.attrib["host"],
-                                  camera.attrib.get("port", None))
+    self._backend = self._CreateBackend(robot.attrib if robot else {})
+    self.camera = self._CreateCamera(camera.attrib if camera else {})
 
     calib_elem = root.find("led-calibration-subject")
     if calib_elem is not None:
@@ -161,31 +155,39 @@ class BenchmarkSystem(object):
       self._ReadDUTConfig(dut_elem, subject_types)
 
   def _ReadDUTConfig(self, dut_elem, subject_types):
-    def ParseCoord(string, default=None):
-      if string:
-        match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
-        return float(match.group(1)), float(match.group(2))
-      return default
-
     dut_name = dut_elem.attrib["name"]
     tnt_name = dut_elem.get("backend-name", dut_name)
     dut_backend = self._backend.GetDUTBackend(tnt_name)
 
     for subject_elem in dut_elem.iter("subject"):
       type_name = subject_elem.attrib.get("type", None)
-      attribs = {}
+      attrib = {}
       if type_name in subject_types:
-        attribs.update(subject_types[type_name])
-      attribs.update(subject_elem.attrib)
-
-      subject_name = attribs["name"]
-      adb_id = attribs.get("adb", None)
-      margin = ParseCoord(attribs.get("margin", None), (0.0, 0.0))
-      if adb_id:
-        nav_backend = ADBNavigator(adb_id)
-      else:
-        icon = attribs.get("icon", None)
-        nav_backend = RobotNavigator(dut_backend, icon)
-      subject = BenchmarkSubject(dut_name, subject_name, dut_backend,
-                                 nav_backend, self.camera, margin)
+        attrib.update(subject_types[type_name])
+      attrib.update(subject_elem.attrib)
+      subject = self._CreateSubject(dut_name, dut_backend, attrib)
       self.subjects[subject.name] = subject
+
+  def _CreateCamera(self, attrib):
+    return PhantomCamera(attrib["host"], attrib.get("port", None))
+
+  def _CreateBackend(self, attrib):
+    return TnTRobotBackend(attrib["host"], attrib.get("port", None))
+
+  def _CreateSubject(self, dut_name, dut_backend, attrib):
+    subject_name = attrib["name"]
+    adb_id = attrib.get("adb", None)
+    margin = self._ParseCoord(attrib.get("margin", None), (0.0, 0.0))
+    if adb_id:
+      nav_backend = ADBNavigator(adb_id)
+    else:
+      icon = attrib.get("icon", None)
+      nav_backend = RobotNavigator(dut_backend, icon)
+    return BenchmarkSubject(dut_name, subject_name, dut_backend,
+                            nav_backend, self.camera, margin)
+
+  def _ParseCoord(self, string, default=None):
+    if string:
+      match = re.match("\(\s*([0-9.]+)\s*\,\s*([0-9.]+)\)", string)
+      return float(match.group(1)), float(match.group(2))
+    return default

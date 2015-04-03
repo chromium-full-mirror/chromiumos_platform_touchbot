@@ -2,26 +2,95 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-from tempfile import NamedTemporaryFile
+from collections import defaultdict
+import logging
 
+from optofidelity.videoproc import FakeVideoReader
+
+from ._fake_backend import FakeRobotBackend
+from ._navigators import RobotNavigator
+from .camera import HighSpeedCamera
+from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
 
+_log = logging.getLogger(__name__)
 
-_fake_config = """\
-<optofidelity>
-  <dut name="fake_dut">
-    <subject name="fake_subject" icon="dummy.shp" />
-  </dut>
-</optofidelity>
-"""
 
-def TemporaryFileWithData(data):
-  tempfile = NamedTemporaryFile()
-  tempfile.write(data)
-  tempfile.flush()
-  return tempfile
+class FakeHighSpeedCamera(HighSpeedCamera):
+  """Fake implementation of a HighSpeedCamera."""
+  def __init__(self):
+    self.num_frames = None
+    self.fps = 300
+    self.frame_size = (1280, 720)
+    self.fake_videos = dict()
+    self.fake_video = None
+
+  def Prepare(self, duration, fps=None):
+    self.fps = fps or self.fps
+    self.num_frames = duration * self.fps / 1000
+    _log.info("Prepare Camera")
+
+  def Trigger(self):
+    _log.info("Trigger Camera")
+
+  def ReceiveVideo(self):
+    if self.fake_video:
+      return self.fake_video
+    return FakeVideoReader(self.num_frames, self.frame_size, self.fps)
+
+
+class FakeBenchmarkSubject(BenchmarkSubject):
+  def OpenPage(self, page_name):
+    self.camera.fake_video = self.camera.fake_videos.get(page_name, None)
+    return super(FakeBenchmarkSubject, self).OpenPage(page_name)
+
+  @property
+  def fake_videos(self):
+    return self.camera.fake_videos
+
+  @fake_videos.setter
+  def set_fake_videos(self, value):
+    self.camera.fake_videos = value
+
 
 class FakeBenchmarkSystem(BenchmarkSystem):
-  def __init__(self):
-    config_file = TemporaryFileWithData(_fake_config)
-    super(FakeBenchmarkSystem, self).__init__(config_file.name, True)
+  """Fake implementation of BenchmarkSystem.
+
+  This class does not require a connection to an optofidelity robot.
+  It replaces the Camera and Backend instances with fake versions that log
+  all actions.
+  If no config file is specified, it will create a single fake subject that
+  is available at self.fake_subject.
+  """
+  def __init__(self, config_file=None):
+    super(FakeBenchmarkSystem, self).__init__(config_file)
+    if not self._backend:
+      self._backend = self._CreateBackend(dict())
+    if not self.camera:
+      self.camera = self._CreateCamera(dict())
+
+    self.subjects = defaultdict(self._CreateFakeSubject, self.subjects)
+    self.fake_subject = None
+
+    if not config_file:
+      self.fake_subject = self._CreateFakeSubject()
+      self.subjects[self.fake_subject.name] = self.fake_subject
+
+  def _CreateCamera(self, attrib):
+    return FakeHighSpeedCamera()
+
+  def _CreateBackend(self, attrib):
+    return FakeRobotBackend()
+
+  def _CreateSubject(self, dut_name, dut_backend, attrib):
+    subject_name = attrib["name"]
+    nav_backend = RobotNavigator(dut_backend, "dummy.shp")
+    margin = self._ParseCoord(attrib.get("margin", None), (0.0, 0.0))
+    return FakeBenchmarkSubject(dut_name, subject_name, dut_backend,
+                                nav_backend, self.camera, margin)
+
+  def _CreateFakeSubject(self):
+    dut_backend = self._backend.GetDUTBackend("fake_dut")
+    nav_backend = RobotNavigator(dut_backend, "dummy.shp")
+    return FakeBenchmarkSubject("fake_dut", "fake_subject", dut_backend,
+                                nav_backend, self.camera, (0.0, 0.0))

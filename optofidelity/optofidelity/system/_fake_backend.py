@@ -76,22 +76,3 @@ class FakeRobotBackend(RobotBackend):
 
   def GetDUTBackend(self, name):
     return FakeDUTBackend(name)
-
-
-class FakeHighSpeedCamera(HighSpeedCamera):
-  """Fake implementation of a HighSpeedCamera."""
-  def __init__(self):
-    self.num_frames = None
-    self.fps = 300
-    self.frame_size = (1280, 720)
-
-  def Prepare(self, duration, fps=None):
-    self.fps = fps or self.fps
-    self.num_frames = duration * self.fps / 1000
-    _log.info("Prepare Camera")
-
-  def Trigger(self):
-    _log.info("Trigger Camera")
-
-  def ReceiveVideo(self):
-    return FakeVideoReader(self.num_frames, self.frame_size, self.fps)

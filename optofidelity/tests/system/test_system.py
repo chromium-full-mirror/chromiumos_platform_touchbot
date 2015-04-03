@@ -55,7 +55,7 @@ class RobotTests(unittest2.TestCase):
 
   def testSimpleConfig(self):
     with TemporaryFileWithData(simple_config) as tempfile:
-      system = BenchmarkSystem(tempfile.name, fake_backend=True)
+      system = FakeBenchmarkSystem(tempfile.name)
 
       self.assertIn("device1/clank", system.subjects)
       self.assertIn("device2/clank", system.subjects)
@@ -71,7 +71,7 @@ class RobotTests(unittest2.TestCase):
 
   def testSubjectTypeConfig(self):
     with TemporaryFileWithData(subject_type_config) as tempfile:
-      system = BenchmarkSystem(tempfile.name, fake_backend=True)
+      system = FakeBenchmarkSystem(tempfile.name)
 
       self.assertIn("some_phone/clank", system.subjects)
       self.assertIn("some_tablet/clank", system.subjects)
@@ -91,7 +91,7 @@ class RobotTests(unittest2.TestCase):
 
   def testCalibrationConfig(self):
     with TemporaryFileWithData(calibration_config) as tempfile:
-      system = BenchmarkSystem(tempfile.name, fake_backend=True)
+      system = FakeBenchmarkSystem(tempfile.name)
 
       self.assertFalse(system.subjects)
       self.assertTrue(system.led_calibration_subject)
@@ -100,7 +100,7 @@ class RobotTests(unittest2.TestCase):
 
   def testOpenSubjectReset(self):
     with TemporaryFileWithData(simple_config) as tempfile:
-      system = BenchmarkSystem(tempfile.name, fake_backend=True)
+      system = FakeBenchmarkSystem(tempfile.name)
 
       subject = system.subjects["device1/clank"]
       subject.Open(safe=False)
@@ -115,6 +115,6 @@ class RobotTests(unittest2.TestCase):
       self.assertEqual(subject._current_page, None)
 
   def testFakeSystem(self):
-    fake_system = FakeBenchmarkSystem()
-    self.assertEqual(len(fake_system.subjects), 1)
-    self.assertTrue(fake_system.subjects["fake_dut/fake_subject"])
+    fake_system = FakeBenchmarkSystem(None)
+    self.assertTrue(fake_system.fake_subject)
+    self.assertTrue(fake_system.subjects["any_dut_name/any_subject_name"])
