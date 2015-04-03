@@ -6,7 +6,8 @@
 from unittest import TestCase, skip
 import numpy as np
 
-from optofidelity.detection.processor import CreateVideoProcessor
+from optofidelity.detection.st_processor import SinglethreadedVideoProcessor
+from optofidelity.detection.mt_processor import MultithreadedVideoProcessor
 from optofidelity.detection.fake import FakeVideoProcessor
 from optofidelity.detection.screen_calibration import ScreenCalibration
 from optofidelity.detection.events import LEDEvent, ScreenDrawEvent
@@ -15,10 +16,15 @@ from optofidelity.videoproc import FakeVideoReader
 from . import test_data
 
 class ProcessorTest(TestCase):
+  def setUp(self):
+      self.calib = ScreenCalibration(test_data.CalibrationBlackImage(),
+                                     test_data.CalibrationWhiteImage())
+
   def createTestVideoProcessor(self, multithreaded):
-    calib = ScreenCalibration(test_data.CalibrationBlackImage(),
-                              test_data.CalibrationWhiteImage())
-    return CreateVideoProcessor(calib, multithreaded)
+    if multithreaded:
+      return MultithreadedVideoProcessor()
+    else:
+      return SinglethreadedVideoProcessor()
 
   def testSingleFrameProcessing(self):
     for multithreaded in (True, False):
@@ -27,7 +33,7 @@ class ProcessorTest(TestCase):
 
       processor = self.createTestVideoProcessor(multithreaded)
       processor.EnableDetectors(led=True)
-      events = processor.ProcessFrame(0, frame, prev_frame, [])
+      events = processor.ProcessFrame(frame, prev_frame, self.calib, [])
       self.assertEqual(len(events), 1)
       event = events[0]
       self.assertEqual(event.time, 0)
@@ -38,7 +44,7 @@ class ProcessorTest(TestCase):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)
         processor.EnableDetectors(screen_draw=True)
-        events = processor.ProcessVideo(video_reader, [], False)
+        events = processor.ProcessVideo(video_reader, self.calib, [], False)
 
         self.assertEqual(len(events), 2)
 
@@ -56,7 +62,7 @@ class ProcessorTest(TestCase):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)
         processor.EnableDetectors(screen_draw=True)
-        processor.ProcessVideo(video_reader, ["all"], True)
+        processor.ProcessVideo(video_reader, self.calib, ["all"], True)
 
   @skip("Requires manual validation")
   def testSingleFrameDebugging(self):
@@ -65,12 +71,13 @@ class ProcessorTest(TestCase):
 
     processor = self.createTestVideoProcessor(False)
     processor.EnableDetectors(screen_draw=True)
-    processor.ProcessFrame(0, frame, prev_frame, ["all"])
+    processor.ProcessFrame(0, frame, prev_frame, self.calib, ["all"])
 
   def testFakeProcessor(self):
     events = [LEDEvent(10, LEDEvent.STATE_ON),
               LEDEvent(20, LEDEvent.STATE_OFF)]
     processor = FakeVideoProcessor(events)
     video_reader = FakeVideoReader(50, (1280, 720), 300)
-    result = processor.ProcessVideo(video_reader, [], False)
+    calib = processor.CreateScreenCalibration(video_reader)
+    result = processor.ProcessVideo(video_reader, calib, [], False)
     self.assertEqual(result, events)

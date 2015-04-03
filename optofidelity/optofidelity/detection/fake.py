@@ -3,11 +3,13 @@
 # found in the LICENSE file.
 """Fake implementation of VideoProcessor for testing."""
 
-from safetynet import List
+from safetynet import List, Optional
+import numpy as np
 
 from ._detector import Detector
-from ._st_processor import SinglethreadedVideoProcessor
 from .events import Event
+from .screen_calibration import ScreenCalibration
+from .st_processor import SinglethreadedVideoProcessor
 
 
 class FakeDetector(Detector):
@@ -43,13 +45,23 @@ class FakeVideoProcessor(SinglethreadedVideoProcessor):
   be generated.
   """
 
-  def __init__(self, events):
+  def __init__(self, trace=None):
     """
-    :param List[Event] events: list of events to generate.
+    :param Optional[List[Event]] trace: list of events to generate.
     """
-    super(FakeVideoProcessor, self).__init__(None)
-    self._AddDetector(FakeDetector(events))
+    super(FakeVideoProcessor, self).__init__()
+    self.fake_trace = trace
 
-  def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
-                      screen_draw=False):
-    pass
+  def _InitDetectors(self):
+    if self.fake_trace:
+      self._detectors = [FakeDetector(self.fake_trace)]
+    else:
+      super(FakeVideoProcessor, self)._InitDetectors()
+
+  def CreateScreenCalibration(self, video_reader):
+    if self.fake_trace:
+      shape = video_reader.frame_shape
+      return ScreenCalibration(np.zeros(shape), np.ones(shape))
+    else:
+      return super(FakeVideoProcessor, self).CreateScreenCalibration(
+          video_reader)

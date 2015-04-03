@@ -25,29 +25,26 @@ _log = logging.getLogger(__name__)
 class SinglethreadedVideoProcessor(VideoProcessor):
   """Processes video and accumulates generated events."""
 
-  def __init__(self, screen_calibration):
-    """
-    :param Optional[ScreenCalibration] screen_calibration
-    """
-    self._screen_calibration = screen_calibration
-    self._detectors = []
-
-  @property
-  def screen_calibration(self):
-    return self._screen_calibration
+  def __init__(self):
+    self._detector_types = []
 
   def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
                       screen_draw=False):
     if line_draw:
-      self._AddDetector(LineDetector())
+      self._AddDetector(LineDetector)
     if led:
-      self._AddDetector(LEDDetector())
+      self._AddDetector(LEDDetector)
     if finger_location:
-      self._AddDetector(FingerDetector())
+      self._AddDetector(FingerDetector)
     if screen_draw:
-      self._AddDetector(ScreenDrawDetector())
+      self._AddDetector(ScreenDrawDetector)
 
-  def ProcessVideo(self, video_reader, debug_flags, print_progress):
+  def _InitDetectors(self):
+    self._detectors = [dtype() for dtype in self._detector_types]
+
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
+                   print_progress):
+    self._InitDetectors()
     all_events = []
     prev_frame = None
     for i, frame in video_reader.Frames():
@@ -57,8 +54,8 @@ class SinglethreadedVideoProcessor(VideoProcessor):
         sys.stdout.write("\r" + msg)
         sys.stdout.flush()
 
-      events = self._ProcessFrame(i, frame, prev_frame, debug_flags,
-                                  video_reader)
+      events = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
+                                  debug_flags, video_reader)
       all_events.extend(events)
       prev_frame = frame
 
@@ -66,22 +63,24 @@ class SinglethreadedVideoProcessor(VideoProcessor):
       print
     return Trace(all_events)
 
-  def ProcessFrame(self, frame_index, frame, prev_frame, debug_flags):
-    return self._ProcessFrame(frame_index, frame, prev_frame, debug_flags,
-                              None)
+  def ProcessFrame(self, frame, prev_frame, screen_calibration, debug_flags):
+    self._InitDetectors()
+    return self._ProcessFrame(0, frame, prev_frame, screen_calibration,
+                              debug_flags, None)
 
-  def _ProcessFrame(self, frame_index, frame, prev_frame, debug_flags,
-                    video_reader):
+  def _ProcessFrame(self, frame_index, frame, prev_frame, screen_calibration,
+                    debug_flags, video_reader):
     """Process a single frame.
 
-    :param int frame_index
-    :param np.ndarray frame
-    :param Optional[np.ndarray] prev_frame
-    :param List[str] debug_flags
-    :param Optional[VideoReader] video_reader
+    :type frame_index: int
+    :type frame: np.ndarray
+    :type prev_frame: Optional[np.ndarray]
+    :type screen_calibration: ScreenCalibration
+    :type debug_flags: List[str]
+    :type video_reader: Optional[VideoReader]
     :returns List[Event]
     """
-    calib_frame = CalibratedFrame(frame, prev_frame, self._screen_calibration,
+    calib_frame = CalibratedFrame(frame, prev_frame, screen_calibration,
                                   frame_index)
     debugger = None
     all_events = []
@@ -105,4 +104,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     return all_events
 
   def _AddDetector(self, detector):
-    self._detectors.append(detector)
+    self._detector_types.append(detector)
+
+  def CreateScreenCalibration(self, video_reader):
+    return ScreenCalibration.FromScreenFlashVideo(video_reader)

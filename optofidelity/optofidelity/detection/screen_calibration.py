@@ -68,7 +68,10 @@ class ScreenCalibration(object):
     """
     self = super(ScreenCalibration, cls).__new__(cls)
     self.shape = self._CalculateShape(black_frame, white_frame)
-    self._rectification_transform = self._EstimateRectTransform(self.shape)
+    self.is_identity = np.all(self.shape.mask)
+    self._rectification_transform = None
+    if not self.is_identity:
+      self._rectification_transform = self._EstimateRectTransform(self.shape)
     self.black_reference = self.CameraToScreenSpace(black_frame)
     self.white_reference = self.CameraToScreenSpace(white_frame)
     self.black_frame = black_frame
@@ -158,6 +161,8 @@ class ScreenCalibration(object):
     the screen is not fully shown in the camera view, the dynamic range is
     too small or the screen is not big enough.
     """
+    if self.is_identity:
+      return
     # create a 1px rectangle mask along the edge of the video frame
     # if the screen mask overlaps in too many pixels with this rectangle,
     # the screen is probably outside the viewport of the camera.
@@ -186,6 +191,8 @@ class ScreenCalibration(object):
     :param np.ndarray camera_space_frame
     :returns np.ndarray
     """
+    if self.is_identity:
+      return camera_space_frame
     height = int(self.shape.height * self.RECTIFICATION_SCALING)
     width = int(self.shape.width * self.RECTIFICATION_SCALING)
     transformed = transform.warp(camera_space_frame,
@@ -199,6 +206,8 @@ class ScreenCalibration(object):
     :param np.ndarray camera_space_frame
     :returns np.ndarray
     """
+    if self.is_identity:
+      return screen_space_frame
     transformed = transform.warp(screen_space_frame,
                                  self._rectification_transform.inverse,
                                  output_shape=self.shape.mask.shape)

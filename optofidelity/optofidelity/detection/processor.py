@@ -35,10 +35,6 @@ class VideoProcessor(object):
 
   __metaclass__ = InterfaceMeta
 
-  @abstractproperty
-  def screen_calibration(self):
-    """:returns ScreenCalibration"""
-
   @abstractmethod
   def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
                       screen_draw=False):
@@ -51,37 +47,33 @@ class VideoProcessor(object):
     """
 
   @abstractmethod
-  def ProcessVideo(self, video_reader, debug_flags, print_progress):
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
+                   print_progress):
     """Process video and return list of detected events.
 
     :param VideoReader video_reader: Video to process
+    :type screen_calibration: ScreenCalibration
     :param List[str] debug_flags: List of debug flags
+    :param bool print_progress: True will print progress to stdout
     :returns Trace: List of events generated
     """
 
   @abstractmethod
-  def ProcessFrame(self, frame_index, frame, prev_frame, debug_flags):
+  def ProcessFrame(self, frame, prev_frame, screen_calibration,
+                   debug_flags):
     """Process single frame and return list of detected events.
 
-    Note that this method is stateful and requires you to pass in frames in the
-    right order.
-
     :param np.ndarray frame: Frame to process
+    :param np.ndarray prev_frame: Previous frame
+    :type screen_calibration: ScreenCalibration
     :param List[str] debug_flags: List of debug flags
     :returns List[Event]: List of events generated
     """
 
+  @abstractmethod
+  def CreateScreenCalibration(self, video_reader):
+    """Create screen calibration from flashing video.
 
-def CreateVideoProcessor(screen_calibration, multithreaded=False):
-  """Factory to create a single or multitthreaded video processor.
-
-  :param ScreenCalibration screen_calibration
-  :param bool multitthreaded
-  :returns VideoProcessor
-  """
-  if multithreaded:
-    from optofidelity.detection._mt_processor import MultithreadedVideoProcessor
-    return MultithreadedVideoProcessor(screen_calibration)
-  else:
-    from optofidelity.detection._st_processor import SinglethreadedVideoProcessor
-    return SinglethreadedVideoProcessor(screen_calibration)
+    :type video_reader: VideoReader
+    :rtype ScreenCalibration
+    """

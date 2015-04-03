@@ -14,8 +14,8 @@ import numpy as np
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import DetectorDebugger
-from ._st_processor import SinglethreadedVideoProcessor
 from .screen_calibration import ScreenCalibration
+from .st_processor import SinglethreadedVideoProcessor
 from .trace import Trace
 
 _log = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class PreprocessWorker(multiprocessing.Process):
 
       # Run preprocessing
       calib_frame = CalibratedFrame(image, prev_image,
-                              self.processor.screen_calibration, i)
+                                    self.processor.screen_calibration, i)
       result = self.processor._Preprocess(calib_frame)
       self.output_queue.put(result)
 
@@ -96,6 +96,7 @@ class PreprocessWorker(multiprocessing.Process):
 
       gc.collect()
 
+
 class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
   """Processes video using detectors and accumulates generated events.
 
@@ -103,14 +104,15 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
   intensive operations in parallel.
   """
 
-  def __init__(self, screen_calibration):
-    """
-    :param Optional[ScreenCalibration] screen_calibration
-    """
+  def __init__(self):
+    SinglethreadedVideoProcessor.__init__(self)
     self.num_processes = multiprocessing.cpu_count()
-    SinglethreadedVideoProcessor.__init__(self, screen_calibration)
 
-  def ProcessVideo(self, video_reader, debug_flags, print_progress):
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
+                   print_progress):
+    self._InitDetectors()
+    self.screen_calibration = screen_calibration
+
     if not self._detectors:
       return Trace([])
 

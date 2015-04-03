@@ -17,6 +17,8 @@ The result of the video processing is a list of Event objects.
 """
 from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
                      ScreenDrawEvent)
-from .processor import CreateVideoProcessor, VideoProcessor
+from .mt_processor import MultithreadedVideoProcessor
+from .processor import VideoProcessor
 from .screen_calibration import ScreenCalibration
+from .st_processor import SinglethreadedVideoProcessor
 from .trace import Trace
