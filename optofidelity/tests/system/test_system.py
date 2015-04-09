@@ -14,18 +14,26 @@ from optofidelity.system.fake import FakeBenchmarkSystem
 simple_config = """\
 <optofidelity>
   <dut name="device1">
-    <subject name="clank" margin="(0, 50)" icon="dummy.shp" />
+    <subject name="clank" margin="(0, 50)">
+      <navigator type="robot" icon="dummy.shp" />
+    </subject>
   </dut>
   <dut name="device2" tnt_name="tnt_name">
-    <subject name="clank" margin="(50, 0)"  icon="dummy.shp" />
+    <subject name="clank" margin="(50, 0)">
+      <navigator type="robot" icon="dummy.shp" />
+    </subject>
   </dut>
 </optofidelity>
 """
 
 subject_type_config = """\
 <optofidelity>
-  <subject-type type-name="clank_tablet" name="clank" margin="(100, 0)" />
-  <subject-type type-name="clank_phone" name="clank" margin="(0, 50)" />
+  <subject-type type-name="clank_tablet" name="clank" margin="(100, 0)" >
+      <navigator type="robot" icon="dummy.shp" />
+  </subject-type>
+  <subject-type type-name="clank_phone" name="clank" margin="(0, 50)" >
+      <navigator type="robot" icon="dummy.shp" />
+  </subject-type>
 
   <dut name="some_phone" backend-name="tnt_id">
     <subject type="clank_phone" />

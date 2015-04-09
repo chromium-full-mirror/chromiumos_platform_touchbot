@@ -82,12 +82,9 @@ class FakeBenchmarkSystem(BenchmarkSystem):
   def _CreateBackend(self, attrib):
     return FakeRobotBackend()
 
-  def _CreateSubject(self, dut_name, dut_backend, attrib):
-    subject_name = attrib["name"]
-    nav_backend = RobotNavigator(dut_backend, "dummy.shp")
-    margin = self._ParseCoord(attrib.get("margin", None), (0.0, 0.0))
-    return FakeBenchmarkSubject(dut_name, subject_name, dut_backend,
-                                nav_backend, self.camera, margin)
+  def _CreateNavigator(self, nav_attrib, subject_attrib, dut_attrib,
+                       dut_backend):
+    return RobotNavigator(dut_backend, nav_attrib["icon"])
 
   def _CreateFakeSubject(self):
     dut_backend = self._backend.GetDUTBackend("fake_dut")

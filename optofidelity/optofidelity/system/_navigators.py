@@ -121,15 +121,15 @@ class ADBNavigator(Navigator):
   ADB_PATH = None
   MAIN_ACTION = "android.intent.action.MAIN"
   VIEW_ACTION = "android.intent.action.VIEW"
-  CHROME_COMPONENT = "com.android.chrome/com.google.android.apps.chrome.Main"
   HOME_COMPONENT = "android.intent.category.HOME"
 
-  def __init__(self, adb_device):
+  def __init__(self, adb_device, component):
     """
     :param str adb_device: Serial number of the adb device.
     """
     self._adb_device = adb_device
     self._adb = None
+    self._component = component
     ADBNavigator._FindADBBinary()
 
   @property
@@ -180,7 +180,7 @@ class ADBNavigator(Navigator):
   def _OpenFile(self, filename):
     remote_file = os.path.join(self.REMOTE_DIR, filename)
     uri = "file://%s" % remote_file
-    self._StartActivity(self.VIEW_ACTION, self.CHROME_COMPONENT, uri)
+    self._StartActivity(self.VIEW_ACTION, self._component, uri)
 
   def _StartActivity(self, action, component, uri):
     cmd = ["am start"]
