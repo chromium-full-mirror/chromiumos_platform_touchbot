@@ -26,7 +26,7 @@ class FakeDUTBackend(DUTBackend):
     self._detect_words_rval = (1.0, 1.0)
 
   def DetectIcon(self, icon_file):
-    self._LogCommand("DetectIcon", icon_file)
+    self._LogCommand("DetectIcon", (icon_file,))
     return self._detect_icon_rval
 
   def DetectWords(self, words):
@@ -65,7 +65,7 @@ class FakeDUTBackend(DUTBackend):
     return self._orientation
 
   def _LogCommand(self, command, args):
-    _log.info("%s(%s)", command, ", ".join(str(args)))
+    _log.info("%s(%s)", command, ", ".join([str(arg) for arg in args]))
     self._commands.append((command, args))
 
 

@@ -29,14 +29,14 @@ class Updater(object):
     """:returns Optional[str]: Currently installed version or None."""
 
   @abstractmethod
-  def Install(self, version):
+  def Install(self, version, print_progress=False):
     """Install specific app version.
 
     :type version: str
     """
 
   @abstractmethod
-  def Uninstall(self):
+  def Uninstall(self, print_progress=False):
     """Uninstall app."""
 
 

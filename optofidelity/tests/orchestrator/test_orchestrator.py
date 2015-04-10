@@ -24,7 +24,8 @@ class OrchestratorTests(TestCase):
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
-    return Orchestrator(self.runner.benchmark_system, self.runner, self.tempdir)
+    return Orchestrator(self.runner.benchmark_system, self.runner, self.tempdir,
+                        print_progress=True)
 
   def tearDown(self):
     self.subject.Close()

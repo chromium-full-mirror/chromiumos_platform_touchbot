@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """Tests for the Orchestrator class."""
 from unittest import TestCase
-from optofidelity.system._chrome_updater import ChromeUpdater
+from optofidelity.system._updater import ChromeUpdater
 
 ADB_DEVICE_ID = None
 
@@ -14,7 +14,7 @@ class ChromeUpdaterTests(TestCase):
       self.skipTest("Specify ADB_DEVICE_ID to test live adb subject.")
 
   def testChromeBetaUpdater(self):
-    updater = ChromeUpdater(ADB_DEVICE_ID, "beta", print_progress=True)
+    updater = ChromeUpdater(ADB_DEVICE_ID, "beta")
 
     # Test uninstall
     if updater.installed_version:
@@ -23,23 +23,23 @@ class ChromeUpdaterTests(TestCase):
 
     # Test install of latest version
     latest = updater.available_versions[0]
-    updater.Install(latest)
+    updater.Install(latest, print_progress=True)
     self.assertEqual(updater.installed_version, latest)
 
     # Test downgrading to previous version
     previous = updater.available_versions[1]
-    updater.Install(previous)
+    updater.Install(previous, print_progress=True)
     self.assertEqual(updater.installed_version, previous)
 
   def testChromeStableUpdater(self):
-    updater = ChromeUpdater(ADB_DEVICE_ID, "stable", print_progress=True)
+    updater = ChromeUpdater(ADB_DEVICE_ID, "stable")
 
     # Test install of latest version
     latest = updater.available_versions[0]
-    updater.Install(latest)
+    updater.Install(latest, print_progress=True)
     self.assertEqual(updater.installed_version, latest)
 
     # Test downgrading to previous version
     previous = updater.available_versions[1]
-    updater.Install(previous)
+    updater.Install(previous, print_progress=True)
     self.assertEqual(updater.installed_version, previous)

@@ -1,8 +1,12 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import subprocess
+import logging
 import re
+import subprocess
+
+
+_log = logging.getLogger(__name__)
 
 
 class ADB(object):
@@ -53,9 +57,15 @@ class ADB(object):
            it was not printed.
     """
     command = self.adb_cmd + sub_command
+    _log.debug("Executing %s", " ".join(command))
     process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
-    stdout = process.stdout.read().replace("\r", "").strip()
+    lines = []
+    for line in process.stdout.readlines():
+      _log.debug(".. %s" % line.strip())
+      lines.append(line.strip())
+    stdout = "\n".join(lines)
+
     if process.returncode > 0:
       print stdout
       raise Exception("'%s' returned with %d" % (" ".join(command),

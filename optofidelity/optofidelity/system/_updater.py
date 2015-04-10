@@ -37,17 +37,17 @@ class ManualUpdater(Updater):
   def installed_version(self):
     return self._version
 
-  def Install(self, version):
+  def Install(self, version, print_progress=False):
     raise NotImplementedError()
 
-  def Uninstall(self):
+  def Uninstall(self, print_progress=False):
     raise NotImplementedError()
 
 
 class ChromeUpdater(Updater):
   """Updater for stable and beta Chrome app."""
 
-  def __init__(self, adb_device, channel, print_progress=False):
+  def __init__(self, adb_device, channel):
     """
     :param str adb_device: USB serial of the device under test.
     :param str channel: stable or beta.
@@ -58,7 +58,6 @@ class ChromeUpdater(Updater):
 
     self._adb = ADB(adb_device)
     self._channel = channel
-    self._print_progress = print_progress
     if channel == "stable":
       self._package_name = "com.android.chrome"
       self._filename = "ChromeStable.apk"
@@ -80,19 +79,20 @@ class ChromeUpdater(Updater):
         versions.append(row[2])
     return sorted(versions, reverse=True)
 
-  def Uninstall(self):
-    with self._ProgressBar("Uninstalling %s" % self._package_name):
+  def Uninstall(self, print_progress=False):
+    msg = "Uninstalling %s" % self._package_name
+    with ProgressBar(msg, suppress=(not print_progress)):
       self._adb.UninstallPackage(self._package_name)
 
-  def Install(self, version):
+  def Install(self, version, print_progress=False):
     with NamedTemporaryFile(suffix=".apk") as apk_tempfile:
-      with self._ProgressBar("Downloading APK version %s" % version):
+      msg = "Downloading APK version %s" % version
+      with ProgressBar(msg, suppress=(not print_progress)):
         self._DownloadAPK(version, apk_tempfile.name)
-      with self._ProgressBar("Installing APK version %s" % version):
-        self._adb.InstallAPK(apk_tempfile.name)
 
-  def _ProgressBar(self, message):
-    return ProgressBar(message, suppress=(not self._print_progress))
+      msg = "Installing APK version %s" % version
+      with ProgressBar(msg, suppress=(not print_progress)):
+        self._adb.InstallAPK(apk_tempfile.name)
 
   def _DownloadAPK(self, version, filename):
     """Download specific version of chrome to filename.

@@ -24,7 +24,8 @@ class Orchestrator(object):
 
   DATABASE_FILE = "results.db"
 
-  def __init__(self, benchmark_system, benchmark_runner, results_dir):
+  def __init__(self, benchmark_system, benchmark_runner, results_dir,
+               print_progress=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -33,10 +34,16 @@ class Orchestrator(object):
     self._system = benchmark_system
     self._runner = benchmark_runner
     self._results_dir = results_dir
+    self._print_progress = print_progress
 
     db_path = "sqlite:///%s/%s" % (results_dir, self.DATABASE_FILE)
     self._results_db = dataset.connect(db_path)
     self._results_table = self._results_db["benchmark_results"]
+
+  def PrintProgress(self, message, *args):
+    _log.info(message, *args)
+    if self._print_progress:
+      print message % args
 
   def RunTest(self, subject, benchmark_type, debug_flags):
     """Run a single test case and store results in database.
@@ -51,10 +58,13 @@ class Orchestrator(object):
     if subject_version:
       metadata["subject_version"] = subject_version
 
-    benchmark = self._runner.RunBenchmark(subject, benchmark_type,
-                                          metadata, debug_flags)
+    self.PrintProgress("%s/%s: Running benchmark", subject.name, benchmark_type)
+    benchmark = self._runner.RunBenchmark(subject, benchmark_type, metadata,
+                                          debug_flags, self._print_progress)
 
     results_path, uid = self._FindUniqueResultsFolder(time)
+    self.PrintProgress("%s/%s: Saving to %s", subject.name, benchmark_type,
+                       results_path)
     benchmark.Save(results_path)
     self._InsertResults(time, uid, subject_version, benchmark.results)
 
@@ -96,21 +106,25 @@ class Orchestrator(object):
     :param Optional[str] forced_version: Force version number install
     :returns bool: True if the subject has been updated.
     """
+    self.PrintProgress("%s: Checking for updates", subject.name)
     available = subject.updater.available_versions
     target_version = None
     if forced_version:
+      self.PrintProgress("%s: Forcing version %s", subject.name,
+                         forced_version)
       for version in available:
         if fnmatch(version, forced_version):
           target_version = version
           break
       if not target_version:
-        raise ValueError("Version %s is not available." % forced_version)
+        raise ValueError("Version %s is not available" % forced_version)
     else:
       target_version = available[0]
       if target_version == subject.updater.installed_version:
-        print "version %s is already installed. skipping" % target_version
+        self.PrintProgress("%s: Version %s is already installed", subject.name,
+                           target_version)
         return False
-    subject.updater.Install(target_version)
+    subject.updater.Install(target_version, self._print_progress)
     return True
 
   def QueryResults(self):
