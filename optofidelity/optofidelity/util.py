@@ -5,9 +5,11 @@
 
 This module provides globally available python utilities.
 """
+from StringIO import StringIO
+import logging
+import sys
 import threading
 import time
-import sys
 
 
 class const_property(object):
@@ -82,3 +84,26 @@ class ProgressBar(threading.Thread):
       i = i+1
       time.sleep(0.1)
     print " " + self.done_msg
+
+class LogCapture(object):
+  def __init__(self, stream=None, level=logging.DEBUG):
+    self._log_stream = stream or StringIO()
+    self._level = level
+
+    self._log_handler = logging.StreamHandler(self._log_stream)
+    formatter = logging.Formatter("%(levelname)s:%(name)s: %(message)s")
+    self._log_handler.setFormatter(formatter)
+
+  def __enter__(self):
+    root = logging.getLogger("optofidelity")
+    root.addHandler(self._log_handler)
+
+  def __exit__(self, type_, value, tb):
+    root = logging.getLogger("optofidelity")
+    if type_:
+      root.error("Exception", exc_info=(type_, value, tb))
+    root.removeHandler(self._log_handler)
+
+  @property
+  def log(self):
+    return self._log_stream.getvalue()

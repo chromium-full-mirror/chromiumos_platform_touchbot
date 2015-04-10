@@ -11,7 +11,7 @@ import time
 from safetynet import Any, Dict, List, Optional, TypecheckMeta
 import skimage.io as io
 
-from optofidelity.detection import VideoProcessor, ScreenCalibration
+from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSystem
 from optofidelity.videoproc import FileVideoReader
 
@@ -88,6 +88,8 @@ class Benchmark(object):
     self.metadata = metadata
     self.trace = None
     self.video = None
+
+    self.log = ""
 
   @property
   def ms_per_frame(self):
@@ -224,6 +226,7 @@ class Benchmark(object):
     DumpProperty("trace")
     DumpProperty("results")
     DumpProperty("metadata")
+    DumpProperty("log")
 
   @classmethod
   def Load(cls, path):

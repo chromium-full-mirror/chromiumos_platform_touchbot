@@ -4,12 +4,14 @@
 """Tests for the Benchmark class."""
 
 from unittest import TestCase
+import logging
 import os
 import shutil
 import tempfile
 
 from optofidelity.benchmark import Benchmark
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
+
 from . import test_data
 
 
@@ -41,6 +43,19 @@ class BenchmarkRunnerTests(TestCase):
     assertFileExists("trace.txt")
     assertFileExists("trace.pickle")
     assertFileExists("results.txt")
+
+  def testLogging(self):
+    root_logger = logging.getLogger()
+    original_level = root_logger.getEffectiveLevel()
+    root_logger.setLevel(logging.DEBUG)
+
+    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
+    self.assertIn("Trigger Camera", benchmark.log)
+    self.assertIn("Move", benchmark.log)
+    self.assertIn("Tap", benchmark.log)
+    self.assertIn("Processing frame", benchmark.log)
+
+    root_logger.setLevel(original_level)
 
   def assertBenchmarkComplete(self, benchmark):
     num_taps = 4
