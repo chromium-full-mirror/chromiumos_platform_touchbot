@@ -21,7 +21,7 @@ class SubjectTests(TestCase):
 
   def createSubject(self):
     return BenchmarkSubject("test", "test", self.dut_backend, self.nav_backend,
-                            self.camera, (0.0, 0.0))
+                            None, self.camera, (0.0, 0.0))
 
   def assertSeriesOfTaps(self, *expected_taps):
     taps = [(args[0], args[1]) for cmd, args in self.dut_backend._commands

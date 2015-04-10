@@ -7,12 +7,14 @@ import cPickle as pickle
 import re
 import xml.etree.ElementTree as ElementTree
 
-from safetynet import TypecheckMeta, Optional
+from safetynet import Optional, TypecheckMeta
 
+from ._navigators import ADBNavigator, RobotNavigator
 from ._phantom import PhantomCamera
 from ._tnt_backend import TnTRobotBackend
+from ._updater import ChromeUpdater, ManualUpdater
 from .subject import BenchmarkSubject
-from ._navigators import RobotNavigator, ADBNavigator
+
 
 class BenchmarkSystem(object):
   """Robot system which manages multiple DUTs.
@@ -160,9 +162,9 @@ class BenchmarkSystem(object):
     if calib_elem is not None:
       backend_name = calib_elem.get("backend-name", "calibration")
       dut_backend = self._backend.GetDUTBackend(backend_name)
-      nav_backend = RobotNavigator(dut_backend, {})
+      nav_backend = RobotNavigator(dut_backend, "")
       subject = BenchmarkSubject("calibration", "calibration", dut_backend,
-                                 nav_backend, self.camera, (0.0, 0.0))
+                                 nav_backend, None, self.camera, (0.0, 0.0))
       self.led_calibration_subject = subject
 
     for dut_elem in root.iter("dut"):
@@ -186,12 +188,15 @@ class BenchmarkSystem(object):
     navigator = self._CreateNavigator(nav_attrib, subject_attrib, dut_attrib,
                                       dut_backend)
 
+    updater_attrib = self._CollectSubjectAttrib(subject_elem, "updater")
+    updater = self._CreateUpdater(updater_attrib, subject_attrib, dut_attrib)
+
     dut_name = dut_attrib.get("name")
     subject_name = subject_attrib.get("name")
     margin = self._ParseCoord(subject_attrib.get("margin"))
 
     subject = BenchmarkSubject(dut_name, subject_name, dut_backend, navigator,
-                               self.camera, margin)
+                               updater, self.camera, margin)
     self.subjects[subject.name] = subject
 
   def _CollectSubjectAttrib(self, subject_elem, child_name):
@@ -232,6 +237,15 @@ class BenchmarkSystem(object):
       return ADBNavigator(dut_attrib["adb"])
     else:
       raise ValueError("Unknown navigator type name '%s'" % nav_type_name)
+
+  def _CreateUpdater(self, updater_attrib, subject_attrib, dut_attrib):
+    updater_type_name = updater_attrib.get("type", "manual")
+    if updater_type_name == "manual":
+      return ManualUpdater(updater_attrib.get("version"))
+    elif updater_type_name == "chrome":
+      return ChromeUpdater(dut_attrib["adb"], updater_attrib["channel"])
+    else:
+      raise ValueError("Unknown updater type name '%s'" % updater_type_name)
 
   def _ParseCoord(self, string):
     if string:

@@ -5,7 +5,8 @@
 
 from abc import abstractmethod, abstractproperty
 
-from safetynet import Any, Dict, Optional, Tuple, TypecheckMeta
+from safetynet import (Any, Dict, InterfaceMeta, List, Optional, Tuple,
+                       TypecheckMeta)
 import numpy as np
 
 from optofidelity.util import const_property
@@ -15,8 +16,33 @@ from ._backend import DUTBackend
 from .camera import HighSpeedCamera
 
 
+class Updater(object):
+  """Interface for a service to update subjects."""
+  __metaclass__ = InterfaceMeta
+
+  @abstractproperty
+  def available_versions(self):
+    """:returns List[str]: List of versions available for install."""
+
+  @abstractproperty
+  def installed_version(self):
+    """:returns Optional[str]: Currently installed version or None."""
+
+  @abstractmethod
+  def Install(self, version):
+    """Install specific app version.
+
+    :type version: str
+    """
+
+  @abstractmethod
+  def Uninstall(self):
+    """Uninstall app."""
+
+
 class Navigator(object):
   """Backend class to navigate a device to open subjects and pages."""
+  __metaclass__ = InterfaceMeta
 
   @abstractproperty
   def state(self):
@@ -93,8 +119,8 @@ class BenchmarkSubject(object):
   HOVER_HEIGHT = 10.0
   """Height on the Z-axis at which to hover between gestures."""
 
-  def __init__(self, dut_name, subject_name, dut_backend, navigator, camera,
-               margin):
+  def __init__(self, dut_name, subject_name, dut_backend, navigator, updater,
+               camera, margin):
     """
     :type dut_name: str
     :type subject_name: str
@@ -107,6 +133,7 @@ class BenchmarkSubject(object):
     self.dut_name = dut_name
     self.subject_name = subject_name
     self.camera = camera
+    self.updater = updater
 
     self.top = margin[0]
     self.left = 0.0
