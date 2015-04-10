@@ -63,14 +63,20 @@ class ScreenCalibration(object):
   def __new__(cls, black_frame, white_frame):
     """Creates new screen calibration from black and white video frames.
 
+    If the white_frame is all white, the calibration will not do any
+    calibration or transformation but return the original images.
+
     :param np.ndarray black_frame: Video frame of screen being black
     :param np.ndarray white_frame: Video frame of screen being white
     """
     self = super(ScreenCalibration, cls).__new__(cls)
-    self.shape = self._CalculateShape(black_frame, white_frame)
-    self.is_identity = np.all(self.shape.mask)
-    self._rectification_transform = None
-    if not self.is_identity:
+    self.is_identity = np.allclose(white_frame, 1.0)
+
+    if self.is_identity:
+      self.shape = Shape(np.ones(white_frame.shape, dtype=np.bool))
+      self._rectification_transform = None
+    else:
+      self.shape = self._CalculateShape(black_frame, white_frame)
       self._rectification_transform = self._EstimateRectTransform(self.shape)
     self.black_reference = self.CameraToScreenSpace(black_frame)
     self.white_reference = self.CameraToScreenSpace(white_frame)
