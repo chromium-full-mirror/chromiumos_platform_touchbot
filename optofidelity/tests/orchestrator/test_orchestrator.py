@@ -19,6 +19,7 @@ class OrchestratorTests(TestCase):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
     self.subject = self.runner.benchmark_system.fake_subject
+    self.subject.updater._available_versions = ["2.0", "1.0"]
     self.subject.Open(False)
     self.tempdir = tempfile.mkdtemp()
 
@@ -51,3 +52,40 @@ class OrchestratorTests(TestCase):
     orchestrator = self.createOrchestrator()
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 2)
+
+  def testUpdateAndRun(self):
+    orchestrator = self.createOrchestrator()
+
+    # The subject should be updated to 2.0 then have tests run
+    orchestrator.UpdateAndRunTests("*/tap", [])
+    self.assertEqual(self.subject.updater.installed_version, "2.0")
+
+    # Force test run with version 1.0
+    orchestrator.UpdateAndRunTests("*/tap", [], forced_version="1.0")
+    self.assertEqual(self.subject.updater.installed_version, "1.0")
+
+    results = list(orchestrator.QueryResults())
+    self.assertEqual(len(results), 4)
+
+    versions_tested = [r["subject_version"] for r in results]
+    self.assertIn("1.0", versions_tested)
+    self.assertIn("2.0", versions_tested)
+
+  def testUpdateSubject(self):
+    orchestrator = self.createOrchestrator()
+
+    # The subject should be updated to 2.0 then have tests run
+    ret = orchestrator.UpdateSubject(self.subject)
+    self.assertEqual(ret, True)
+    self.assertEqual(self.subject.updater.installed_version, "2.0")
+
+    # Force test run with version 1.0
+    ret = orchestrator.UpdateSubject(self.subject, forced_version="1.0")
+    self.assertEqual(ret, True)
+    self.assertEqual(self.subject.updater.installed_version, "1.0")
+
+    # Update back to latest version. Next update call should return False
+    orchestrator.UpdateSubject(self.subject)
+    ret = orchestrator.UpdateSubject(self.subject)
+    self.assertEqual(ret, False)
+    self.assertEqual(self.subject.updater.installed_version, "2.0")

@@ -6,10 +6,10 @@ from fnmatch import fnmatch
 import logging
 import os
 
-from safetynet import List, TypecheckMeta
+from safetynet import List, Optional, TypecheckMeta
 
 from optofidelity.benchmark import Benchmark, BenchmarkResults, BenchmarkRunner
-from optofidelity.system import BenchmarkSystem
+from optofidelity.system import BenchmarkSystem, BenchmarkSubject
 import dataset
 
 _log = logging.getLogger(__name__)
@@ -46,14 +46,18 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     """
     time = datetime.now()
+    subject = self._system.subjects[subject_name]
+    subject_version = subject.updater.installed_version
     metadata = dict(time=time)
+    if subject_version:
+      metadata["subject_version"] = subject_version
 
     benchmark = self._runner.RunBenchmark(subject_name, benchmark_type,
                                           metadata, debug_flags)
 
     results_path, uid = self._FindUniqueResultsFolder(time)
     benchmark.Save(results_path)
-    self._InsertResults(time, uid, benchmark.results)
+    self._InsertResults(time, uid, subject_version, benchmark.results)
 
   def RunTests(self, match, debug_flags):
     """Run all tests matching 'match' and save results to database.
@@ -66,6 +70,48 @@ class Orchestrator(object):
     """
     for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
       self.RunTest(subject_name, benchmark_type, debug_flags)
+
+  def UpdateAndRunTests(self, match, debug_flags, forced_version=None):
+    """Update, then run all tests matching 'match' and save results.
+
+    This will update all subjects before runnin the tests and only run tests
+    if they have been updated.
+
+    :param str match: One of the following:
+           - The full name of a test
+           - The beginning of the name of a test
+           - A unix glob
+    :type debug_flags: List[str]
+    :param Optional[str] forced_version: Force version number to test.
+    """
+    for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
+      subject = self._system.subjects[subject_name]
+      if self.UpdateSubject(subject, forced_version):
+        self.RunTest(subject_name, benchmark_type, debug_flags)
+
+  def UpdateSubject(self, subject, forced_version=None):
+    """Update subject to latest or custom version.
+
+    :type subject: BenchmarkSubject
+    :param Optional[str] forced_version: Force version number install
+    :returns bool: True if the subject has been updated.
+    """
+    available = subject.updater.available_versions
+    target_version = None
+    if forced_version:
+      for version in available:
+        if fnmatch(version, forced_version):
+          target_version = version
+          break
+      if not target_version:
+        raise ValueError("Version %s is not available." % forced_version)
+    else:
+      target_version = available[0]
+      if target_version == subject.updater.installed_version:
+        print "version %s is already installed. skipping" % target_version
+        return False
+    subject.updater.Install(target_version)
+    return True
 
   def QueryResults(self):
     """Return iterator over all results in database."""
@@ -103,7 +149,7 @@ class Orchestrator(object):
     for match in matches:
       yield benchmarks[match]
 
-  def _InsertResults(self, time, uid, results):
+  def _InsertResults(self, time, uid, subject_version, results):
     """Inserts results into database
 
     :type time: datetime
@@ -116,6 +162,7 @@ class Orchestrator(object):
           time=time,
           uid=uid,
           subject_name=results.subject_name,
+          subject_version=subject_version,
           benchmark_type=results.benchmark_type,
           measurement_id=mid,
           draw_start_mean=id_measurements.draw_start_mean,
