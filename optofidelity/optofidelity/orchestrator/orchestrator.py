@@ -38,7 +38,7 @@ class Orchestrator(object):
     self._results_db = dataset.connect(db_path)
     self._results_table = self._results_db["benchmark_results"]
 
-  def RunTest(self, subject_name, benchmark_type, debug_flags):
+  def RunTest(self, subject, benchmark_type, debug_flags):
     """Run a single test case and store results in database.
 
     :type subject_name: str
@@ -46,13 +46,12 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     """
     time = datetime.now()
-    subject = self._system.subjects[subject_name]
     subject_version = subject.updater.installed_version
     metadata = dict(time=time)
     if subject_version:
       metadata["subject_version"] = subject_version
 
-    benchmark = self._runner.RunBenchmark(subject_name, benchmark_type,
+    benchmark = self._runner.RunBenchmark(subject, benchmark_type,
                                           metadata, debug_flags)
 
     results_path, uid = self._FindUniqueResultsFolder(time)
@@ -69,7 +68,8 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     """
     for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
-      self.RunTest(subject_name, benchmark_type, debug_flags)
+      subject = self._system.subjects[subject_name]
+      self.RunTest(subject, benchmark_type, debug_flags)
 
   def UpdateAndRunTests(self, match, debug_flags, forced_version=None):
     """Update, then run all tests matching 'match' and save results.
@@ -87,7 +87,7 @@ class Orchestrator(object):
     for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
       subject = self._system.subjects[subject_name]
       if self.UpdateSubject(subject, forced_version):
-        self.RunTest(subject_name, benchmark_type, debug_flags)
+        self.RunTest(subject, benchmark_type, debug_flags)
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.

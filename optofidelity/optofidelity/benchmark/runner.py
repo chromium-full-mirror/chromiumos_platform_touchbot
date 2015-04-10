@@ -11,9 +11,9 @@ class BenchmarkRunner(object):
     self.benchmark_system = benchmark_system
     self.video_processor = video_processor
 
-  def RunBenchmark(self, subject_name, benchmark_type, metadata, debug_flags,
+  def RunBenchmark(self, subject, benchmark_type, metadata, debug_flags,
                    print_progress=False):
-    benchmark = Benchmark(subject_name, benchmark_type, metadata)
+    benchmark = Benchmark(subject.name, benchmark_type, metadata)
     benchmark.CalibrateScreen(self.benchmark_system, self.video_processor)
     benchmark.ExecuteOnSubject(self.benchmark_system)
     benchmark.ProcessVideo(self.video_processor, debug_flags, print_progress)
