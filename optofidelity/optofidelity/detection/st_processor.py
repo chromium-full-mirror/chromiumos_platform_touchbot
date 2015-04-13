@@ -7,7 +7,7 @@ import sys
 from safetynet import List, Optional
 import numpy as np
 
-from optofidelity.videoproc import VideoReader
+from optofidelity.videoproc import VideoReader, InteractiveVideoViewer
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import DetectorDebugger
@@ -47,16 +47,26 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     self._InitDetectors()
     all_events = []
     prev_frame = None
-    for i, frame in video_reader.Frames():
+    viewer = None
+
+    if len(debug_flags) > 0:
+      viewer = InteractiveVideoViewer()
+      generator = viewer.YieldFrames(video_reader)
+    else:
+      generator = video_reader.Frames()
+
+    for i, frame in generator:
       msg = "Processing frame %d/%d" % (i + 1, video_reader.num_frames)
       _log.debug(msg)
       if print_progress:
         sys.stdout.write("\r" + msg)
         sys.stdout.flush()
 
-      events = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
-                                  debug_flags, video_reader)
+      events, debug_frame = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
+                                               debug_flags)
       all_events.extend(events)
+      if debug_frame is not None and viewer is not None:
+        viewer.DisplayFrame(debug_frame)
       prev_frame = frame
 
     if print_progress:
@@ -65,11 +75,11 @@ class SinglethreadedVideoProcessor(VideoProcessor):
 
   def ProcessFrame(self, frame, prev_frame, screen_calibration, debug_flags):
     self._InitDetectors()
-    return self._ProcessFrame(0, frame, prev_frame, screen_calibration,
-                              debug_flags, None)
+    events, debug_frame =  self._ProcessFrame(0, frame, prev_frame,
+                                              screen_calibration, debug_flags)
 
   def _ProcessFrame(self, frame_index, frame, prev_frame, screen_calibration,
-                    debug_flags, video_reader):
+                    debug_flags):
     """Process a single frame.
 
     :type frame_index: int
@@ -77,8 +87,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     :type prev_frame: Optional[np.ndarray]
     :type screen_calibration: ScreenCalibration
     :type debug_flags: List[str]
-    :type video_reader: Optional[VideoReader]
-    :returns List[Event]
+    :rtype Tuple[List[Event], Optional[np.ndarray]]
     """
     calib_frame = CalibratedFrame(frame, prev_frame, screen_calibration,
                                   frame_index)
@@ -87,7 +96,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     for detector in self._detectors:
       use_debugger = detector.NAME in debug_flags or "all" in debug_flags
       if use_debugger and not debugger:
-        debugger = DetectorDebugger(self._screen_calibration, debug_flags)
+        debugger = DetectorDebugger(screen_calibration, debug_flags)
 
       detector_debugger = debugger if use_debugger else None
       preprocessed_data = detector.Preprocess(calib_frame, detector_debugger)
@@ -96,12 +105,8 @@ class SinglethreadedVideoProcessor(VideoProcessor):
       all_events.extend(events)
 
     if debugger:
-      if video_reader:
-        debugger.DisplayDebugVideo(calib_frame, video_reader)
-      else:
-        debugger.DisplayDebugFrame(calib_frame)
-
-    return all_events
+      return all_events, debugger.ComposeDebugFrame(calib_frame)
+    return all_events, None
 
   def _AddDetector(self, detector):
     self._detector_types.append(detector)

@@ -64,15 +64,6 @@ class ProcessorTest(TestCase):
         processor.EnableDetectors(screen_draw=True)
         processor.ProcessVideo(video_reader, self.calib, ["all"], True)
 
-  @skip("Requires manual validation")
-  def testSingleFrameDebugging(self):
-    frame = test_data.LoadImage("led_on.png")
-    prev_frame = test_data.LoadImage("led_off.png")
-
-    processor = self.createTestVideoProcessor(False)
-    processor.EnableDetectors(screen_draw=True)
-    processor.ProcessFrame(0, frame, prev_frame, self.calib, ["all"])
-
   def testFakeProcessor(self):
     events = [LEDEvent(10, LEDEvent.STATE_ON),
               LEDEvent(20, LEDEvent.STATE_OFF)]

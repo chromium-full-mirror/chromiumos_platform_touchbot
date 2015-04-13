@@ -47,7 +47,6 @@ class VideoReader(object):
   """
   def __init__(self, num_frames, framerate, perf_enabled=False):
     self.current_frame = -1
-    self.interactive = False
     self.num_frames = num_frames
     self.transfer_times = []
     self.perf_enabled = perf_enabled
@@ -140,21 +139,9 @@ class VideoReader(object):
     """Go to the previous frame."""
     return self.Seek(backward=1)
 
-  def EnterInteractive(self):
-    """Enable interactive mode in Frames().
-
-    After the interactive mode is enabled, Frames() will stop and wait for
-    user input:
-      j: go to next frame
-      k: go to previous frame
-      c: continue playing
-    """
-    self.interactive = True
-
   def Frames(self, start=0, stop=None, step=1, frames=None):
     """Yield frames until the video ends.
 
-    This method might block when the interactive mode is used.
     start: first frame to yield.
     stop: last frame to yield.
     step: step size between frames.
@@ -165,51 +152,11 @@ class VideoReader(object):
       if stop is None:
         stop = self.num_frames
       frames = range(start, stop, step)
-    i = 0
-    while True:
-      if i < 0 or i >= len(frames):
-        break
 
-      if self.prefetch_enabled and not self.interactive and i + 1 < len(frames):
+    for i, frame in enumerate(frames):
+      if self.prefetch_enabled and i + 1 < len(frames):
         self.Prefetch(frames[i + 1])
-
-      frame = self.FrameAt(frames[i])
-
-      yield frames[i], frame
-
-      if self.interactive:
-        key = cv2.waitKey() & 0xFF
-        if key == ord('k'):
-          i -= 1
-        elif key == ord('l'):
-          i -= 10
-        elif key == ord(';'):
-          i -= 100
-        elif key == ord('j'):
-          i += 1
-        elif key == ord('h'):
-          i += 10
-        elif key == ord('g'):
-          i += 100
-        elif key == ord('c'):
-          self.interactive = False
-          i += 1
-      else:
-        i += 1
-
-  def DebugView(self):
-    print "Press p to enter interactive mode"
-    print "Press c to close"
-    for i, frame in self.Frames():
-      key = Viewer.VideoFrame(frame)
-      if key == ord('p'):
-        print "Entering Interactive Mode"
-        print "  Press j/k to move by 1 frame"
-        print "  Press h/l to move by 10 frames"
-        print "  Press c to continue playback"
-        self.EnterInteractive()
-      if key == ord('c'):
-        break
+      yield frame, self.FrameAt(frame)
 
   def Save(self, filename, print_progress):
     width = self.frame_shape[1]
@@ -284,6 +231,7 @@ class FileVideoReader(VideoReader):
     if os.path.abspath(self.filename) != os.path.abspath(filename):
       shutil.copyfile(self.filename, filename)
 
+
 class FakeVideoReader(VideoReader):
   """Fake VideoReader returning nothing but black frames."""
   def __init__(self, num_frames, size, framerate):
@@ -295,30 +243,3 @@ class FakeVideoReader(VideoReader):
 
   def Read(self):
     return np.zeros(self.size, dtype=np.float)
-
-
-class VideoWriter(object):
-  def __init__(self, filename):
-    self.filename = filename
-    self.writer = None
-
-  def WriteFrame(self, frame):
-    frame = skimage.img_as_ubyte(frame)
-    frame = skimage.color.gray2rgb(frame)
-    self.writer.write(frame)
-
-  def Initialize(self, frame):
-      width = frame.shape[1]
-      height = frame.shape[0]
-      self.writer = cv2.VideoWriter(self.filename, None, 15, (width, height))
-
-  def Write(self, reader):
-    if not self.writer:
-      first_frame = reader.FrameAt(0)
-      self.Initialize(first_frame)
-
-    for i, frame in reader.Frames():
-      sys.stdout.write("\rWriting frame %d/%d" % (i, reader.num_frames))
-      sys.stdout.flush()
-      self.WriteFrame(frame)
-    print ""

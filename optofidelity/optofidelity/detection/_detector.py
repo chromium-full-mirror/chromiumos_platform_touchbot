@@ -39,19 +39,12 @@ class DetectorDebugger(object):
     self.screen_calibration = screen_calibration
     self._debug_flags = debug_flags
 
-  def DisplayDebugVideo(self, calib_frame, video_reader):
-    """Display calib_frame with canvases overlaid in a video window.
+  def ComposeDebugFrame(self, calib_frame):
+    """Compose image showing calib_frame with canvases overlaid
 
-    This method is to be called after every processed frame to display a running
-    video. This method will put the video_reader into interactive mode when the
-    user presses the 'p' key.
-
-    :param CalibratedFrame calib_frame
-    :param VideoReader video_reader
+    :type calib_frame: CalibratedFrame
+    :returns np.ndarray: The composed RGB image
     """
-    if not "video" in self._debug_flags:
-      return
-
     if "normalized" in self._debug_flags:
       debug_frame = self.ComposeScreenSpace(calib_frame.screen_space_normalized)
     elif "delta" in self._debug_flags:
@@ -59,25 +52,7 @@ class DetectorDebugger(object):
           0.5 + calib_frame.camera_space_delta)
     else:
       debug_frame = self.ComposeCameraSpace(calib_frame.camera_space_frame)
-
-    key = Viewer.VideoFrame(debug_frame)
-    if key == ord('p'):
-      video_reader.EnterInteractive()
-
-  def DisplayDebugFrame(self, calib_frame):
-    """Display single frame debugging information.
-
-    Displays all 3 views, camera space, delta and normalized in a single window.
-    This method is not suitable to display a running video as it will block
-    until the window is closed.
-
-    :param CalibratedFrame calib_frame
-    """
-    normalized = self.ComposeScreenSpace(calib_frame.screen_space_normalized)
-    camera_space = self.ComposeCameraSpace(calib_frame.camera_space_frame)
-    delta = self.ComposeCameraSpace(0.5 + calib_frame.camera_space_delta)
-    Viewer.DebugView(normalized=normalized, camera_space=camera_space,
-                     delta=delta, prev_frame=calib_frame.camera_space_prev_frame)
+    return debug_frame
 
   def ComposeScreenSpace(self, frame):
     """Compose a color image from screen space frame, overlaying debug information.

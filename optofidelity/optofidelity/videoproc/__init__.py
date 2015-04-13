@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 """Video processing tools to processing high speed camera videos."""
 from .filter import Filter
-from .io import FakeVideoReader, FileVideoReader, VideoReader, VideoWriter
+from .io import FakeVideoReader, FileVideoReader, VideoReader
 from .shape import Shape
 from .util import Canvas, VideoException, Viewer
+from .viewer import InteractiveVideoViewer
