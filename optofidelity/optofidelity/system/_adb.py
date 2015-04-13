@@ -45,6 +45,9 @@ class ADB(object):
       return match.group(1)
     return None
 
+  def PushFile(self, local_file, remote_file):
+    self.Execute(["push", local_file, remote_file])
+
   def Execute(self, sub_command, check_success=False):
     """Execute an adb command.
 
@@ -82,4 +85,4 @@ class ADB(object):
     :param bool check_success: Check for 'success' message, raises Exception if
            it was not printed.
     """
-    return self.Execute(["shell"] + shell_command)
+    return self.Execute(["shell"] + shell_command, check_success)

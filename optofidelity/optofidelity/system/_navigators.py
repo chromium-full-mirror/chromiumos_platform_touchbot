@@ -8,8 +8,8 @@ import os
 from safetynet import Any, Dict
 
 from optofidelity.util import const_property
-from pyadb import ADB
 
+from ._adb import ADB
 from ._backend import DUTBackend
 from .subject import BenchmarkSubject, Navigator
 
@@ -118,19 +118,16 @@ class ADBNavigator(Navigator):
 
   REMOTE_DIR = "/sdcard/crostouch"
   HTML_DIR = os.path.join(_script_dir, "..", "..", "html")
-  ADB_PATH = None
   MAIN_ACTION = "android.intent.action.MAIN"
   VIEW_ACTION = "android.intent.action.VIEW"
-  HOME_COMPONENT = "android.intent.category.HOME"
+  HOME_CATEGORY = "android.intent.category.HOME"
 
   def __init__(self, adb_device, component):
     """
     :param str adb_device: Serial number of the adb device.
     """
-    self._adb_device = adb_device
-    self._adb = None
+    self._adb = ADB(adb_device)
     self._component = component
-    ADBNavigator._FindADBBinary()
 
   @property
   def state(self):
@@ -141,15 +138,11 @@ class ADBNavigator(Navigator):
     pass
 
   def Open(self, safe):
-    if not self._adb:
-      self._adb = ADB(self.ADB_PATH)
-      self._adb.get_devices()
-      self._adb.set_target_device(self._adb_device)
-      self._UploadFiles()
+    self._UploadFiles()
     self.Reset()
 
   def Close(self):
-    self._StartActivity(self.MAIN_ACTION, self.HOME_COMPONENT, None)
+    self._StartActivity(self.MAIN_ACTION, category=self.HOME_CATEGORY)
 
   def OpenPage(self, page_name):
     self._OpenFile("%s.html" % page_name.lower())
@@ -161,41 +154,29 @@ class ADBNavigator(Navigator):
     self.Close()
     self._UploadFiles()
 
-  def _CheckErrors(self):
-    error = self._adb.get_error()
-    if error:
-      raise Exception(error)
-
   def _UploadFiles(self):
-    self._adb.shell_command("mkdir -p %s" % self.REMOTE_DIR)
+    self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
 
     filenames = ["jquery.min.js"]
     filenames += ["%s.html" % page.lower()
                   for page in BenchmarkSubject.PAGE_NAMES]
 
     for filename in filenames:
-      self._adb.push_local_file(os.path.join(self.HTML_DIR, filename),
-                                os.path.join(self.REMOTE_DIR, filename))
+      self._adb.PushFile(os.path.join(self.HTML_DIR, filename),
+                         os.path.join(self.REMOTE_DIR, filename))
 
   def _OpenFile(self, filename):
     remote_file = os.path.join(self.REMOTE_DIR, filename)
     uri = "file://%s" % remote_file
-    self._StartActivity(self.VIEW_ACTION, self._component, uri)
+    self._StartActivity(self.VIEW_ACTION, component=self._component, uri=uri)
 
-  def _StartActivity(self, action, component, uri):
-    cmd = ["am start"]
-    for flag, value in [("-a", action), ("-n", component), ("-d", uri)]:
+  def _StartActivity(self, action, component=None, uri=None, category=None):
+    cmd = ["am", "start"]
+    for flag, value in [("-a", action), ("-n", component), ("-d", uri),
+                        ("-c", category)]:
       if value:
-        cmd.append("%s %s" % (flag, value))
-    self._adb.shell_command(" ".join(cmd))
-
-  @classmethod
-  def _FindADBBinary(cls):
-    if not cls.ADB_PATH:
-      for path in os.environ["PATH"].split(os.pathsep):
-        adb_path = os.path.join(path, "adb")
-        if os.path.exists(adb_path):
-          cls.ADB_PATH = adb_path
-    if not cls.ADB_PATH:
-      raise Exception("Please install adb and make it available on PATH.")
-
+        cmd += [flag, value]
+    response = self._adb.ExecuteShell(cmd)
+    if "Error" in response:
+      print response
+      raise Exception("Failed to open Activity")
