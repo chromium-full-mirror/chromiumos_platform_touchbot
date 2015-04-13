@@ -3,19 +3,19 @@
 # found in the LICENSE file.
 """Unit tests for Phantom camera using a live connection to the camera."""
 
-import unittest2
+import unittest
 
 from optofidelity.system._phantom import PhantomCamera
 
 
-class PhantomTests(unittest2.TestCase):
+class PhantomTests(unittest.TestCase):
   CAMERA_IP = None
   CAMERA_PORT = 7115
 
-  skip_if_offline = unittest2.skipIf(CAMERA_IP is None,
-      "This test requires CAMERA_IP to be set.")
+  def setUp(self):
+    if self.CAMERA_IP is None:
+      self.skipTest("This test requires CAMERA_IP to be set.")
 
-  @skip_if_offline
   def test_recording(self):
     camera = PhantomCamera(self.CAMERA_IP, self.CAMERA_PORT, 300)
     camera.Prepare(1000, 100)
@@ -27,7 +27,6 @@ class PhantomTests(unittest2.TestCase):
     print "Please verify that the recorded video is correct"
     video.DebugView()
 
-  @skip_if_offline
   def test_state_checking(self):
     camera = PhantomCamera(self.CAMERA_IP, self.CAMERA_PORT, 300)
     self.assertRaises(Exception, lambda: camera.Trigger())

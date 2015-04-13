@@ -13,8 +13,6 @@ import numpy as np
 import skimage.measure as measure
 import skimage.morphology as morphology
 
-from contracts import contract
-
 from .filter import Filter
 from .util import VideoException, Viewer
 
@@ -25,7 +23,6 @@ class Shape(object):
   The shape is represented by a binary image aka mask, in which pixels
   that are part of the shape are True, all others are False.
   """
-  @contract(mask="binary_image")
   def __init__(self, mask, props=None):
     if props is None:
       # Use the mask as a label image, since we only have one region,

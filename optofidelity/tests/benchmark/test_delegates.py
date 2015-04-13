@@ -10,7 +10,7 @@ import cPickle as pickle
 import os
 
 import numpy as np
-import unittest2
+import unittest
 
 from optofidelity.benchmark._line_delegates import (ScrollDelegate,
                                                     ScrollStartDelegate,
@@ -24,7 +24,7 @@ from optofidelity.system.fake import FakeBenchmarkSystem
 from . import test_data
 
 
-class AbstractDelegateTests(unittest2.TestCase):
+class AbstractDelegateTests(unittest.TestCase):
   """Abstract base class for BenchmarkDelegate tests.
 
   Provides a methods for testing ExecuteOnSubject on a live robot as well as

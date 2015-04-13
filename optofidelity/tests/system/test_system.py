@@ -3,13 +3,13 @@
 # found in the LICENSE file.
 """Unit tests for BenchmarkSystem."""
 
-from mock import patch
 from tempfile import NamedTemporaryFile
-import unittest2
+import unittest
 
 from optofidelity.system._fake_backend import FakeDUTBackend
-from optofidelity.system.system import BenchmarkSystem
 from optofidelity.system.fake import FakeBenchmarkSystem
+from optofidelity.system.system import BenchmarkSystem
+
 
 simple_config = """\
 <optofidelity>
@@ -59,7 +59,7 @@ def TemporaryFileWithData(data):
   return tempfile
 
 
-class RobotTests(unittest2.TestCase):
+class RobotTests(unittest.TestCase):
 
   def testSimpleConfig(self):
     with TemporaryFileWithData(simple_config) as tempfile:

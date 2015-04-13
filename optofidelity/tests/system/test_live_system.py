@@ -4,7 +4,7 @@
 """Unit tests for BenchmarkSystem using a live connection to the robot."""
 
 from tempfile import NamedTemporaryFile
-import unittest2
+import unittest
 
 from optofidelity.system.system import BenchmarkSystem
 
@@ -31,12 +31,12 @@ def TemporaryFileWithData(data):
   return tempfile
 
 
-class SystemTests(unittest2.TestCase):
+class SystemTests(unittest.TestCase):
 
-  skip_if_offline = unittest2.skipIf(CAMERA_IP is None or ROBOT_IP is None,
-      "This test requires CAMERA_IP and ROBOT_IP to be set.")
+  def setUp(self):
+    if CAMERA_IP is None or ROBOT_IP is None:
+      self.skipTest("This test requires CAMERA_IP and ROBOT_IP to be set.")
 
-  @skip_if_offline
   def test_simple_interaction(self):
     print "The robot should tap the corners of the device."
     with TemporaryFileWithData(simple_config) as tempfile:
@@ -48,7 +48,6 @@ class SystemTests(unittest2.TestCase):
       subject.Tap(subject.right, subject.bottom)
       subject.Tap(subject.left, subject.bottom)
 
-  @skip_if_offline
   def test_navigation(self):
     print "The robot should open the tap page then close chrome."
     with TemporaryFileWithData(simple_config) as tempfile:
@@ -60,10 +59,8 @@ class SystemTests(unittest2.TestCase):
       subject.ClosePage()
       subject.Close()
 
-  @skip_if_offline
   def test_reset(self):
     print "The robot should perform a reset to the homescreen."
     with TemporaryFileWithData(simple_config) as tempfile:
       system = BenchmarkSystem(tempfile.name)
       system.Reset()
-
