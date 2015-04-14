@@ -11,7 +11,7 @@ import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
 
-from optofidelity.videoproc import Filter, Shape, Viewer
+from optofidelity.videoproc import Filter, Shape, DebugView
 
 
 _log = logging.getLogger(__name__)
@@ -135,8 +135,6 @@ class ScreenCalibration(object):
           mean_accum = np.zeros(prev_frame.shape)
 
         _log.debug("%4d: midrange=%.2f, N=%d", i, midrange, mean_accum_num)
-        if debug:
-          Viewer.VideoFrame(0.5 + diff)
         prev_frame = frame
 
     # Add the last accumulation in case we don't have enough reference images

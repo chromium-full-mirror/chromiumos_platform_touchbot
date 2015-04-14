@@ -37,7 +37,7 @@ class ScreenDrawDetector(Detector):
   def Preprocess(self, calib_frame, debugger):
     profile = np.mean(calib_frame.screen_space_normalized, 0)
     if debugger:
-      debugger.screen_space_canvas.Plot(Canvas.BLUE, profile)
+      debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile)
 
     segment = [profile[:self.EDGE_WIDTH], profile[-self.EDGE_WIDTH:]]
     return (np.min(segment), np.max(segment))

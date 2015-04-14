@@ -94,7 +94,7 @@ class LineDetector(Detector):
     profile = _CalculateProfile(1 - calib_frame.screen_space_normalized, mask)
     if debugger:
       debugger.screen_space_canvas.DrawMask(Canvas.RED, mask)
-      debugger.screen_space_canvas.Plot(Canvas.BLUE, profile.array)
+      debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile.array)
     return profile
 
   def GenerateEvents(self, preprocessed_data, frame_index, debugger):
@@ -163,7 +163,7 @@ class LineDetector(Detector):
                               start_time=int(last_no_draw + 1))]
 
     if debugger:
-      debugger.screen_space_canvas.DrawHLine(Canvas.BLUE,
+      debugger.screen_space_canvas.DrawVLine(Canvas.BLUE,
                                              self._current_location)
 
     return []

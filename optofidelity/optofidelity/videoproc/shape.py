@@ -9,13 +9,13 @@ video as well as tools for visualizing results of a video analysis process.
 """
 import math
 
+from safetynet import TypecheckMeta, typecheck
 import numpy as np
 import skimage.measure as measure
 import skimage.morphology as morphology
 
 from .filter import Filter
-from .util import VideoException, Viewer
-
+from .types import BinaryImage
 
 class Shape(object):
   """Describes a segmented shape in an image.
@@ -23,7 +23,13 @@ class Shape(object):
   The shape is represented by a binary image aka mask, in which pixels
   that are part of the shape are True, all others are False.
   """
+  __metaclass__ = TypecheckMeta
+
   def __init__(self, mask, props=None):
+    """
+    :param BinaryImage mask: binary image representing this shape
+    :param props: Optional pre-calculated skimage.measure.regionprops
+    """
     if props is None:
       # Use the mask as a label image, since we only have one region,
       # with label=1.
@@ -41,6 +47,10 @@ class Shape(object):
 
     This method will increase the horizontal or vertical size of the shape by
     the specified margin. If the margin is negative, the size will be decreased
+
+    :type row_margin: int
+    :type col_margin: int
+    :rtype Shape
     """
     def MorphFn(margin):
       return (morphology.binary_dilation if margin > 0
@@ -56,24 +66,15 @@ class Shape(object):
       mask = MorphFn(col_margin)(mask, col_kernel)
     return Shape(mask.astype(np.bool))
 
-  def RemoveBackground(self, image, fill=None):
-    """Blend out everything that does not belong to this shape."""
-    if fill is None:
-      fill = np.mean(image[self.mask])
-    copy = image.copy()
-    copy[~self.mask] = fill
-    return copy
-
-  def Cropped(self, image):
-    """Return a view to the image 'image' that is cropped to this shape."""
-    return image[self.top:self.bottom, self.left:self.right]
-
   def FindExtreme(self, direction):
     """Find extreme this shape in any direction.
 
     Direction can be top, bottom, left or right. This method will return
     the coordinates of the (top, bottom, left, right)-most pixel of the shape.
     If the extreme consists of multiple pixels, the middle pixel will be picked.
+
+    :param str direction: top, bottom, left or right
+    :rtype Tuple[float, float]
     """
     if direction == "top":
       extreme_axis = 0
@@ -97,7 +98,7 @@ class Shape(object):
     avg_axis_coords = coords[coords[:, extreme_axis] == extreme_value, :]
     avg_value = avg_axis_coords[:, avg_axis].mean()
 
-    res = [0, 0]
+    res = (0, 0)
     res[extreme_axis] = extreme_value
     res[avg_axis] = avg_value
     return res
@@ -110,6 +111,9 @@ class Shape(object):
     looking for a rectangle, not a trapezoid, etc).
     This method returns the coordinates of each vertex in clockwise order,
     starting with he top-left-most vertex.
+
+    :type num_verticies: int
+    :rtype np.ndarray
     """
     contour = measure.find_contours(self.mask, 0)[0]
 
@@ -219,6 +223,8 @@ class Shape(object):
 
     The contour is a binary image in which only the outer pixels
     surrounding the shape are True.
+
+    :rtype BinaryImage
     """
     if self._contour is None:
       self._contour = morphology.binary_erosion(self.mask, morphology.disk(1))
@@ -228,7 +234,10 @@ class Shape(object):
 
   @property
   def horizontal_edges(self):
-    """The horizontal component of the inner contour."""
+    """The horizontal component of the inner contour.
+
+    :rtype BinaryImage
+    """
     # Dilate with structure element:
     # 1 0 1
     # 1 0 1
@@ -252,7 +261,10 @@ class Shape(object):
 
   @property
   def vertical_edges(self):
-    """The vertical component of the inner contour."""
+    """The vertical component of the inner contour.
+
+    :rtype BinaryImage
+    """
     # Dilate with structure element:
     # 1 1 1
     # 0 0 0
@@ -277,7 +289,13 @@ class Shape(object):
     return neigh1 & neigh2 & self.contour
 
   @staticmethod
+  @typecheck
   def Shapes(binary_im):
+    """List shapes in binary image.
+
+    :type binary_im: BinaryImage
+    yields Shape instances
+    """
     labels = measure.label(binary_im)
     # hack: the region 0 is ignored by regionprops, but it's a valid region
     labels[labels == 0] = np.max(labels) + 1

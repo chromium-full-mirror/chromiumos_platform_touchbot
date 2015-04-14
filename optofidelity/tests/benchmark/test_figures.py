@@ -17,7 +17,7 @@ from optofidelity.benchmark._trace_figures import (EventsMeasurementsFigure,
                                                    TraceOverviewFigure)
 from optofidelity.benchmark.results import BenchmarkResults
 from optofidelity.detection.events import Event
-from optofidelity.videoproc import Viewer
+from optofidelity.videoproc import DebugView
 
 from . import test_data
 
@@ -44,7 +44,7 @@ class FigureVerificationTests(unittest.TestCase):
     if (self.FORCE_UPDATE_ALL or force_update or
         not os.path.exists(expected_image_path)):
       skimage.io.imsave(expected_image_path, image)
-      Viewer.DebugView(title=expected_file_name, created_image=image)
+      DebugView(title=expected_file_name, created_image=image)
       self.skipTest("Created expected image %s" % expected_file_name)
 
     expected_image = color.rgb2gray(test_data.LoadImage(expected_file_name))
@@ -54,7 +54,7 @@ class FigureVerificationTests(unittest.TestCase):
     if np.max(cross_corr_image) < 0.99:
       message = "Image not matching expected image: %s" % expected_file_name
       print message
-      Viewer.DebugView(actual_image=actual_image, expected_image=expected_image)
+      DebugView(actual_image=actual_image, expected_image=expected_image)
       self.fail(message)
 
 

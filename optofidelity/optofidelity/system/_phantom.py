@@ -242,10 +242,13 @@ class PhantomVideoReader(VideoReader):
     self.prefetch_frame = None
     VideoReader.__init__(self, num_frames, fps, perf)
 
-  def _SeekTo(self, frame):
-    self.current_frame = frame
+  def Close(self, frame_index):
+    pass
 
-  def Read(self):
+  def _SeekTo(self, frame_index):
+    self.current_frame = frame_index
+
+  def _Read(self):
     # Clear prefetch if we got the wrong frame.
     if self.prefetch and self.prefetch.start != self.current_frame:
       self.ClearPrefetch()
@@ -269,7 +272,7 @@ class PhantomVideoReader(VideoReader):
     images = request.Receive()
     return skimage.img_as_float(images[0])
 
-  def Prefetch(self, frame):
+  def Prefetch(self, frame_index):
     """Select frame to prefetch with next Read command.
 
     Prefetching has to be explicitly enabled to ensure frames that are
@@ -280,7 +283,7 @@ class PhantomVideoReader(VideoReader):
     """
     self.prefetch_frame = frame
 
-  def ClearPrefetch(self):
+  def _ClearPrefetch(self):
     """Clear any outstanding requested frames.
 
     It is important that this method is called, since the camera is left in

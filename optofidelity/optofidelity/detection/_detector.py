@@ -6,7 +6,7 @@ from abc import abstractmethod
 from safetynet import InterfaceMeta, List, Optional
 import skimage.color as color
 
-from optofidelity.videoproc import Canvas, Viewer
+from optofidelity.videoproc import Canvas
 
 from ._calibrated_frame import CalibratedFrame
 from .events import Event

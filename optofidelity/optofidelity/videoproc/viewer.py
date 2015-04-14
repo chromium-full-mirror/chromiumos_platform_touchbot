@@ -2,9 +2,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Implementation of InteractiveVideoViewer."""
+from safetynet import TypecheckMeta
 import cv2
 
 from .io import VideoReader
+from .types import RGBImage
 
 
 class InteractiveVideoViewer(object):
@@ -26,6 +28,8 @@ class InteractiveVideoViewer(object):
         processed = ProcessFrame(frame)
         viewer.DisplayFrame(processed)
   """
+  __metaclass__ = TypecheckMeta
+
   def __init__(self):
     self._current_frame = None
     self._interactive = False
@@ -94,7 +98,7 @@ class InteractiveVideoViewer(object):
     Only to be called during YieldFrames. If it is not called, YieldFrames will
     display the raw frame as read from the VideoReader.
 
-    :param np.ndarray frame: An RGB frame to display
+    :param RGBImage frame: An RGB frame to display
     """
     self._current_frame = frame
 

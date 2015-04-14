@@ -7,18 +7,17 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
+from abc import abstractmethod
 import os
 import shutil
 import sys
 import time
 
+from safetynet import InterfaceMeta
+import cv2
 import numpy as np
 import skimage
 import skimage.color
-
-import cv2
-
-from .util import Viewer
 
 CODEC = cv2.cv.CV_FOURCC(*"mp4v")
 
@@ -33,11 +32,11 @@ class PrefetchEnabled(object):
     self.reader = reader
 
   def __enter__(self):
-    self.reader.prefetch_enabled = True
+    self.reader._prefetch_enabled = True
 
   def __exit__(self, type, value, traceback):
-    self.reader.ClearPrefetch()
-    self.reader.prefetch_enabled = False
+    self.reader._ClearPrefetch()
+    self.reader._prefetch_enabled = False
 
 
 class VideoReader(object):
@@ -45,120 +44,48 @@ class VideoReader(object):
 
   Provides common functionality for accessing videos.
   """
+  __metaclass__ = InterfaceMeta
+
   def __init__(self, num_frames, framerate, perf_enabled=False):
-    self.current_frame = -1
     self.num_frames = num_frames
     self.transfer_times = []
     self.perf_enabled = perf_enabled
-    self.prefetch_enabled = False
     self.framerate = framerate
     self.frametime = 1.0 / framerate
+    self._current_index = -1
+    self._prefetch_enabled = False
 
   @property
   def frame_shape(self):
-    frame = self.FrameAt(self.current_frame)
+    """:rtype Tuple[int, int]"""
+    frame = self.FrameAt(self._current_index)
     return frame.shape
 
-  def __enter__(self):
-    return self
-
-  def __exit__(self, type, value, traceback):
-    self.Close()
-
-  def Close():
-    pass
-
-  def PrefetchEnabled(self):
-    """Safely enables prefetch in combination with the with statement.
-
-    Use as follows:
-      with reader.PrefetchEnabled():
-        use reader
-    It will automatically clear any outstanding prefetches to leave the reader
-    in a good state.
-    """
-    return PrefetchEnabled(self)
-
-  def _SeekTo(self, frame):
-    """Seek to an absolute location in the video.
-
-    This method is for internal use and to be implemented by
-    a subclass. Use the more convenient Seek method.
-    """
-    pass
-
-  def Prefetch(self, frame):
-    pass
-
-  def ClearPrefetch(self):
-    pass
-
-  def Read(self):
-    """Return the current frame image.
-
-    This method is to be implemented by a subclass. The image
-    is to be returned as a grayscale float image represented as
-    a numpy array.
-    """
-    pass
-
-  def Seek(self, to=None, forward=None, backward=None):
-    """Seek to a location in the video.
-
-    to: seek to an absolute frame number. Can be negative to
-        seek to a location from the end of the file.
-    forward: seek forward by a number of frames
-    backward: seek backward by a number of frames
-    """
-    if forward:
-      to = self.current_frame + forward
-    if backward:
-      to = self.current_frame - backward
-    if to is not None:
-      if to < 0:
-        to = self.num_frames + to
-      if to > self.num_frames or to < 0:
-        return False
-      return self._SeekTo(to)
-    return True
-
-  def FrameAt(self, frame):
-    """Return image at a location as a grayscale float image."""
-    start = time.time()
-    self.Seek(to=frame)
-    res = self.Read()
-    if self.perf_enabled:
-      self.transfer_times.append(time.time() - start)
-    return res
-
-  def Next(self):
-    """Go to the next frame."""
-    return self.Seek(forward=1)
-
-  def Prev(self):
-    """Go to the previous frame."""
-    return self.Seek(backward=1)
-
-  def Frames(self, start=0, stop=None, step=1, frames=None):
+  def Frames(self, start=0, stop=None, step=1):
     """Yield frames until the video ends.
 
-    start: first frame to yield.
-    stop: last frame to yield.
-    step: step size between frames.
-    frames: Custom array of frame numbers to yield. Overrides all
-            other parameters.
+    :param int start: first frame to yield.
+    :param int stop: last frame to yield.
+    :param int step: step size between frames.
+
+    yields tuples of (frame_index, frame_data) with frame_data being a grayscale
+    float image.
     """
-    if not frames:
-      if stop is None:
-        stop = self.num_frames
-      frames = range(start, stop, step)
+    if stop is None:
+      stop = self.num_frames
+    frames = range(start, stop, step)
 
     for i, frame in enumerate(frames):
-      if self.prefetch_enabled and i + 1 < len(frames):
+      if self._prefetch_enabled and i + 1 < len(frames):
         self.Prefetch(frames[i + 1])
       yield frame, self.FrameAt(frame)
 
   def Save(self, filename, print_progress):
+    """Save video to file.
+
+    :type filename: str
+    :param bool print_progress: print progress to stdout
+    """
     width = self.frame_shape[1]
     height = self.frame_shape[0]
     writer = cv2.VideoWriter(filename, CODEC, self.framerate,
@@ -175,8 +102,73 @@ class VideoReader(object):
       print ""
     writer.release()
 
+  @abstractmethod
+  def Close():
+    """Close video stream and free resourced."""
+
+  def PrefetchEnabled(self):
+    """Safely enables prefetch in combination with the with statement.
+
+    Use as follows:
+      with reader.PrefetchEnabled():
+        use reader
+    It will automatically clear any outstanding prefetches to leave the reader
+    in a good state.
+
+    :rtype PrefetchEnabled
+    """
+    return PrefetchEnabled(self)
+
+  @abstractmethod
+  def Prefetch(self, frame_index):
+    """Prefetch frame.
+
+    :param int frame_index: Frame index to prefetch
+    """
+
+  def FrameAt(self, frame_index):
+    """Seeks to location in video stream and returns image.
+
+    :type frame_index: int
+    :rtype GrayscaleImage
+    """
+    start = time.time()
+    self._SeekTo(frame_index)
+    res = self._Read()
+    if self.perf_enabled:
+      self.transfer_times.append(time.time() - start)
+    return res
+
   def __getstate__(self):
     raise Exception("VideoReader cannot be pickled")
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, type, value, traceback):
+    self.Close()
+
+  @abstractmethod
+  def _SeekTo(self, frame_index):
+    """Seek to an absolute location in the video.
+
+    This method is for internal use and to be implemented by
+    a subclass.
+
+    :type frame_index: int
+    :returns bool: True if successful
+    """
+
+  @abstractmethod
+  def _Read(self):
+    """Return the current frame image.
+
+    :rtype GrayscaleImage
+    """
+
+  @abstractmethod
+  def _ClearPrefetch(self):
+    """Clears current prefetch buffer."""
 
 
 class FileVideoReader(VideoReader):
@@ -187,6 +179,10 @@ class FileVideoReader(VideoReader):
   frame.
   """
   def __init__(self, filename, framerate):
+    """
+    :type filename: str
+    :type framerate: int
+    """
     self.cap = cv2.VideoCapture(filename)
     self.filename = filename
     self.frame_cache = None
@@ -200,23 +196,23 @@ class FileVideoReader(VideoReader):
     height = int(self.cap.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT))
     return (height, width)
 
-  def _SeekTo(self, frame):
-    if frame < self.current_frame:
+  def _SeekTo(self, frame_index):
+    if frame_index < self._current_index:
       self.cap.open(self.filename)
-      self.current_frame = -1
-      frame = frame + 1
+      self._current_index = -1
+      index_delta = frame_index + 1
     else:
-      frame = frame - self.current_frame
+      index_delta = frame_index - self._current_index
 
-    for i in range(frame):
+    for i in range(index_delta):
       if not self.cap.grab():
-        raise Exception("Cannot grab frame")
+        raise Exception("Cannot grab frame_index")
 
-    self.current_frame += frame
+    self._current_index += index_delta
     self.frame_cache = None
     return True
 
-  def Read(self):
+  def _Read(self):
     if self.frame_cache is None:
       # cache current frame in case it's requested again.
       ret, self.frame_cache = self.cap.retrieve()
@@ -231,15 +227,31 @@ class FileVideoReader(VideoReader):
     if os.path.abspath(self.filename) != os.path.abspath(filename):
       shutil.copyfile(self.filename, filename)
 
+  def Prefetch(self, frame_index):
+    pass
+
+  def _ClearPrefetch(self):
+    pass
+
 
 class FakeVideoReader(VideoReader):
   """Fake VideoReader returning nothing but black frames."""
+
   def __init__(self, num_frames, size, framerate):
     self.size = size
     VideoReader.__init__(self, num_frames, framerate)
 
-  def _SeekTo(self, frame):
-    return (frame < self.num_frames and frame >= 0)
+  def _SeekTo(self, frame_index):
+    return (frame_index < self.num_frames and frame_index >= 0)
 
-  def Read(self):
+  def _Read(self):
     return np.zeros(self.size, dtype=np.float)
+
+  def Close(self, frame_index):
+    pass
+
+  def Prefetch(self, frame_index):
+    pass
+
+  def _ClearPrefetch(self):
+    pass
