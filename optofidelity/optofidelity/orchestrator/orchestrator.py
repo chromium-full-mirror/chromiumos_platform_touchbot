@@ -22,10 +22,8 @@ class Orchestrator(object):
   """
   __metaclass__ = TypecheckMeta
 
-  DATABASE_FILE = "results.db"
-
   def __init__(self, benchmark_system, benchmark_runner, results_dir,
-               print_progress=False):
+               results_db_url, print_progress=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -36,8 +34,7 @@ class Orchestrator(object):
     self._results_dir = results_dir
     self._print_progress = print_progress
 
-    db_path = "sqlite:///%s/%s" % (results_dir, self.DATABASE_FILE)
-    self._results_db = dataset.connect(db_path)
+    self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
 
   def PrintProgress(self, message, *args):

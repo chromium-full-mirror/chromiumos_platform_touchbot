@@ -25,6 +25,7 @@ class OrchestratorTests(TestCase):
 
   def createOrchestrator(self):
     return Orchestrator(self.runner.benchmark_system, self.runner, self.tempdir,
+                        "sqlite:///" + os.path.join(self.tempdir, "results.db"),
                         print_progress=True)
 
   def tearDown(self):
