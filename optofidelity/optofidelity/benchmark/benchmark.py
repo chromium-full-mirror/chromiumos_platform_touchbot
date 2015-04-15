@@ -14,6 +14,7 @@ import skimage.io as io
 from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSystem
 from optofidelity.videoproc import FileVideoReader
+from optofidelity.gsutil import GSOpenFile, GSPathExists, GSFile, GSFolder
 
 from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
@@ -171,19 +172,20 @@ class Benchmark(object):
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results
 
-  def GenerateReport(self, report_path):
+  def GenerateReport(self, report_url, print_progress=False):
     """Generate HTML into folder.
 
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
     assert self.results is not None, "No benchmark results"
-    self.report = Report(report_path, "report.html", self.ms_per_frame)
-    self.report.GenerateReport(self.results, self.trace,
-                               self.screen_calibration, self.video)
+    with GSFolder(report_url, print_progress=print_progress) as report_path:
+      self.report = Report(report_path, "report.html", self.ms_per_frame)
+      self.report.GenerateReport(self.results, self.trace,
+                                 self.screen_calibration, self.video)
     return self.report
 
-  def Save(self, path, debug_info=False, video=False):
+  def Save(self, url, debug_info=False, video=False, print_progress=False):
     """Serialize benchmark to a folder on disk.
 
     The benchmark is saved into multiple files in the folder specified in path.
@@ -193,15 +195,16 @@ class Benchmark(object):
     :param bool video: Save video too, this allows you to call ProcessVideo
            after serialization.
     """
-    if not os.path.exists(path):
-      os.makedirs(path)
+    with GSFolder(url, print_progress=print_progress) as path:
+      if not os.path.exists(path):
+        os.makedirs(path)
 
-    pickle_file = open(self._GetPickleFileName(path), "w")
-    pickle.dump(self, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
-    if debug_info:
-      self._SaveDebugInfo(path)
-    if video and self.video:
-      self.video.Save(self._GetVideoFileName(path), True)
+      with open(self._GetPickleFileName(path), "w") as pickle_file:
+        pickle.dump(self, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
+      if debug_info:
+        self._SaveDebugInfo(path)
+      if video and self.video:
+        self.video.Save(self._GetVideoFileName(path), True)
 
   def _SaveDebugInfo(self, path):
     """Save human readable debug information into benchmark folder.
@@ -213,7 +216,8 @@ class Benchmark(object):
       io.imsave(os.path.join(path, "calibration_black.png"), calib.black_frame)
       io.imsave(os.path.join(path, "calibration_white.png"), calib.white_frame)
     if self.trace:
-      pickle.dump(self.trace, open(os.path.join(path, "trace.pickle"), "w"))
+      with open(os.path.join(path, "trace.pickle"), "w") as pickle_file:
+        pickle.dump(self.trace, pickle_file)
       figure = TraceOverviewFigure(1024, 512, 256, self.ms_per_frame)
       figure.PlotTrace(self.trace, 0.0, 0.0)
       figure.Save(os.path.join(path, "trace.png"), False)
@@ -229,17 +233,18 @@ class Benchmark(object):
     DumpProperty("log")
 
   @classmethod
-  def Load(cls, path):
-    """Load benchmark from folder.
+  def Load(cls, url):
+    """Load benchmark from folder or cloud storage
 
-    :param str path: folder to load from.
+    :param str url: local folder or gs:// url
     """
-    pickle_file = open(cls._GetPickleFileName(path), "r")
-    self = pickle.load(pickle_file)
+    with GSOpenFile(cls._GetPickleFileName(url), "r") as pickle_file:
+      self = pickle.load(pickle_file)
 
-    video_file = cls._GetVideoFileName(path)
-    if os.path.exists(video_file):
-      self.video = FileVideoReader(video_file, self.framerate)
+    video_url = cls._GetVideoFileName(url)
+    if GSPathExists(video_url):
+      with GSFile(video_url, download=True, upload=False) as video_file:
+        self.video = FileVideoReader(video_file, self.framerate)
     return self
 
   def _CreateVideoProcessor(self, multithreaded):

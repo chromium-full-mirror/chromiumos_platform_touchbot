@@ -91,3 +91,23 @@ class OrchestratorTests(TestCase):
     ret = orchestrator.UpdateSubject(self.subject)
     self.assertEqual(ret, False)
     self.assertEqual(self.subject.updater.installed_version, "2.0")
+
+  def testOnlineOrchestrator(self):
+    DB = ""
+    GS = ""
+
+    if not DB or not GS:
+      self.skipTest("Define DB and GS to run online test.")
+
+    orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
+                                GS, DB, print_progress=True)
+
+    orchestrator.RunTests("*/tap", [])
+    results = list(orchestrator.QueryResults())
+    db_result = results[-1]
+
+    benchmark = Benchmark.Load(os.path.join(GS, db_result["uid"]))
+    bench_result = benchmark.results
+
+    self.assertEqual(bench_result.subject_name, db_result["subject_name"])
+    self.assertEqual(bench_result.benchmark_type, db_result["benchmark_type"])

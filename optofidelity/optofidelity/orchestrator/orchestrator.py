@@ -11,6 +11,7 @@ from safetynet import List, Optional, TypecheckMeta
 from optofidelity.benchmark import Benchmark, BenchmarkResults, BenchmarkRunner
 from optofidelity.system import BenchmarkSystem, BenchmarkSubject
 import dataset
+from optofidelity.gsutil import GSPathExists
 
 _log = logging.getLogger(__name__)
 
@@ -22,16 +23,16 @@ class Orchestrator(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, benchmark_system, benchmark_runner, results_dir,
+  def __init__(self, benchmark_system, benchmark_runner, results_url,
                results_db_url, print_progress=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
-    :type results_dir: str
+    :type results_url: str
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
-    self._results_dir = results_dir
+    self._results_url = results_url
     self._print_progress = print_progress
 
     self._results_db = dataset.connect(results_db_url)
@@ -59,12 +60,19 @@ class Orchestrator(object):
     benchmark = self._runner.RunBenchmark(subject, benchmark_type, metadata,
                                           debug_flags, self._print_progress)
 
-    results_path, uid = self._FindUniqueResultsFolder(time)
+    results_url, uid = self._FindUniqueResultsURL(time)
     self.PrintProgress("%s/%s: Saving to %s", subject.name, benchmark_type,
-                       results_path)
-    benchmark.Save(results_path)
+                       results_url)
+    benchmark.Save(results_url, debug_info=True,
+                   print_progress=self._print_progress)
+    self.PrintProgress("%s/%s: Generating report", subject.name, benchmark_type)
+    benchmark.GenerateReport(results_url, print_progress=self._print_progress)
     self._InsertResults(time, uid, subject_version, benchmark.results)
 
+    public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
+    report_url = os.path.join(public_url, "report.html")
+    self.PrintProgress("%s/%s: Report available at: %s", subject.name,
+                       benchmark_type, report_url)
   def RunTests(self, match, debug_flags):
     """Run all tests matching 'match' and save results to database.
 
@@ -128,7 +136,7 @@ class Orchestrator(object):
     """Return iterator over all results in database."""
     return self._results_table.all()
 
-  def _FindUniqueResultsFolder(self, time):
+  def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.
 
     This will return a folder name of the following format:
@@ -141,8 +149,8 @@ class Orchestrator(object):
     for i in range(999):
       timestamp = time.strftime("%Y%m%d_%H%M")
       uid = "%s_%03d" % (timestamp, i)
-      results_path = os.path.join(self._results_dir, uid)
-      if not os.path.exists(results_path):
+      results_path = os.path.join(self._results_url, uid)
+      if not GSPathExists(results_path):
         return results_path, uid
     raise Exception("Cannot find unique results path")
 
