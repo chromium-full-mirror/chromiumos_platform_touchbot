@@ -68,7 +68,8 @@ class Benchmark(object):
     "tap": TapDelegate
   }
 
-  def __init__(self, subject_name, benchmark_type, metadata, _delegate=None):
+  def __init__(self, subject_name, benchmark_type, metadata, screen_calibration,
+               _delegate=None):
     """Provide information on new benchmark.
 
     :param str subject_name: Name of the subject this benchmark is going to be
@@ -83,7 +84,7 @@ class Benchmark(object):
     self._delegate = _delegate or self.BENCHMARK_TYPES[benchmark_type]()
     self.subject_name = subject_name
 
-    self.screen_calibration = None
+    self.screen_calibration = screen_calibration
     self.framerate = None
     self.results = None
     self.metadata = metadata
@@ -95,24 +96,6 @@ class Benchmark(object):
   @property
   def ms_per_frame(self):
     return 1000.0 / float(self.framerate)
-
-  def CalibrateScreen(self, benchmark_system, video_processor):
-    """Execute the required screen calibration process.
-
-    :type benchmark_system: BenchmarkSystem
-    """
-    subject = benchmark_system.subjects[self.subject_name]
-    video_reader = subject.RecordCalibrationVideo()
-    self.screen_calibration = video_processor.CreateScreenCalibration(
-        video_reader)
-    return self.screen_calibration
-
-  def UseExistingCalibration(self, screen_calibration):
-    """Use previously calculated screen calibration for this benchmark.
-
-    :type screen_calibration ScreenCalibration
-    """
-    self.screen_calibration = screen_calibration
 
   def ExecuteOnSubject(self, benchmark_system):
     """Instruct the robot to execute the benchmark.
@@ -247,10 +230,6 @@ class Benchmark(object):
         self.video = FileVideoReader(video_file, self.framerate)
     return self
 
-  def _CreateVideoProcessor(self, multithreaded):
-    assert self.screen_calibration, "No screen calibration"
-    return CreateVideoProcessor(self.screen_calibration, multithreaded)
-
   def _GetSubject(self, benchmark_system):
     return benchmark_system.subjects[self.subject_name]
 
@@ -271,6 +250,8 @@ class Benchmark(object):
     subject_name = state.get("subject_name", state.get("_subject_name"))
     benchmark_type = state.get("benchmark_type", state.get("_benchmark_type"))
     metadata = state["metadata"]
+    screen_calibration = state["screen_calibration"]
     _delegate = state["_delegate"]
-    self.__init__(subject_name, benchmark_type, metadata, _delegate)
+    self.__init__(subject_name, benchmark_type, metadata, screen_calibration,
+                  _delegate)
     self.__dict__.update(state)

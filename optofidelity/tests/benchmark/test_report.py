@@ -26,10 +26,8 @@ class ReportTests(TestCase):
     self.processor = FakeVideoProcessor()
     self.runner = FakeBenchmarkRunner(self.system, self.processor)
     self.subject = self.system.fake_subject
-    self.subject.Open(False)
 
   def tearDown(self):
-    self.subject.Close()
     shutil.rmtree(self.tempdir)
 
   def testLineDrawReport(self):

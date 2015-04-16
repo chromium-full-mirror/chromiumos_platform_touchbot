@@ -22,7 +22,7 @@ class FakeBenchmarkRunner(BenchmarkRunner):
   """
 
   def __init__(self, benchmark_system=None, video_processor=None,
-               fake_trace=None, fake_benchmark=None):
+               fake_trace=None, fake_benchmark=None, print_progress=False):
     """
     The FakeBenchmarkRunner will automatically create a FakeBenchmarkSystem
     as well as a FakeVideoProcessor if none are provided.
@@ -32,14 +32,26 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     :type fake_trace: Optional[Trace]
     :type fake_benchmark: Optional[Benchmark]
     """
-    self.benchmark_system = benchmark_system or FakeBenchmarkSystem()
-    self.video_processor = video_processor or FakeVideoProcessor()
+    super(FakeBenchmarkRunner, self).__init__(
+        benchmark_system or FakeBenchmarkSystem(),
+        video_processor or FakeVideoProcessor(),
+        print_progress)
     self.fake_benchmark = fake_benchmark
     self.video_processor.fake_trace = fake_trace
 
-  def RunBenchmark(self, subject_name, benchmark_type, metadata, debug_flags,
-                   print_progress=False):
+  def RunBenchmarks(self, subject, benchmark_types, metadata, debug_flags):
+    if not self.fake_benchmark:
+      return super(FakeBenchmarkRunner, self).RunBenchmarks(subject,
+          benchmark_types, metadata, debug_flags)
+    else:
+      return self._RunFakeBenchmarks(benchmark_types)
+
+  def _RunFakeBenchmarks(self, benchmark_types):
+    for benchmark_type in benchmark_types:
+      yield benchmark_type, self.fake_benchmark
+
+  def RunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
     if self.fake_benchmark:
       return self.fake_benchmark
-    return super(FakeBenchmarkRunner, self).RunBenchmark(subject_name,
-        benchmark_type, metadata, debug_flags, print_progress)
+    return super(FakeBenchmarkRunner, self).RunBenchmark(subject,
+        benchmark_type, metadata, debug_flags)

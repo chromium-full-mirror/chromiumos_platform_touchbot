@@ -1,6 +1,7 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from collections import defaultdict
 from datetime import datetime
 from fnmatch import fnmatch
 import logging
@@ -9,11 +10,12 @@ import os
 from safetynet import List, Optional, TypecheckMeta
 
 from optofidelity.benchmark import Benchmark, BenchmarkResults, BenchmarkRunner
-from optofidelity.system import BenchmarkSystem, BenchmarkSubject
-import dataset
 from optofidelity.gsutil import GSPathExists
+from optofidelity.system import BenchmarkSubject, BenchmarkSystem
+import dataset
 
 _log = logging.getLogger(__name__)
+
 
 class Orchestrator(object):
   """Orchestrates running multiple tests and persistent storage or results.
@@ -29,6 +31,8 @@ class Orchestrator(object):
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
     :type results_url: str
+    :type results_db_url: str
+    :type results_url: str
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
@@ -38,71 +42,39 @@ class Orchestrator(object):
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
 
-  def PrintProgress(self, message, *args):
-    _log.info(message, *args)
-    if self._print_progress:
-      print message % args
+  def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
+                             skip_update=False):
+    """Update, then run all benchmarks matching 'match' and save results.
 
-  def RunTest(self, subject, benchmark_type, debug_flags):
-    """Run a single test case and store results in database.
-
-    :type subject_name: str
-    :type benchmark_type: str
-    :type debug_flags: List[str]
-    """
-    time = datetime.now()
-    subject_version = subject.updater.installed_version
-    metadata = dict(time=time)
-    if subject_version:
-      metadata["subject_version"] = subject_version
-
-    self.PrintProgress("%s/%s: Running benchmark", subject.name, benchmark_type)
-    benchmark = self._runner.RunBenchmark(subject, benchmark_type, metadata,
-                                          debug_flags, self._print_progress)
-
-    results_url, uid = self._FindUniqueResultsURL(time)
-    self.PrintProgress("%s/%s: Saving to %s", subject.name, benchmark_type,
-                       results_url)
-    benchmark.Save(results_url, debug_info=True,
-                   print_progress=self._print_progress)
-    self.PrintProgress("%s/%s: Generating report", subject.name, benchmark_type)
-    benchmark.GenerateReport(results_url, print_progress=self._print_progress)
-    self._InsertResults(time, uid, subject_version, benchmark.results)
-
-    public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
-    report_url = os.path.join(public_url, "report.html")
-    self.PrintProgress("%s/%s: Report available at: %s", subject.name,
-                       benchmark_type, report_url)
-  def RunTests(self, match, debug_flags):
-    """Run all tests matching 'match' and save results to database.
+    This will update all subjects and executes benchmarks if they have been
+    updated.
 
     :param str match: One of the following:
-           - The full name of a test
-           - The beginning of the name of a test
+           - The full name of a benchmark
+           - The beginning of the name of a benchmark
            - A unix glob
     :type debug_flags: List[str]
+    :param Optional[str] forced_version: Force version number to benchmark.
+    :param bool skip_update: Skip update process and run all benchmarks
     """
-    for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
-      subject = self._system.subjects[subject_name]
-      self.RunTest(subject, benchmark_type, debug_flags)
+    for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
+      try:
+        subject = self._system.subjects[subject_name]
+        if not skip_update:
+          if not self.UpdateSubject(subject, forced_version):
+            continue
 
-  def UpdateAndRunTests(self, match, debug_flags, forced_version=None):
-    """Update, then run all tests matching 'match' and save results.
-
-    This will update all subjects before runnin the tests and only run tests
-    if they have been updated.
-
-    :param str match: One of the following:
-           - The full name of a test
-           - The beginning of the name of a test
-           - A unix glob
-    :type debug_flags: List[str]
-    :param Optional[str] forced_version: Force version number to test.
-    """
-    for subject_name, benchmark_type in self._ListMatchingBenchmarks(match):
-      subject = self._system.subjects[subject_name]
-      if self.UpdateSubject(subject, forced_version):
-        self.RunTest(subject, benchmark_type, debug_flags)
+        time = datetime.now()
+        subject_version = subject.updater.installed_version
+        metadata = dict(time=time)
+        if subject_version:
+          metadata["subject_version"] = subject_version
+        for benchmark in self._runner.RunBenchmarks(subject, benchmark_types,
+                                                    metadata, debug_flags):
+          self._StoreBenchmark(benchmark, subject, time)
+      except:
+        self._PrintProgress("%s: Subject in bad state.", subject_name)
+        _log.exception("Exception while preparing subject.")
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.
@@ -111,12 +83,14 @@ class Orchestrator(object):
     :param Optional[str] forced_version: Force version number install
     :returns bool: True if the subject has been updated.
     """
-    self.PrintProgress("%s: Checking for updates", subject.name)
+    def PrintProgress(msg, *args):
+      self._PrintProgress("%s: %s", subject.name, msg % args)
+
+    PrintProgress("Checking for updates")
     available = subject.updater.available_versions
     target_version = None
     if forced_version:
-      self.PrintProgress("%s: Forcing version %s", subject.name,
-                         forced_version)
+      PrintProgress("Forcing version %s", forced_version)
       for version in available:
         if fnmatch(version, forced_version):
           target_version = version
@@ -126,8 +100,7 @@ class Orchestrator(object):
     else:
       target_version = available[0]
       if target_version == subject.updater.installed_version:
-        self.PrintProgress("%s: Version %s is already installed", subject.name,
-                           target_version)
+        PrintProgress("Version %s is already installed", target_version)
         return False
     subject.updater.Install(target_version, self._print_progress)
     return True
@@ -135,6 +108,36 @@ class Orchestrator(object):
   def QueryResults(self):
     """Return iterator over all results in database."""
     return self._results_table.all()
+
+  def _StoreBenchmark(self, benchmark, subject, time):
+    """Store benchmark to results folder and register in database.
+
+    :type benchmark: Benchmark
+    :type subject: BenchmarkSubject
+    :type time: datetime
+    """
+    def PrintProgress(msg, *args):
+      self._PrintProgress("%s/%s: %s", subject.name, benchmark.benchmark_type,
+                         msg % args)
+
+    subject_version = subject.updater.installed_version
+    metadata = dict(time=time)
+    if subject_version:
+      metadata["subject_version"] = subject_version
+
+    results_url, uid = self._FindUniqueResultsURL(time)
+
+    PrintProgress("Saving benchmark to %s", results_url)
+    benchmark.Save(results_url, debug_info=True,
+                   print_progress=self._print_progress)
+
+    PrintProgress("Generating report")
+    benchmark.GenerateReport(results_url, print_progress=self._print_progress)
+    self._InsertResults(time, uid, subject_version, benchmark.results)
+
+    public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
+    report_url = os.path.join(public_url, "report.html")
+    PrintProgress("Report available at: %s", report_url)
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.
@@ -165,14 +168,18 @@ class Orchestrator(object):
                                               for t in type_names }
     match_fn = lambda name: fnmatch(name, match) or name.startswith(match)
     matches = [n for n in benchmarks.iterkeys() if match_fn(n)]
+    grouped = defaultdict(list)
     for match in matches:
-      yield benchmarks[match]
+      subject_name, benchmark_type = benchmarks[match]
+      grouped[subject_name].append(benchmark_type)
+    return grouped.iteritems()
 
   def _InsertResults(self, time, uid, subject_version, results):
     """Inserts results into database
 
     :type time: datetime
     :type uid: str
+    :type subject_version: Optional[str]
     :type results: BenchmarkResults
     """
     dump = lambda array: ", ".join(str(array))
@@ -192,3 +199,8 @@ class Orchestrator(object):
           draw_end_latencies=dump(id_measurements.latencies)
       )
       self._results_table.insert(row_data)
+
+  def _PrintProgress(self, message, *args):
+    _log.info(message, *args)
+    if self._print_progress:
+      print message % args

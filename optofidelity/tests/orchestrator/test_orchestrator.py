@@ -20,7 +20,6 @@ class OrchestratorTests(TestCase):
     self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
     self.subject = self.runner.benchmark_system.fake_subject
     self.subject.updater._available_versions = ["2.0", "1.0"]
-    self.subject.Open(False)
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
@@ -29,12 +28,11 @@ class OrchestratorTests(TestCase):
                         print_progress=True)
 
   def tearDown(self):
-    self.subject.Close()
     shutil.rmtree(self.tempdir)
 
   def testResultsDatabase(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.RunTests("*/tap", [])
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 2)
     for result in results:
@@ -48,7 +46,7 @@ class OrchestratorTests(TestCase):
 
   def testResultsPersistence(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.RunTests("*/tap", [])
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
 
     # Create new instance to test if data is stored persistently
     orchestrator = self.createOrchestrator()
@@ -59,11 +57,11 @@ class OrchestratorTests(TestCase):
     orchestrator = self.createOrchestrator()
 
     # The subject should be updated to 2.0 then have tests run
-    orchestrator.UpdateAndRunTests("*/tap", [])
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [])
     self.assertEqual(self.subject.updater.installed_version, "2.0")
 
     # Force test run with version 1.0
-    orchestrator.UpdateAndRunTests("*/tap", [], forced_version="1.0")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], forced_version="1.0")
     self.assertEqual(self.subject.updater.installed_version, "1.0")
 
     results = list(orchestrator.QueryResults())
@@ -102,7 +100,7 @@ class OrchestratorTests(TestCase):
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
                                 GS, DB, print_progress=True)
 
-    orchestrator.RunTests("*/tap", [])
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())
     db_result = results[-1]
 

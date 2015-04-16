@@ -20,11 +20,9 @@ class BenchmarkRunnerTests(TestCase):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
     self.subject = self.runner.benchmark_system.fake_subject
-    self.subject.Open(False)
     self.tempdir = tempfile.mkdtemp()
 
   def tearDown(self):
-    self.subject.Close()
     shutil.rmtree(self.tempdir)
 
   def testRun(self):
