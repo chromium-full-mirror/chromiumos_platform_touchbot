@@ -17,6 +17,7 @@ _log = logging.getLogger(__name__)
 
 class BenchmarkRunner(object):
   __metaclass__ = InterfaceMeta
+  MAX_REPETITIONS = 3
 
   def __init__(self, benchmark_system, video_processor, print_progress=False):
     """
@@ -42,11 +43,23 @@ class BenchmarkRunner(object):
     """
     try:
       screen_calibration = self._OpenAndCalibrateSubject(subject)
+
       for benchmark_type in benchmark_types:
-        benchmark = Benchmark(subject.name, benchmark_type, metadata,
-                              screen_calibration)
-        self._ExecuteBenchmark(benchmark, debug_flags)
-        yield benchmark
+        def PrintProgress(msg, *args):
+          self._PrintProgress(subject.name, benchmark_type, msg % args)
+
+        for repetition in range(self.MAX_REPETITIONS + 1):
+          PrintProgress("Running Benchmark (repetiton=%d)", repetition)
+          benchmark = Benchmark(subject.name, benchmark_type, metadata,
+                                screen_calibration)
+          self._ExecuteBenchmark(benchmark, debug_flags)
+          yield benchmark
+          if not benchmark.error:
+            break
+          PrintProgress("Benchmark failed.")
+
+        if repetition == self.MAX_REPETITIONS:
+          PrintProgress("All repetitions failed. Giving up!")
     finally:
       subject.Close()
 
