@@ -14,5 +14,7 @@ The results of a benchmark are defined in benchmark.results, and include a
 list of measurements, which are defined by an input and output event.
 """
 from .benchmark import Benchmark
+from .led_calibrator import LEDCalibrator
 from .results import BenchmarkResults, Measurement, MeasurementList
 from .runner import BenchmarkRunner
+from .util import DebugViewTrace

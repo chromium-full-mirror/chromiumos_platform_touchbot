@@ -95,6 +95,10 @@ class ScreenCalibration(object):
     return self.black_reference.shape
 
   @classmethod
+  def CreateIdentity(cls, frame_shape):
+    return cls(np.zeros(frame_shape), np.ones(frame_shape))
+
+  @classmethod
   def FromScreenFlashVideo(cls, video_reader, debug=False):
     """Create screen calibration from a video showing a flashing screen.
 

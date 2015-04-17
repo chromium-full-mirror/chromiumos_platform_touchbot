@@ -51,7 +51,7 @@ class VideoReader(object):
     self.transfer_times = []
     self.perf_enabled = perf_enabled
     self.framerate = framerate
-    self.frametime = 1.0 / framerate
+    self.ms_per_frame = 1000.0 / framerate
     self._current_index = -1
     self._prefetch_enabled = False
 

@@ -4,16 +4,17 @@
 # found in the LICENSE file.
 """Main module for command line interface to optofidelity latency tests."""
 
-import logging
-logging.basicConfig(level=logging.INFO)
-
 from optparse import OptionParser
+import logging
 import os
 import sys
 
-from optofidelity.benchmark import Benchmark
-from optofidelity.detection import CreateVideoProcessor, ScreenCalibration
+from optofidelity.benchmark import Benchmark, LEDCalibrator
+from optofidelity.detection import (MultithreadedVideoProcessor,
+                                    ScreenCalibration)
 from optofidelity.system import BenchmarkSystem
+
+logging.basicConfig(level=logging.INFO)
 
 
 usage_string = """Benchmark usage examples:
@@ -79,6 +80,16 @@ def RunBenchmark(subject_name, benchmark_name, out_dir, save_video,
     system.SaveState(state_file)
 
 
+def LEDCalibration():
+  system = BenchmarkSystem(config_file)
+  video_processor = MultithreadedVideoProcessor()
+  calibrator = LEDCalibrator(video_processor)
+
+  down, up = calibrator.CalibrateLED(system.led_calibration_subject, True)
+  print "Down Delay: %.2fms" % down
+  print "Up Delay: %.2fms" % up
+
+
 def Main():
   usage = usage_string % ((sys.argv[0],) * 3)
   parser = OptionParser(usage=usage)
@@ -97,9 +108,15 @@ def Main():
   parser.add_option("--out", "-o",
                     dest="out", default=None,
                     help="output folder")
+  parser.add_option("--led-calib",
+                    dest="led_calib", default=False, action="store_true",
+                    help="Screen Calibration")
+
   (options, args) = parser.parse_args()
 
-  if options.input:
+  if options.led_calib:
+    LEDCalibration()
+  elif options.input:
     ProcessBenchmarkFromFile(options.input, options.out, options.process,
                              options.debug_flags)
   else:
