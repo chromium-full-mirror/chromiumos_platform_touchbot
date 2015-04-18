@@ -152,12 +152,12 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
     self._events_axes = None
     self._latency_axes = None
 
-  def PlotTrace(self, trace, finger_calib_offset, led_calib_latency):
+  def PlotTrace(self, trace, finger_calib_offset, finger_calib_delay):
     """Plot trace to location and events axes if available.
 
     :param Trace trace: Trace to plot.
     :param float finger_calib_offset: finger calibration location offset.
-    :param float led_calib_latency: LED event delay from calibration.
+    :param float finger_calib_delay: LED event delay from calibration.
     """
     if self._location_axes:
       self.PlotLocation(trace.line_draw_start, _styles.LINE_DRAW_START_STYLE)
@@ -169,7 +169,7 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
     if self._events_axes:
       led_offset = self.PLOT_OFFSETS[LEDEvent]
       self.PlotEvents(trace.led, led_offset, _styles.LED_STYLE)
-      calib_led = np.roll(trace.led, int(led_calib_latency))
+      calib_led = np.roll(trace.led, int(finger_calib_delay))
       self.PlotEvents(calib_led, led_offset, _styles.CALIB_LED_STYLE)
       screen_draw_offset = self.PLOT_OFFSETS[ScreenDrawEvent]
       self.PlotEvents(trace.screen_draw_start, screen_draw_offset,

@@ -38,7 +38,7 @@ class Report(object):
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
 
-  def __init__(self, path, filename, ms_per_frame):
+  def __init__(self, path, filename, ms_per_frame, finger_delay):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
@@ -50,6 +50,7 @@ class Report(object):
       os.makedirs(self.data_path)
     self.html_filename = os.path.join(self.path, filename)
     self.ms_per_frame = ms_per_frame
+    self.finger_delay = finger_delay
 
   def GenerateReport(self, results, trace, screen_calibration, video):
     """ Generates a full HTML report.
@@ -87,8 +88,9 @@ class Report(object):
     :type results: BenchmarkResults
     :type trace: Trace
     """
+    mean_finger_delay = np.mean(self.finger_delay)
     overview_figure = TraceOverviewFigure(980, 320, 140, self.ms_per_frame)
-    overview_figure.PlotTrace(trace, 0.0, 0.0)
+    overview_figure.PlotTrace(trace, 0.0, mean_finger_delay)
 
     for pass_num, pass_measurements in results.measurement_list.IterByPass():
       overview_figure.AddRangeMarker("Pass %d" % pass_num,

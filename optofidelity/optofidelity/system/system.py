@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 """Implementation of the BenchmarkSystem class."""
 
+from collections import namedtuple
 import cPickle as pickle
 import re
 import xml.etree.ElementTree as ElementTree
@@ -15,6 +16,7 @@ from ._tnt_backend import TnTRobotBackend
 from ._updater import ChromeUpdater, ManualUpdater
 from .subject import BenchmarkSubject
 
+FingerCalibDelay = namedtuple("FingerCalibDelay", ("down", "up"))
 
 class BenchmarkSystem(object):
   """Robot system which manages multiple DUTs.
@@ -99,6 +101,7 @@ class BenchmarkSystem(object):
     self.subjects = {}
     self.camera = None
     self.led_calibration_subject = None
+    self.finger_calib_delay = FingerCalibDelay(0.0, 0.0)
 
     self._subject_types = {}
     self._backend = None
@@ -152,6 +155,12 @@ class BenchmarkSystem(object):
     for type_elem in root.iter("subject-type"):
       type_name = type_elem.attrib["type-name"]
       self._subject_types[type_name] = type_elem
+
+    finger_calib = root.find("finger-calibration")
+    if finger_calib:
+      down = finger_calib.attrib("down-delay", 0.0)
+      up = finger_calib.attrib("up-delay", 0.0)
+      self.finger_calib_delay = FingerCalibDelay(down, up)
 
     robot = root.find("robot")
     camera = root.find("camera")

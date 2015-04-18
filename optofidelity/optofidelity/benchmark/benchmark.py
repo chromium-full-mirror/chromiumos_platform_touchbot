@@ -11,10 +11,11 @@ import time
 from safetynet import Any, Dict, List, Optional, TypecheckMeta
 import skimage.io as io
 
-from optofidelity.detection import ScreenCalibration, VideoProcessor
+from optofidelity.detection import (LEDEvent, ScreenCalibration, Trace,
+                                    VideoProcessor)
+from optofidelity.gsutil import GSFile, GSFolder, GSOpenFile, GSPathExists
 from optofidelity.system import BenchmarkSystem
 from optofidelity.videoproc import FileVideoReader
-from optofidelity.gsutil import GSOpenFile, GSPathExists, GSFile, GSFolder
 
 from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
@@ -83,6 +84,7 @@ class Benchmark(object):
     self.benchmark_type = benchmark_type
     self._delegate = _delegate or self.BENCHMARK_TYPES[benchmark_type]()
     self.subject_name = subject_name
+    self.finger_calib_delay = (0.0, 0.0)
 
     self.screen_calibration = screen_calibration
     self.framerate = None
@@ -97,6 +99,20 @@ class Benchmark(object):
   def ms_per_frame(self):
     return 1000.0 / float(self.framerate)
 
+  @property
+  def calibrated_trace(self):
+    """Trace with applied finger led calibration."""
+    def ApplyLEDCalib(event):
+      if isinstance(event, LEDEvent):
+        if event.state == LEDEvent.STATE_ON:
+          return LEDEvent(int(event.time - self.finger_calib_delay.down),
+                          event.state)
+        else:
+          return LEDEvent(int(event.time + self.finger_calib_delay.up),
+                          event.state)
+      return event
+    return Trace([ApplyLEDCalib(e) for e in self.trace])
+
   def ExecuteOnSubject(self, benchmark_system):
     """Instruct the robot to execute the benchmark.
 
@@ -105,6 +121,7 @@ class Benchmark(object):
     subject = self._GetSubject(benchmark_system)
     self.video = self._delegate.ExecuteOnSubject(subject)
     self.framerate = self.video.framerate
+    self.finger_calib_delay = benchmark_system.finger_calib_delay
     self.trace = None
     self.results = None
     self.report = None
@@ -149,7 +166,7 @@ class Benchmark(object):
     start_t = time.time()
     self.results = BenchmarkResults(self.subject_name, self.benchmark_type,
                                     self.metadata)
-    self._delegate.ProcessTrace(self.trace, self.results)
+    self._delegate.ProcessTrace(self.calibrated_trace, self.results)
     self.report = None
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
@@ -163,7 +180,8 @@ class Benchmark(object):
     """
     assert self.results is not None, "No benchmark results"
     with GSFolder(report_url, print_progress=print_progress) as report_path:
-      self.report = Report(report_path, "report.html", self.ms_per_frame)
+      self.report = Report(report_path, "report.html", self.ms_per_frame,
+                           self.finger_calib_delay)
       self.report.GenerateReport(self.results, self.trace,
                                  self.screen_calibration, self.video)
     return self.report
