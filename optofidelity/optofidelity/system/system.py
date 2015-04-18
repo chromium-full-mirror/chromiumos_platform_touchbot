@@ -164,8 +164,11 @@ class BenchmarkSystem(object):
 
     robot = root.find("robot")
     camera = root.find("camera")
-    self._backend = self._CreateBackend(robot.attrib if robot else {})
-    self.camera = self._CreateCamera(camera.attrib if camera else {})
+
+    self._backend = self._CreateBackend(robot.attrib if robot is not None
+                                                     else {})
+    self.camera = self._CreateCamera(camera.attrib if camera is not None
+                                                   else {})
 
     calib_elem = root.find("led-calibration-subject")
     if calib_elem is not None:

@@ -9,13 +9,12 @@ import os
 import time
 
 from safetynet import Any, Dict, List, Optional, TypecheckMeta
-import skimage.io as io
 
 from optofidelity.detection import (LEDEvent, ScreenCalibration, Trace,
                                     VideoProcessor)
 from optofidelity.gsutil import GSFile, GSFolder, GSOpenFile, GSPathExists
 from optofidelity.system import BenchmarkSystem
-from optofidelity.videoproc import FileVideoReader
+from optofidelity.videoproc import FileVideoReader, SaveImage
 
 from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
@@ -214,8 +213,8 @@ class Benchmark(object):
     """
     calib = self.screen_calibration
     if calib:
-      io.imsave(os.path.join(path, "calibration_black.png"), calib.black_frame)
-      io.imsave(os.path.join(path, "calibration_white.png"), calib.white_frame)
+      SaveImage(os.path.join(path, "calibration_black.png"), calib.black_frame)
+      SaveImage(os.path.join(path, "calibration_white.png"), calib.white_frame)
     if self.trace:
       with open(os.path.join(path, "trace.pickle"), "w") as pickle_file:
         pickle.dump(self.trace, pickle_file)

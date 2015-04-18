@@ -2,6 +2,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Base classes for rendering figures based on matplotlib."""
+import warnings
+
 from safetynet import Any, Dict, List, Optional, Tuple, TypecheckMeta
 import numpy as np
 
@@ -100,9 +102,13 @@ class Figure(object):
     :rtype FigureCanvasAgg
     """
     for axes in self.axes_list:
-      legend = axes.legend()
-      if legend:
-        legend.set_visible(show_legend)
+      with warnings.catch_warnings():
+        # legend() will issue a warning if there are no labels in this plot.
+        # Which happens, and we are ok with.
+        warnings.simplefilter("ignore", UserWarning)
+        legend = axes.legend()
+        if legend:
+          legend.set_visible(show_legend)
     return FigureCanvasAgg(self.figure)
 
 
@@ -264,7 +270,8 @@ class TimeSeriesAxes(object):
 
     (min_value, max_value) = self._GetMinMaxValue()
     padding = (max_value - min_value) * self.Y_AXIS_PADDING
-    self.mpl_axes.set_ylim(min_value - padding, max_value + padding)
+    if padding > 0:
+      self.mpl_axes.set_ylim(min_value - padding, max_value + padding)
 
   def _GetMinMaxValue(self):
     """Returns min and max value of all plots of this axes.

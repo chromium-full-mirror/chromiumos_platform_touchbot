@@ -56,8 +56,8 @@ class Shape(object):
       return (morphology.binary_dilation if margin > 0
               else morphology.binary_erosion)
 
-    row_kernel = morphology.rectangle(math.fabs(row_margin), 1)
-    col_kernel = morphology.rectangle(1, math.fabs(col_margin))
+    row_kernel = morphology.rectangle(int(math.fabs(row_margin)), 1)
+    col_kernel = morphology.rectangle(1, int(math.fabs(col_margin)))
 
     mask = self.mask
     if row_margin != 0:
@@ -296,7 +296,7 @@ class Shape(object):
     :type binary_im: BinaryImage
     yields Shape instances
     """
-    labels = measure.label(binary_im)
+    labels = measure.label(binary_im, background=0)
     # hack: the region 0 is ignored by regionprops, but it's a valid region
     labels[labels == 0] = np.max(labels) + 1
 

@@ -63,7 +63,7 @@ class TraceBuilder(object):
 
 def event_time(i):
   """Returns time of event number i."""
-  return (i + 1) / TraceBuilder.report_rate
+  return int((i + 1) / TraceBuilder.report_rate)
 
 
 class TraceTests(unittest.TestCase):

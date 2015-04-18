@@ -9,11 +9,10 @@ from jinja2 import Environment, FileSystemLoader
 from safetynet import Optional, TypecheckMeta
 import numpy as np
 import skimage.color
-import skimage.io
 
 from optofidelity.detection import (Event, LEDEvent, ScreenCalibration,
                                     ScreenDrawEvent, Trace)
-from optofidelity.videoproc import Canvas, VideoReader
+from optofidelity.videoproc import Canvas, SaveImage, VideoReader
 
 from ._figures import Figure
 from ._hist_figure import HistogramFigure
@@ -146,7 +145,7 @@ class Report(object):
     """
     frame = video.FrameAt(time - 1)
     frame = self._ProcessFrame(frame, event, screen_calibration)
-    skimage.io.imsave(filename, frame)
+    SaveImage(filename, frame)
 
   def _ProcessFrame(self, frame, event, screen_calibration):
     """Transforms frames into screen space and adds location marker.

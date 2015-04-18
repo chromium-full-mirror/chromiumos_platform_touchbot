@@ -247,6 +247,7 @@ class PhantomVideoReader(VideoReader):
 
   def _SeekTo(self, frame_index):
     self.current_frame = frame_index
+    return True
 
   def _Read(self):
     # Clear prefetch if we got the wrong frame.

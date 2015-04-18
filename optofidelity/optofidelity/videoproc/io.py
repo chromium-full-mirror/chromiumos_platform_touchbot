@@ -12,14 +12,24 @@ import os
 import shutil
 import sys
 import time
+import warnings
 
 from safetynet import InterfaceMeta
 import cv2
 import numpy as np
 import skimage
 import skimage.color
+import skimage.io
 
 CODEC = cv2.cv.CV_FOURCC(*"mp4v")
+
+
+def SaveImage(filename, image):
+  # imsave issues a warning when saving a low-contrast image, which we do
+  # in many test cases. We want to ignore this warning.
+  with warnings.catch_warnings():
+    warnings.simplefilter("ignore", UserWarning)
+    skimage.io.imsave(filename, image)
 
 
 class PrefetchEnabled(object):

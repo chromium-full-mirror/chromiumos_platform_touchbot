@@ -77,6 +77,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     self._InitDetectors()
     events, debug_frame =  self._ProcessFrame(0, frame, prev_frame,
                                               screen_calibration, debug_flags)
+    return events
 
   def _ProcessFrame(self, frame_index, frame, prev_frame, screen_calibration,
                     debug_flags):
