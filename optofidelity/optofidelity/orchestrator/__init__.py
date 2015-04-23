@@ -6,4 +6,5 @@
 This module is responsible for managing multiple devices, updating them and
 running benchmarks.
 """
+from .dashboard import Dashboard
 from .orchestrator import Orchestrator

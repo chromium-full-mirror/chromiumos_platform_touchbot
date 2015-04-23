@@ -1,6 +1,7 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from datetime import datetime
 from tempfile import NamedTemporaryFile
 import csv
 import logging
@@ -9,13 +10,12 @@ import urllib2
 
 from safetynet import Optional
 
-from optofidelity.util import ProgressBar
+from optofidelity.util import ProgressBar, const_property
 
 from ._adb import ADB
 from .subject import Updater
 
 log = logging.getLogger(__name__)
-
 
 class ManualUpdater(Updater):
   """Updater that returns a constant version.
@@ -65,19 +65,36 @@ class ChromeUpdater(Updater):
       self._package_name = "com.chrome.beta"
       self._filename = "ChromeBeta.apk"
 
+  def GetVersionUID(self, version):
+    for uid_version, uid in self._version_db:
+      if uid_version == version:
+        print version, uid
+        return uid
+    print "None"
+    raise Exception("Unknown version %s" % version)
+
   @property
   def installed_version(self):
     return self._adb.GetPackageVersion(self._package_name)
 
-  @property
-  def available_versions(self):
-    request = urllib2.urlopen("https://omahaproxy.appspot.com/history")
+  @const_property
+  def _version_db(self):
+    url = ("https://omahaproxy.appspot.com/history?os=android&channel=%s" %
+           self._channel)
+    request = urllib2.urlopen(url)
     reader = csv.reader(request)
     versions = []
     for row in reader:
-      if row[0] == "android" and row[1] == self._channel:
-        versions.append(row[2])
+      if row[0] == "os":
+        continue
+      release_date = datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S.%f")
+      timestamp = (release_date - datetime.utcfromtimestamp(0)).total_seconds()
+      versions.append((row[2], int(timestamp)))
     return sorted(versions, reverse=True)
+
+  @property
+  def available_versions(self):
+    return [version for version, uid in self._version_db]
 
   def Uninstall(self, print_progress=False):
     msg = "Uninstalling %s" % self._package_name

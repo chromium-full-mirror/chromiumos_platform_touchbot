@@ -14,6 +14,8 @@ from optofidelity.gsutil import GSPathExists
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 import dataset
 
+from .dashboard import Dashboard
+
 _log = logging.getLogger(__name__)
 
 
@@ -25,17 +27,19 @@ class Orchestrator(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, benchmark_system, benchmark_runner, results_url,
+  def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
                results_db_url, print_progress=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
+    :type dashboard: Dashboard
     :type results_url: str
     :type results_db_url: str
     :type results_url: str
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
+    self._dashboard = dashboard
     self._results_url = results_url
     self._print_progress = print_progress
 
@@ -138,6 +142,9 @@ class Orchestrator(object):
     public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
     report_url = os.path.join(public_url, "report.html")
     PrintProgress("Report available at: %s", report_url)
+
+    self._dashboard.ReportResults(benchmark.results, subject_version,
+        subject.updater.GetVersionUID(subject_version), report_url)
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.

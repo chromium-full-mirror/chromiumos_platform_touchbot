@@ -29,6 +29,10 @@ class Updater(object):
     """:returns Optional[str]: Currently installed version or None."""
 
   @abstractmethod
+  def GetVersionUID(self, version):
+    """:returns int: Unique incrementing integer identifying a version."""
+
+  @abstractmethod
   def Install(self, version, print_progress=False):
     """Install specific app version.
 

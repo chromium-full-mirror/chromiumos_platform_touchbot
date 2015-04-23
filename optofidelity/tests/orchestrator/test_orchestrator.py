@@ -9,7 +9,7 @@ import tempfile
 
 from optofidelity.benchmark import Benchmark
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import Orchestrator
+from optofidelity.orchestrator import Orchestrator, Dashboard
 
 from . import test_data
 
@@ -23,9 +23,10 @@ class OrchestratorTests(TestCase):
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
-    return Orchestrator(self.runner.benchmark_system, self.runner, self.tempdir,
-                        "sqlite:///" + os.path.join(self.tempdir, "results.db"),
-                        print_progress=True)
+    dashboard = Dashboard("", fake=True)
+    db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
+    return Orchestrator(self.runner.benchmark_system, self.runner, dashboard,
+                        self.tempdir, db_url, print_progress=True)
 
   def tearDown(self):
     shutil.rmtree(self.tempdir)
