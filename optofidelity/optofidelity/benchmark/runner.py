@@ -8,7 +8,7 @@ from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSystem, BenchmarkSubject
-from optofidelity.util import LogCapture
+from optofidelity.util import LogCapture, ProgressPrinter
 
 from .benchmark import Benchmark
 
@@ -27,6 +27,7 @@ class BenchmarkRunner(object):
     """
     self.benchmark_system = benchmark_system
     self.video_processor = video_processor
+    self._progress = ProgressPrinter(_log, print_progress)
     self._print_progress = print_progress
 
   def RunBenchmarks(self, subject, benchmark_types, metadata, debug_flags):
@@ -45,21 +46,20 @@ class BenchmarkRunner(object):
       screen_calibration = self._OpenAndCalibrateSubject(subject)
 
       for benchmark_type in benchmark_types:
-        def PrintProgress(msg, *args):
-          self._PrintProgress(subject.name, benchmark_type, msg % args)
-
         for repetition in range(self.MAX_REPETITIONS + 1):
-          PrintProgress("Running Benchmark (repetiton=%d)", repetition)
           benchmark = Benchmark(subject.name, benchmark_type, metadata,
                                 screen_calibration)
+          self._progress.Info(benchmark.name,
+              "Running Benchmark (repetiton=%d)" % repetition)
+
           self._ExecuteBenchmark(benchmark, debug_flags)
           yield benchmark
           if not benchmark.error:
             break
-          PrintProgress("Benchmark failed.")
+          self._progress.Error(benchmark.name, "Benchmark failed.")
 
         if repetition == self.MAX_REPETITIONS:
-          PrintProgress("All repetitions failed. Giving up!")
+          self._progress.Error("All repetitions failed. Giving up!")
     finally:
       subject.Close()
 
@@ -85,9 +85,12 @@ class BenchmarkRunner(object):
     :rtype: ScreenCalibration
     """
     try:
+      self._progress.Info(subject.name, "Opening and calibrating")
       subject.Open(False)
       return self._CalibrateScreen(subject)
     except:
+      self._progress.Exception(subject.name,
+                               "Caught Exception. Retrying in safe mode.")
       # Failed? Re-try using safe-mode Open.
       subject.Reset()
       subject.Open(True)
@@ -102,24 +105,18 @@ class BenchmarkRunner(object):
     :type benchmark: Benchmark
     :type debug_flags: List[str]
     """
-    def PrintProgress(msg):
-      self._PrintProgress(benchmark.subject_name, benchmark.benchmark_type, msg)
-
     capture = LogCapture()
     with capture:
       try:
-        PrintProgress("Executing benchmark")
+        self._progress.Info(benchmark.name, "Executing benchmark")
         benchmark.ExecuteOnSubject(self.benchmark_system)
-        PrintProgress("Processing video")
+        self._progress.Info(benchmark.name, "Processing video")
         benchmark.ProcessVideo(self.video_processor, debug_flags,
                                self._print_progress)
-        PrintProgress("Processing trace")
+        self._progress.Info(benchmark.name, "Processing trace")
         benchmark.ProcessTrace()
       except:
-        PrintProgress("Exception during benchmark")
-        if self._print_progress:
-          traceback.print_exception()
-        _log.exception("")
+        self._progress.Exception(benchmark.name)
         benchmark.error = traceback.format_exc()
     benchmark.log = capture.log
 
@@ -129,17 +126,8 @@ class BenchmarkRunner(object):
     :type subject: BenchmarkSubject
     :rtype ScreenCalibration
     """
-    self._PrintProgress(subject.name, None, "Calibrating screen")
+    self._progress.Info(subject.name, "Calibrating screen")
     video_reader = subject.RecordCalibrationVideo()
     screen_calibration = self.video_processor.CreateScreenCalibration(
         video_reader)
     return screen_calibration
-
-  def _PrintProgress(self, subject_name, benchmark_type, msg):
-    if benchmark_type:
-      message = "%s/%s: %s" % (subject_name, benchmark_type, msg)
-    else:
-      message = "%s: %s" % (subject_name, msg)
-    _log.info(message)
-    if self._print_progress:
-      print message

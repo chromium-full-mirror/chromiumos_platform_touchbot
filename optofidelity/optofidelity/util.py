@@ -10,6 +10,7 @@ import logging
 import sys
 import threading
 import time
+import traceback
 
 
 class const_property(object):
@@ -107,3 +108,31 @@ class LogCapture(object):
   @property
   def log(self):
     return self._log_stream.getvalue()
+
+class ProgressPrinter(object):
+  def __init__(self, log, print_to_stdout):
+    self._log = log
+    self._print_to_stdout = print_to_stdout
+
+  def Exception(self, header, message="Caught Exception"):
+    self.Error(header, message)
+    if self._print_to_stdout:
+      traceback.print_exc(limit=1)
+    self._log.exception(message)
+
+  def Info(self, header, message):
+    self.Print(header, message, logging.INFO)
+
+  def Error(self, header, message):
+    self.Print(header, message, logging.ERROR)
+
+  def Print(self, header, message, level):
+    color = "32"
+    if level == logging.ERROR:
+      color = "31"
+
+    pretty_format = "\033[1m\033[0;%sm%s:\033[0m \033[1m%s\033[0m"
+    log_line = pretty_format % (color, header, message)
+    self._log.log(level, log_line)
+    if self._print_to_stdout:
+      print log_line

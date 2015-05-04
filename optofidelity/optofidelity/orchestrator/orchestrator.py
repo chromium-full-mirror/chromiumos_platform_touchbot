@@ -8,11 +8,12 @@ import logging
 import os
 
 from safetynet import List, Optional, TypecheckMeta
+import dataset
 
 from optofidelity.benchmark import Benchmark, BenchmarkResults, BenchmarkRunner
 from optofidelity.gsutil import GSPathExists
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
-import dataset
+from optofidelity.util import ProgressPrinter
 
 from .dashboard import Dashboard
 
@@ -45,6 +46,7 @@ class Orchestrator(object):
 
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
+    self._progress = ProgressPrinter(_log, print_progress)
 
   def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
                              skip_update=False):
@@ -64,8 +66,11 @@ class Orchestrator(object):
     for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
       try:
         subject = self._system.subjects[subject_name]
+        self._progress.Info(subject_name,
+                            "Running benchmarks: %s" % (benchmark_types,))
         if not skip_update:
           if not self.UpdateSubject(subject, forced_version):
+            self._progress.Info(subject.name, "Skipping benchmarks.")
             continue
 
         time = datetime.now()
@@ -77,8 +82,8 @@ class Orchestrator(object):
                                                     metadata, debug_flags):
           self._StoreBenchmark(benchmark, subject, time)
       except:
-        self._PrintProgress("%s: Subject in bad state.", subject_name)
-        _log.exception("Exception while preparing subject.")
+        self._progress.Exception(subject.name)
+        self._progress.Error(subject.name, "Subject in bad state")
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.
@@ -87,25 +92,25 @@ class Orchestrator(object):
     :param Optional[str] forced_version: Force version number install
     :returns bool: True if the subject has been updated.
     """
-    def PrintProgress(msg, *args):
-      self._PrintProgress("%s: %s", subject.name, msg % args)
-
-    PrintProgress("Checking for updates")
+    self._progress.Info(subject.name, "Checking for updates")
     available = subject.updater.available_versions
+
     target_version = None
     if forced_version:
-      PrintProgress("Forcing version %s", forced_version)
       for version in available:
         if fnmatch(version, forced_version):
           target_version = version
           break
+      self._progress.Info(subject.name, "Forcing version %s" % target_version)
       if not target_version:
         raise ValueError("Version %s is not available" % forced_version)
     else:
       target_version = available[0]
+      self._progress.Info(subject.name, "Latest version is %s" % target_version)
       if target_version == subject.updater.installed_version:
-        PrintProgress("Version %s is already installed", target_version)
+        self._progress.Info(subject.name, "Already installed")
         return False
+    self._progress.Info(subject.name, "Installing %s" % target_version)
     subject.updater.Install(target_version, self._print_progress)
     return True
 
@@ -120,10 +125,6 @@ class Orchestrator(object):
     :type subject: BenchmarkSubject
     :type time: datetime
     """
-    def PrintProgress(msg, *args):
-      self._PrintProgress("%s/%s: %s", subject.name, benchmark.benchmark_type,
-                         msg % args)
-
     subject_version = subject.updater.installed_version
     metadata = dict(time=time)
     if subject_version:
@@ -131,18 +132,19 @@ class Orchestrator(object):
 
     results_url, uid = self._FindUniqueResultsURL(time)
 
-    PrintProgress("Saving benchmark to %s", results_url)
+    self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
     benchmark.Save(results_url, debug_info=True,
                    print_progress=self._print_progress)
 
-    PrintProgress("Generating report")
+    self._progress.Info(benchmark.name, "Generating Report")
     benchmark.GenerateReport(results_url, print_progress=self._print_progress)
     self._InsertResults(time, uid, subject_version, benchmark.results)
 
     public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
     report_url = os.path.join(public_url, "report.html")
-    PrintProgress("Report available at: %s", report_url)
+    self._progress.Info(benchmark.name, "Report available at: %s" % report_url)
 
+    self._progress.Info(benchmark.name, "Reporting results to dashboard")
     self._dashboard.ReportResults(benchmark.results, subject_version,
         subject.updater.GetVersionUID(subject_version), report_url)
 
@@ -206,8 +208,3 @@ class Orchestrator(object):
           draw_end_latencies=dump(id_measurements.latencies)
       )
       self._results_table.insert(row_data)
-
-  def _PrintProgress(self, message, *args):
-    _log.info(message, *args)
-    if self._print_progress:
-      print message % args
