@@ -33,12 +33,16 @@ class Trace(list):
   @const_property
   def start_time(self):
     """:returns int: start time of first event."""
-    return self[0].start_time or self[0].time
+    if len(self) > 0:
+      return self[0].start_time or self[0].time
+    return 0
 
   @const_property
   def end_time(self):
     """:returns int: end time of last event."""
-    return self[-1].time
+    if len(self) > 0:
+      return self[-1].time
+    return 0
 
   @const_property
   def finger(self):
@@ -265,6 +269,9 @@ class Trace(list):
     :param bool interpolate: Use linear interpolation between events instead of
            a step function.
     """
+    if len(self) == 0:
+      return np.empty((0,))
+
     if event_type in (FingerEvent, LineDrawEvent):
       current_value = np.nan
     elif event_type in (LEDEvent, ScreenDrawEvent):

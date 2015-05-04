@@ -334,3 +334,8 @@ class TraceTests(unittest.TestCase):
 
       # check if the location at that time is close to the target location
       self.assertLess(np.abs(trace.finger[finger_time] - location), 2.0)
+
+  def test_empty_trace(self):
+    trace = Trace([])
+    self.assertEqual(len(trace), 0)
+    self.assertEqual(len(trace.finger), 0)
