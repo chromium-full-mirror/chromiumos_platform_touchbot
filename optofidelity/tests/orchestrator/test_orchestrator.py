@@ -54,6 +54,21 @@ class OrchestratorTests(TestCase):
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 2)
 
+  def testErrorRepetition(self):
+    # Create benchmark results and set an error message.
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.runner.RunBenchmark("tap", {}, [])
+    benchmark.results.error = "Error Message"
+    # Return this errornous benchmark with this runner.
+    self.runner.fake_benchmark = benchmark
+
+    orchestrator = self.createOrchestrator()
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    results = list(orchestrator.QueryResults())
+    self.assertEqual(len(results), 3)
+    for result in results:
+      self.assertEqual(result["error"], "Error Message")
+
   def testUpdateAndRun(self):
     orchestrator = self.createOrchestrator()
 

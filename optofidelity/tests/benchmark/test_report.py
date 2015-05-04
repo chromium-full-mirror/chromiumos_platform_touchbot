@@ -40,8 +40,8 @@ class ReportTests(TestCase):
     metadata = {"OS Version": "23.0", "App Version": "42.0"}
 
     self.processor.fake_trace = test_data.LoadTrace(filename)
-    benchmark = self.runner.RunBenchmark(self.subject, benchmark_type,
-                                         metadata, [])
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.runner.RunBenchmark(benchmark_type, metadata, [])
     report = benchmark.GenerateReport(self.tempdir)
 
     self.userVerification(report.html_filename)

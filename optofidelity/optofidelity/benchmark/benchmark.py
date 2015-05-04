@@ -88,13 +88,12 @@ class Benchmark(object):
 
     self.screen_calibration = screen_calibration
     self.framerate = None
-    self.results = None
+    self.results = BenchmarkResults(subject_name, benchmark_type, metadata)
     self.metadata = metadata
     self.trace = None
     self.video = None
 
     self.log = ""
-    self.error = ""
 
   @property
   def ms_per_frame(self):

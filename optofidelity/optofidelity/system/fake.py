@@ -49,6 +49,9 @@ class FakeUpdater(Updater):
     self._available_versions = []
     self._installed_version = None
 
+  def GetVersionUID(self, version):
+    return 0
+
   @property
   def available_versions(self):
     return self._available_versions

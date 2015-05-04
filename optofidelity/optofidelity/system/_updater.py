@@ -70,7 +70,6 @@ class ChromeUpdater(Updater):
       if uid_version == version:
         print version, uid
         return uid
-    print "None"
     raise Exception("Unknown version %s" % version)
 
   @property

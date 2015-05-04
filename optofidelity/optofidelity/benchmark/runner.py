@@ -1,13 +1,14 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from contextlib import contextmanager
 import logging
 import traceback
 
 from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.detection import ScreenCalibration, VideoProcessor
-from optofidelity.system import BenchmarkSystem, BenchmarkSubject
+from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import LogCapture, ProgressPrinter
 
 from .benchmark import Benchmark
@@ -16,6 +17,14 @@ _log = logging.getLogger(__name__)
 
 
 class BenchmarkRunner(object):
+  """Runs benchmarks on BenchmarkSubjects.
+
+  Basic usage:
+  with runner.UseSubject(subject):
+    benchmark = runner.RunBenchmark("tap", metadata, debug_flags)
+    benchmark2 = runner.RunBenchmark("scroll", metadata, debug_flags)
+    ...
+  """
   __metaclass__ = InterfaceMeta
   MAX_REPETITIONS = 3
 
@@ -30,53 +39,37 @@ class BenchmarkRunner(object):
     self._progress = ProgressPrinter(_log, print_progress)
     self._print_progress = print_progress
 
-  def RunBenchmarks(self, subject, benchmark_types, metadata, debug_flags):
-    """Run multiple benchmarks on a subject.
+  @contextmanager
+  def UseSubject(self, subject):
+    """Context manager to allow running of benchmarks on a subject.
 
-    This method will run all benchmarks listed in benchmark_types and yield
-    the resulting Benchmark containing results and potential errors.
-
+    The context manager will open and calibrate the subject on entering, and
+    close the subject on exiting.
     :type subject: BenchmarkSubject
-    :type benchmark_types: List[str]
+    """
+    self._screen_calibration = self._OpenAndCalibrateSubject(subject)
+    self._current_subject = subject
+    yield
+    self._screen_calibration = None
+    self._current_subject = None
+    subject.Close()
+
+  def RunBenchmark(self, benchmark_type, metadata, debug_flags):
+    """Run benchmark on subject picked with UseSubject.
+
+    This method has to be called within the context of UseSubject.
+    :type benchmark_type: str
     :type metadata: Dict[str, Any]
     :type debug_flags: List[str]
-    :yields Benchmark: Benchmark results
+    :rtype Benchmark
     """
-    try:
-      screen_calibration = self._OpenAndCalibrateSubject(subject)
+    if not self._current_subject:
+      raise Exception("Must be executed within the context of UseSubject.")
 
-      for benchmark_type in benchmark_types:
-        for repetition in range(self.MAX_REPETITIONS + 1):
-          benchmark = Benchmark(subject.name, benchmark_type, metadata,
-                                screen_calibration)
-          self._progress.Info(benchmark.name,
-              "Running Benchmark (repetiton=%d)" % repetition)
-
-          self._ExecuteBenchmark(benchmark, debug_flags)
-          yield benchmark
-          if not benchmark.error:
-            break
-          self._progress.Error(benchmark.name, "Benchmark failed.")
-
-        if repetition == self.MAX_REPETITIONS:
-          self._progress.Error("All repetitions failed. Giving up!")
-    finally:
-      subject.Close()
-
-  def RunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
-    """Run single benchmark on a subject.
-
-    This is a shorthand to call RunBenchmarks with a single benchmark_type.
-
-    :type subject: BenchmarkSubject
-    :type benchmark_types: List[str]
-    :type metadata: Dict[str, Any]
-    :type debug_flags: List[str]
-    :rtype: Benchmark
-    """
-    benchmarks = self.RunBenchmarks(subject, [benchmark_type], metadata,
-                                    debug_flags)
-    return benchmarks.next()
+    benchmark = Benchmark(self._current_subject.name, benchmark_type, metadata,
+                          self._screen_calibration)
+    self._ExecuteBenchmark(benchmark, debug_flags)
+    return benchmark
 
   def _OpenAndCalibrateSubject(self, subject):
     """Open a subject and calibrate screen.
@@ -117,7 +110,7 @@ class BenchmarkRunner(object):
         benchmark.ProcessTrace()
       except:
         self._progress.Exception(benchmark.name)
-        benchmark.error = traceback.format_exc()
+        benchmark.results.error = traceback.format_exc()
     benchmark.log = capture.log
 
   def _CalibrateScreen(self, subject):

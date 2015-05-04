@@ -39,19 +39,12 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     self.fake_benchmark = fake_benchmark
     self.video_processor.fake_trace = fake_trace
 
-  def RunBenchmarks(self, subject, benchmark_types, metadata, debug_flags):
-    if not self.fake_benchmark:
-      return super(FakeBenchmarkRunner, self).RunBenchmarks(subject,
-          benchmark_types, metadata, debug_flags)
-    else:
-      return self._RunFakeBenchmarks(benchmark_types)
-
   def _RunFakeBenchmarks(self, benchmark_types):
     for benchmark_type in benchmark_types:
       yield benchmark_type, self.fake_benchmark
 
-  def RunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
+  def RunBenchmark(self, benchmark_type, metadata, debug_flags):
     if self.fake_benchmark:
       return self.fake_benchmark
-    return super(FakeBenchmarkRunner, self).RunBenchmark(subject,
-        benchmark_type, metadata, debug_flags)
+    return super(FakeBenchmarkRunner, self).RunBenchmark(benchmark_type,
+        metadata, debug_flags)

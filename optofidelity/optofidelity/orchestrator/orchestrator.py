@@ -8,12 +8,13 @@ import logging
 import os
 
 from safetynet import List, Optional, TypecheckMeta
-import dataset
 
-from optofidelity.benchmark import Benchmark, BenchmarkResults, BenchmarkRunner
+from optofidelity.benchmark import (Benchmark, BenchmarkResults,
+                                    BenchmarkRunner, MeasurementList)
 from optofidelity.gsutil import GSPathExists
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import ProgressPrinter
+import dataset
 
 from .dashboard import Dashboard
 
@@ -27,6 +28,9 @@ class Orchestrator(object):
     dut_name/subject_name/benchmark_type
   """
   __metaclass__ = TypecheckMeta
+
+  MAX_BENCHMARK_TRIES = 3
+  """Maximum number of tries to run a benchmark before giving up."""
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
                results_db_url, print_progress=False):
@@ -72,18 +76,43 @@ class Orchestrator(object):
           if not self.UpdateSubject(subject, forced_version):
             self._progress.Info(subject.name, "Skipping benchmarks.")
             continue
-
-        time = datetime.now()
-        subject_version = subject.updater.installed_version
-        metadata = dict(time=time)
-        if subject_version:
-          metadata["subject_version"] = subject_version
-        for benchmark in self._runner.RunBenchmarks(subject, benchmark_types,
-                                                    metadata, debug_flags):
-          self._StoreBenchmark(benchmark, subject, time)
+        self.RunSubjectBenchmarks(subject, benchmark_types, debug_flags)
       except:
         self._progress.Exception(subject.name)
         self._progress.Error(subject.name, "Subject in bad state")
+
+  def RunSubjectBenchmarks(self, subject, benchmark_types, debug_flags):
+    """Run benchmarks on a subject and store/report results.
+
+    :type subject: BenchmarkSubject
+    :type benchmark_types: List[str]
+    :type debug_flags: List[str]
+    """
+    subject_version = subject.updater.installed_version
+    metadata = dict()
+    if subject_version:
+      metadata["subject_version"] = subject_version
+
+    with self._runner.UseSubject(subject):
+      for benchmark_type in benchmark_types:
+        time = datetime.now()
+        benchmark_name = "%s/%s" % (subject.name, benchmark_type)
+        metadata["time"] = time
+
+        for repetition in range(self.MAX_BENCHMARK_TRIES):
+          rep_name = "Benchmark (repetiton=%d)" % repetition
+          self._progress.Info(benchmark_name, "Running %s" % rep_name)
+
+          benchmark = self._runner.RunBenchmark(benchmark_type, metadata,
+                                                debug_flags)
+          self._StoreBenchmark(benchmark, subject, time)
+
+          if not len(benchmark.results.error):
+            break
+          self._progress.Error(benchmark.name, "%s failed." % rep_name)
+
+        if repetition == self.MAX_RETRIES:
+          self._progress.Error("All repetitions failed. Giving up!")
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.
@@ -144,9 +173,10 @@ class Orchestrator(object):
     report_url = os.path.join(public_url, "report.html")
     self._progress.Info(benchmark.name, "Report available at: %s" % report_url)
 
-    self._progress.Info(benchmark.name, "Reporting results to dashboard")
-    self._dashboard.ReportResults(benchmark.results, subject_version,
-        subject.updater.GetVersionUID(subject_version), report_url)
+    if not benchmark.results.error:
+      self._progress.Info(benchmark.name, "Reporting results to dashboard")
+      self._dashboard.ReportResults(benchmark.results, subject_version,
+          subject.updater.GetVersionUID(subject_version), report_url)
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.
@@ -192,13 +222,19 @@ class Orchestrator(object):
     :type results: BenchmarkResults
     """
     dump = lambda array: ", ".join(str(array))
-    for mid, id_measurements in results.measurement_list.IterByMeasurementID():
+
+    if len(results.error):
+      generator = [("", MeasurementList())]
+    else:
+      generator = results.measurement_list.IterByMeasurementID()
+    for mid, id_measurements in generator:
       row_data = dict(
           time=time,
           uid=uid,
           subject_name=results.subject_name,
           subject_version=subject_version,
           benchmark_type=results.benchmark_type,
+          error=results.error,
           measurement_id=mid,
           draw_start_mean=id_measurements.draw_start_mean,
           draw_start_std=id_measurements.draw_start_std,

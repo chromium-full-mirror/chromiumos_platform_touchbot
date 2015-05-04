@@ -26,13 +26,14 @@ class BenchmarkRunnerTests(TestCase):
     shutil.rmtree(self.tempdir)
 
   def testRun(self):
-    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
-    self.assertBenchmarkComplete(benchmark)
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.runner.RunBenchmark("tap", {}, [])
+      self.assertBenchmarkComplete(benchmark)
 
   def testSaveDebugInfo(self):
-    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
-    benchmark.Save(self.tempdir, debug_info=True)
-
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.runner.RunBenchmark("tap", {}, [])
+      benchmark.Save(self.tempdir, debug_info=True)
     after = Benchmark.Load(self.tempdir)
     self.assertBenchmarkComplete(after)
 
@@ -47,11 +48,12 @@ class BenchmarkRunnerTests(TestCase):
     original_level = root_logger.getEffectiveLevel()
     root_logger.setLevel(logging.DEBUG)
 
-    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
-    self.assertIn("Trigger Camera", benchmark.log)
-    self.assertIn("Move", benchmark.log)
-    self.assertIn("Tap", benchmark.log)
-    self.assertIn("Processing frame", benchmark.log)
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.runner.RunBenchmark("tap", {}, [])
+      self.assertIn("Trigger Camera", benchmark.log)
+      self.assertIn("Move", benchmark.log)
+      self.assertIn("Tap", benchmark.log)
+      self.assertIn("Processing frame", benchmark.log)
 
     root_logger.setLevel(original_level)
 
