@@ -88,11 +88,8 @@ class SubjectTests(TestCase):
     self.dut_backend._detect_icon_rval = None
 
     subject = self.createSubject()
-    ret = subject.Open(safe=False)
-    self.assertEqual(ret, False)
-
-    ret = subject.Open(safe=True)
-    self.assertEqual(ret, False)
+    self.assertRaises(Exception, lambda: subject.Open(safe=False))
+    self.assertRaises(Exception, lambda: subject.Open(safe=True))
 
   def testPageOpenClose(self):
     subject = self.createSubject()
@@ -127,8 +124,8 @@ class SubjectTests(TestCase):
 
     subject = self.createSubject()
     subject.Open(safe=False)
-    self.assertEqual(subject.OpenPage("Scroll"), False)
-    self.assertEqual(subject.OpenPage("Tap"), False)
+    self.assertRaises(Exception, lambda: subject.OpenPage("Scroll"))
+    self.assertRaises(Exception, lambda: subject.OpenPage("Tap"))
 
   def testPageOpenCloseState(self):
     subject = self.createSubject()

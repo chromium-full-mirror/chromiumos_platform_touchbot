@@ -11,13 +11,13 @@ from ._delegate import BenchmarkDelegate
 class TapDelegate(BenchmarkDelegate):
   """Contains logic to perform tap latency benchmarks."""
 
-  BASE_DURATION = 600
+  BASE_DURATION = 1000
   """Duration at beginning of each recording (in ms)."""
 
   PER_TAP_DURATION = 500
   """Duration of each tap in recording (in number of frames)."""
 
-  NUM_MEASUREMENTS = 10
+  NUM_MEASUREMENTS = 12
   """Number of tap latency measurements (i.e. number of taps)."""
 
   CAMERA_FRAMERATE = 300
@@ -36,8 +36,7 @@ class TapDelegate(BenchmarkDelegate):
     subject.MoveOnTestPlane(center, 10.0, blocking=True)
 
     subject.camera.Trigger()
-    for i in range(self.NUM_MEASUREMENTS):
-      subject.TapOnTestPlane(center)
+    subject.TapOnTestPlane(center, count=self.NUM_MEASUREMENTS)
 
     video_reader = subject.camera.ReceiveVideo()
     subject.ClosePage()

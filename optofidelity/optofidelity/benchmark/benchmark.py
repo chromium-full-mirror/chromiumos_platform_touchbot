@@ -84,6 +84,7 @@ class Benchmark(object):
     self._delegate = _delegate or self.BENCHMARK_TYPES[benchmark_type]()
     self.subject_name = subject_name
     self.finger_calib_delay = (0.0, 0.0)
+    self.name = "%s/%s" % (subject_name, benchmark_type)
 
     self.screen_calibration = screen_calibration
     self.framerate = None
@@ -93,6 +94,7 @@ class Benchmark(object):
     self.video = None
 
     self.log = ""
+    self.error = ""
 
   @property
   def ms_per_frame(self):
@@ -224,7 +226,7 @@ class Benchmark(object):
 
     def DumpProperty(variable_name):
       data = getattr(self, variable_name)
-      if data:
+      if data is not None:
         with open(os.path.join(path, "%s.txt" % variable_name), "w") as file:
           file.write(str(data))
     DumpProperty("trace")

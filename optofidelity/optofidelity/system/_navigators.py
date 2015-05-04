@@ -53,10 +53,9 @@ class RobotNavigator(Navigator):
     if safe or self._app_icon_coords is None:
       self._app_icon_coords = self._DetectAppIconCoords()
     if self._app_icon_coords is None:
-      return False
+      raise Exception("Cannot detect app icon")
 
     self._dut_backend.Tap(*self._app_icon_coords)
-    return True
 
   def Close(self):
     self._dut_backend.Tap(*self._back_button_coords)
@@ -74,10 +73,9 @@ class RobotNavigator(Navigator):
       self._page_button_coords = self._DetectPageButtonCoords()
       coords = self._page_button_coords[page_name]
     if not coords:
-      return False
+      raise Exception("Cannot detect page button '%s'" % page_name)
 
     self._dut_backend.Tap(*coords)
-    return True
 
   def ClosePage(self):
     self._dut_backend.Tap(*self._back_button_coords)
@@ -118,9 +116,7 @@ class ADBNavigator(Navigator):
 
   REMOTE_DIR = "/sdcard/crostouch"
   HTML_DIR = os.path.join(_script_dir, "..", "..", "html")
-  MAIN_ACTION = "android.intent.action.MAIN"
   VIEW_ACTION = "android.intent.action.VIEW"
-  HOME_CATEGORY = "android.intent.category.HOME"
 
   def __init__(self, adb_device, component):
     """
@@ -142,7 +138,7 @@ class ADBNavigator(Navigator):
     self.Reset()
 
   def Close(self):
-    self._StartActivity(self.MAIN_ACTION, category=self.HOME_CATEGORY)
+    self._adb.SendKey("KEYCODE_HOME")
 
   def OpenPage(self, page_name):
     self._OpenFile("%s.html" % page_name.lower())

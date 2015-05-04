@@ -163,7 +163,7 @@ class Report(object):
 
     canvas = Canvas.FromShape(screen_space.shape)
     if event.location is not None:
-      canvas.DrawVLine(self.REFERENCE_LINE_COLOR, event.location)
+      canvas.DrawVLine(self.REFERENCE_LINE_COLOR, int(event.location))
     return canvas.BlendWithImage(skimage.color.gray2rgb(screen_space))
 
   def _SaveFigure(self, figure, filename):

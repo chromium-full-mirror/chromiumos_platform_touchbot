@@ -282,7 +282,7 @@ class PhantomVideoReader(VideoReader):
     >>> with reader.PrefetchEnabled():
     >>>    reader.Frames()
     """
-    self.prefetch_frame = frame
+    self.prefetch_frame = frame_index
 
   def _ClearPrefetch(self):
     """Clear any outstanding requested frames.

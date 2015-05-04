@@ -45,6 +45,9 @@ class ADB(object):
       return match.group(1)
     return None
 
+  def SendKey(self, key_name):
+    self.ExecuteShell(["input", "keyevent", key_name])
+
   def PushFile(self, local_file, remote_file):
     self.Execute(["push", local_file, remote_file])
 
@@ -65,7 +68,7 @@ class ADB(object):
                                stderr=subprocess.STDOUT)
     lines = []
     for line in process.stdout.readlines():
-      _log.debug(".. %s" % line.strip())
+      _log.debug("     %s" % line.strip())
       lines.append(line.strip())
     stdout = "\n".join(lines)
 

@@ -22,18 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
 
-import sys
-import os
-import re
-import sys
-import json
-import ntpath
-import socket
-import urllib2
-import requests
-
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from collections import namedtuple
+import json
+import logging
+
+import requests
 
 Point = namedtuple('Point', ['x', 'y', 'z'])
 
@@ -137,6 +130,8 @@ class TnTClientObject(object):
             r = requests.delete(url, headers=request.headers)
         else:
             raise Exception('Unknown or unsupported HTTP method -- %s' % method)
+
+        logging.getLogger(__name__).debug("%s %s", method, url)
 
         if async:
             return r
@@ -474,4 +469,3 @@ class HttpException(Exception):
         if self.message:
             return "HTTP %i: %s" % (self.code, self.message)
         return "Http error %i" % self.code
-

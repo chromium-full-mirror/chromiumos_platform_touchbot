@@ -157,9 +157,9 @@ class BenchmarkSystem(object):
       self._subject_types[type_name] = type_elem
 
     finger_calib = root.find("finger-calibration")
-    if finger_calib:
-      down = finger_calib.attrib("down-delay", 0.0)
-      up = finger_calib.attrib("up-delay", 0.0)
+    if finger_calib is not None:
+      down = float(finger_calib.get("down-delay", 0.0))
+      up = float(finger_calib.get("up-delay", 0.0))
       self.finger_calib_delay = FingerCalibDelay(down, up)
 
     robot = root.find("robot")
@@ -246,7 +246,7 @@ class BenchmarkSystem(object):
     if nav_type_name == "robot":
       return RobotNavigator(dut_backend, nav_attrib["icon"])
     elif nav_type_name == "adb":
-      return ADBNavigator(dut_attrib["adb"])
+      return ADBNavigator(dut_attrib["adb"], nav_attrib["component"])
     else:
       raise ValueError("Unknown navigator type name '%s'" % nav_type_name)
 

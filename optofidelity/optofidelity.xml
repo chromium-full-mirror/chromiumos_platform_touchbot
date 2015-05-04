@@ -1,37 +1,20 @@
 <optofidelity>
   <robot host="192.168.0.11" port="8000" />
   <camera host="192.168.0.4" />
+  <finger-calibration down-delay="4" up-delay="4" />
+  <led-calibration-subject backend-name="calibration" />
 
-  <calibration-device tnt_name="calibration" />
+  <subject-type type-name="clank_tablet" name="clank" margin="(30, 15)">
+    <navigator type="adb" component="com.chrome.beta/com.google.android.apps.chrome.Main" />
+    <updater type="chrome" channel="beta" />
+  </subject-type>
 
-  <subject-type type-name="clank_tablet" name="clank" margin="(30, 15)"
-                icon="icons/clank_tests.shm" />
-  <subject-type type-name="clank_phone" name="clank" margin="(20, 15)"
-                icon="icons/clank_tests.shm" />
+  <subject-type type-name="clank_phone" name="clank" margin="(20, 15)">
+    <navigator type="adb" component="com.chrome.beta/com.google.android.apps.chrome.Main" />
+    <updater type="chrome" channel="beta" />
+  </subject-type>
 
-  <!-- Right column on robot tray -->
-  <dut name="nexus5" orientation="left">
-    <subject type="clank_phone" />
-  </dut>
-
-  <dut name="tinno" type="android" orientation="left">
-    <subject type="clank_phone" />
-  </dut>
-
-  <!-- Left column on robot tray -->
-  <dut name="nexus9" type="android" orientation="right">
-    <subject type="clank_tablet" />
-  </dut>
-
-  <dut name="nexus7" type="android" orientation="right">
-    <subject type="clank_tablet" />
-  </dut>
-
-  <dut name="nexus4" type="android" orientation="right">
-    <subject type="clank_phone" />
-  </dut>
-
-  <dut name="longcheer" type="android" orientation="right">
+  <dut name="nexus5" adb="08a9896c255d540b">
     <subject type="clank_phone" />
   </dut>
 

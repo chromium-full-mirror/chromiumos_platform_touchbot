@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 from unittest import TestCase
 import os
 
-from optofidelity._gsutil import GSFile, GSFolder, GSOpenFile
+from optofidelity.gsutil import GSFile, GSFolder, GSOpenFile
 
 GS_URL = None
 GS_FILE_URL = os.path.join(GS_URL, "test.txt") if GS_URL else None

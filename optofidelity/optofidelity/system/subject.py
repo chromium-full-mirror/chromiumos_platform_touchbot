@@ -198,10 +198,8 @@ class BenchmarkSubject(object):
     if self._is_open:
       raise Exception("Subject already open.")
 
-    if self._navigator.Open(safe):
-      self._is_open = True
-      return True
-    return False
+    self._navigator.Open(safe)
+    self._is_open = True
 
   def Close(self):
     """Closes this subject and returns device to the home screen."""
@@ -229,7 +227,6 @@ class BenchmarkSubject(object):
     coordinates detected previously.
 
     :param str page_name: Name of the page to open.
-    :returns bool: False if the button for this page could not be detected.
     """
     if not self._is_open:
       raise Exception("Can't open page if subject has not been opened.")
@@ -238,10 +235,8 @@ class BenchmarkSubject(object):
     if page_name not in self.PAGE_NAMES:
       raise ValueError("Unknown page name '%s'" % page_name)
 
-    if self._navigator.OpenPage(page_name):
-      self._current_page = page_name
-      return True
-    return False
+    self._navigator.OpenPage(page_name)
+    self._current_page = page_name
 
   def WaitForGesturesToFinish(self):
     """Blocks until all gestures are finished."""
@@ -297,7 +292,7 @@ class BenchmarkSubject(object):
     self.Move(self._test_plane, y, z)
 
   def MoveRobotOutOfCameraView(self, blocking=True):
-    self.MoveOnTestPlane(-100.0, self.HOVER_HEIGHT, blocking)
+    self.MoveOnTestPlane(-10.0, self.HOVER_HEIGHT, blocking)
 
   def Jump(self, x, y, z, blocking=True):
     """Jump to location (x, y, z).
@@ -333,7 +328,7 @@ class BenchmarkSubject(object):
 
     :returns VideoReader: A video reader containing the calibration video.
     """
-    self.camera.Prepare(60)
+    self.camera.Prepare(1000)
     self.OpenPage(self.PAGE_FLASH)
     self.MoveRobotOutOfCameraView()
     self.camera.Trigger()
