@@ -11,7 +11,6 @@ from optofidelity.detection.events import LEDEvent
 from .test_detector import DetectorTest
 
 class LEDDetectorTest(DetectorTest):
-
   def executeLEDPreprocessingTest(self, on_image, off_image):
     def assertLEDFlash(flashes, off_to_on):
       for flash in flashes:
@@ -50,6 +49,7 @@ class LEDDetectorTest(DetectorTest):
       [flash((32, 32), 1.0)],
       [], [], [], [], [], [], [], [], [], [],  # Wait 10 frames
       [flash((32, 32), 1.0)],  # 2 Flashes bouncing and slightly offset in time
+      [],
       [flash((64, 64), 1.0)],
       [flash((32, 32), 1.0)],
       [flash((32, 32), 1.0), flash((64, 64), 1.0)],
@@ -60,7 +60,24 @@ class LEDDetectorTest(DetectorTest):
       12: LEDEvent(12, LEDEvent.STATE_OFF),
       24: LEDEvent(24, LEDEvent.STATE_ON),
       37: LEDEvent(37, LEDEvent.STATE_ON),
-      38: LEDEvent(38, LEDEvent.STATE_ON)
+      39: LEDEvent(39, LEDEvent.STATE_ON)
+    }
+    self.assertExpectedEventsGenerated(LEDDetector(), flashes_sequence,
+                                       expected_events)
+
+  def testMultiFrameFadeIn(self):
+    # Tests an edge case where an led fades in over multiple frames. In the
+    # first frame, only the LED itself is detected as a valid flash, but in the
+    # following frame a reflection is bright enough to be detected as well.
+    # The reflection should be supressed and not generate another LED event.
+    def flash(coords):
+      return Flash(np.asarray(coords), 1.0)
+    flashes_sequence = [
+      [flash((199, 126))],
+      [flash((225, 152)), flash((197., 123.))]
+    ]
+    expected_events = {
+      0: LEDEvent(0, LEDEvent.STATE_ON)
     }
     self.assertExpectedEventsGenerated(LEDDetector(), flashes_sequence,
                                        expected_events)

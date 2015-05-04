@@ -36,8 +36,9 @@ class DetectorTest(TestCase):
         print i, events
         continue
       if i in expected_events:
-        self.assertEqual(len(events), 1)
         expected = expected_events[i]
+        self.assertEqual(len(events), 1,
+                         "%d: Expected event: %s" % (i, expected))
         event = events[0]
 
         self.assertAlmostEqual(event.location, expected.location)
@@ -45,4 +46,5 @@ class DetectorTest(TestCase):
         self.assertEqual(event.start_time, expected.start_time)
         self.assertEqual(event.state, expected.state)
       else:
-        self.assertEqual(len(events), 0)
+        self.assertEqual(len(events), 0,
+                         "%d: Did not expect events: %s" % (i, events))

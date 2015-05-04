@@ -52,9 +52,10 @@ class LEDDetector(Detector):
     if calib_frame.has_calibration:
       margin = self.LED_SCREEN_MARGIN
       screen_shape = calib_frame.camera_space_screen_shape
-      off_screen_mask = ~screen_shape.WithMargin(margin, margin).mask
+      bigger_shape = screen_shape.WithMargin(margin, margin)
+      off_screen_mask = (~bigger_shape.mask).astype(np.double)
     else:
-     off_screen_mask = np.ones(calib_frame.camera_space_shape, dtype=np.bool)
+     off_screen_mask = np.ones(calib_frame.camera_space_shape)
 
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
@@ -96,12 +97,22 @@ class LEDDetector(Detector):
           return True
       return False
 
+    # If a flash happens a frame right after another one, assume it is part of
+    # the same LED and add all flashes to the recent flash times but do not
+    # generate another event.
+    last_frame_flashes = [(flash, time) for flash, time in updated
+                                        if frame_index - time <= 1]
+    if len(last_frame_flashes):
+      for flash in flashes:
+        self.recent_flash_times.append((flash, frame_index - 1))
+      return []
+
     events = []
     for flash in flashes:
       if has_recently_flashed(flash):
         continue
-
       self.recent_flash_times.append((flash, frame_index))
+
       state = Event.STATE_ON if flash.color > 0 else Event.STATE_OFF
       events.append(LEDEvent(frame_index, state=state))
 
