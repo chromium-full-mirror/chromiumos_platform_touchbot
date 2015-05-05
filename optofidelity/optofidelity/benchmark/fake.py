@@ -39,6 +39,12 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     self.fake_benchmark = fake_benchmark
     self.video_processor.fake_trace = fake_trace
 
+  @classmethod
+  def FromTrace(cls, fake_trace, benchmark_type, metadata):
+    runner = FakeBenchmarkRunner(fake_trace=fake_trace)
+    with runner.UseSubject(runner.benchmark_system.fake_subject):
+      return runner.RunBenchmark(benchmark_type, metadata, [])
+
   def _RunFakeBenchmarks(self, benchmark_types):
     for benchmark_type in benchmark_types:
       yield benchmark_type, self.fake_benchmark

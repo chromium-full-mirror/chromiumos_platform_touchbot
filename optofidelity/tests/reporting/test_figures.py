@@ -9,10 +9,10 @@ import skimage.color as color
 import skimage.feature as feature
 import skimage.io
 
-from optofidelity.benchmark._figures import (PrimarySecondaryAxesFigure,
+from optofidelity.reporting._figures import (PrimarySecondaryAxesFigure,
                                              SingleAxesFigure)
-from optofidelity.benchmark._hist_figure import HistogramFigure
-from optofidelity.benchmark._trace_figures import (EventsMeasurementsFigure,
+from optofidelity.reporting._hist_figure import HistogramFigure
+from optofidelity.reporting._trace_figures import (EventsMeasurementsFigure,
                                                    LocationMeasurementsFigure,
                                                    TraceOverviewFigure)
 from optofidelity.benchmark.results import BenchmarkResults

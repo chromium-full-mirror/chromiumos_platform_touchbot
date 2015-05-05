@@ -18,22 +18,17 @@ from . import test_data
 class BenchmarkRunnerTests(TestCase):
   def setUp(self):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
-    self.subject = self.runner.benchmark_system.fake_subject
+    self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
     self.tempdir = tempfile.mkdtemp()
 
   def tearDown(self):
     shutil.rmtree(self.tempdir)
 
   def testRun(self):
-    with self.runner.UseSubject(self.subject):
-      benchmark = self.runner.RunBenchmark("tap", {}, [])
-      self.assertBenchmarkComplete(benchmark)
+    self.assertBenchmarkComplete(self.benchmark)
 
   def testSaveDebugInfo(self):
-    with self.runner.UseSubject(self.subject):
-      benchmark = self.runner.RunBenchmark("tap", {}, [])
-      benchmark.Save(self.tempdir, debug_info=True)
+    self.benchmark.Save(self.tempdir, debug_info=True)
     after = Benchmark.Load(self.tempdir)
     self.assertBenchmarkComplete(after)
 
@@ -48,12 +43,13 @@ class BenchmarkRunnerTests(TestCase):
     original_level = root_logger.getEffectiveLevel()
     root_logger.setLevel(logging.DEBUG)
 
-    with self.runner.UseSubject(self.subject):
-      benchmark = self.runner.RunBenchmark("tap", {}, [])
-      self.assertIn("Trigger Camera", benchmark.log)
-      self.assertIn("Move", benchmark.log)
-      self.assertIn("Tap", benchmark.log)
-      self.assertIn("Processing frame", benchmark.log)
+    fake_trace = test_data.LoadTrace("tap_basic.trace")
+    self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
+
+    self.assertIn("Trigger Camera", self.benchmark.log)
+    self.assertIn("Move", self.benchmark.log)
+    self.assertIn("Tap", self.benchmark.log)
+    self.assertIn("Processing frame", self.benchmark.log)
 
     root_logger.setLevel(original_level)
 

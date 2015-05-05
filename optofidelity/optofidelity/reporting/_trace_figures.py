@@ -7,11 +7,11 @@ import itertools
 from safetynet import Any, Dict, Optional
 import numpy as np
 
+from optofidelity.benchmark import MeasurementList
 from optofidelity.detection import LEDEvent, ScreenDrawEvent, Trace
 
 from . import _styles
 from ._figures import PrimarySecondaryAxesFigure, TimeSeriesAxes
-from .results import MeasurementList
 
 
 class LatencyAxes(TimeSeriesAxes):

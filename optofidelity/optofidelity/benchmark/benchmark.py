@@ -19,9 +19,7 @@ from optofidelity.videoproc import FileVideoReader, SaveImage
 from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
                               TouchMoveDelegate, TouchMoveStartDelegate)
-from ._report import Report
 from ._tap_delegate import TapDelegate
-from ._trace_figures import TraceOverviewFigure
 from .results import BenchmarkResults
 
 _log = logging.getLogger("benchmark")
@@ -124,7 +122,6 @@ class Benchmark(object):
     self.finger_calib_delay = benchmark_system.finger_calib_delay
     self.trace = None
     self.results = None
-    self.report = None
     return self.video
 
   def ProcessVideo(self, video_processor, debug_flags, print_progress):
@@ -147,7 +144,6 @@ class Benchmark(object):
                                               self.screen_calibration,
                                               debug_flags, print_progress)
     self.results = None
-    self.report = None
 
     delta_t = (time.time() - start_t)
     delta_t_per_frame = delta_t / self.video.num_frames
@@ -167,24 +163,9 @@ class Benchmark(object):
     self.results = BenchmarkResults(self.subject_name, self.benchmark_type,
                                     self.metadata)
     self._delegate.ProcessTrace(self.calibrated_trace, self.results)
-    self.report = None
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results
-
-  def GenerateReport(self, report_url, print_progress=False):
-    """Generate HTML into folder.
-
-    :param str report_path: path to folder to save the report into.
-    :rtype Report
-    """
-    assert self.results is not None, "No benchmark results"
-    with GSFolder(report_url, print_progress=print_progress) as report_path:
-      self.report = Report(report_path, "report.html", self.ms_per_frame,
-                           self.finger_calib_delay)
-      self.report.GenerateReport(self.results, self.trace,
-                                 self.screen_calibration, self.video)
-    return self.report
 
   def Save(self, url, debug_info=False, video=False, print_progress=False):
     """Serialize benchmark to a folder on disk.
@@ -219,9 +200,6 @@ class Benchmark(object):
     if self.trace:
       with open(os.path.join(path, "trace.pickle"), "w") as pickle_file:
         pickle.dump(self.trace, pickle_file)
-      figure = TraceOverviewFigure(1024, 512, 256, self.ms_per_frame)
-      figure.PlotTrace(self.trace, 0.0, 0.0)
-      figure.Save(os.path.join(path, "trace.png"), False)
 
     def DumpProperty(variable_name):
       data = getattr(self, variable_name)

@@ -10,6 +10,7 @@ from safetynet import Optional, TypecheckMeta
 import numpy as np
 import skimage.color
 
+from optofidelity.benchmark import BenchmarkResults
 from optofidelity.detection import (Event, LEDEvent, ScreenCalibration,
                                     ScreenDrawEvent, Trace)
 from optofidelity.videoproc import Canvas, SaveImage, VideoReader
@@ -18,7 +19,6 @@ from ._figures import Figure
 from ._hist_figure import HistogramFigure
 from ._trace_figures import (EventsMeasurementsFigure,
                              LocationMeasurementsFigure, TraceOverviewFigure)
-from .results import BenchmarkResults
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 _res_dir = os.path.join(_script_dir, "res")

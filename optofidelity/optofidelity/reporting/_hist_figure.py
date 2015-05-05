@@ -4,11 +4,11 @@
 from safetynet import Any, Dict, Optional
 import numpy as np
 
+from optofidelity.benchmark import MeasurementList
 import matplotlib.mlab as mlab
 
 from . import _styles
 from ._figures import SingleAxesFigure
-from .results import MeasurementList
 
 
 class HistogramFigure(SingleAxesFigure):

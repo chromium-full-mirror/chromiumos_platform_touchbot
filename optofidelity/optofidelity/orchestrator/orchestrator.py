@@ -11,7 +11,8 @@ from safetynet import List, Optional, TypecheckMeta
 
 from optofidelity.benchmark import (Benchmark, BenchmarkResults,
                                     BenchmarkRunner, MeasurementList)
-from optofidelity.gsutil import GSPathExists
+from optofidelity.gsutil import GSFolder, GSPathExists
+from optofidelity.reporting import Report
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import ProgressPrinter
 import dataset
@@ -162,13 +163,26 @@ class Orchestrator(object):
     benchmark.Save(results_url, debug_info=True,
                    print_progress=self._print_progress)
 
-    self._progress.Info(benchmark.name, "Generating Report")
-    benchmark.GenerateReport(results_url, print_progress=self._print_progress)
+    self._GenerateBenchmarkReport(benchmark, results_url)
     self._InsertResults(time, uid, subject_version, benchmark.results)
 
     public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
     report_url = os.path.join(public_url, "report.html")
     self._progress.Info(benchmark.name, "Report available at: %s" % report_url)
+
+  def _GenerateBenchmarkReport(self, benchmark, report_url):
+    """Generate HTML into folder.
+
+    :param str report_path: path to folder to save the report into.
+    :rtype Report
+    """
+    self._progress.Info(benchmark.name, "Generating Report")
+
+    with GSFolder(report_url, print_progress=self._print_progress) as report_path:
+      report = Report(report_path, "report.html", benchmark.ms_per_frame,
+                      benchmark.finger_calib_delay)
+      report.GenerateReport(benchmark.results, benchmark.trace,
+                            benchmark.screen_calibration, benchmark.video)
 
   def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,
                               debug_flags):
@@ -232,7 +246,7 @@ class Orchestrator(object):
 
       self._progress.Error(benchmark.name, "%s failed." % rep_name)
 
-    self._progress.Error("All repetitions failed. Giving up!")
+    self._progress.Error(benchmark.name, "All repetitions failed. Giving up!")
     return None
 
   def _FindUniqueResultsURL(self, time):

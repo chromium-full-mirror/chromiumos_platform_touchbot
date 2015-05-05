@@ -15,8 +15,7 @@ ENDPOINT_URL = ""
 class DashboardTests(TestCase):
   def setUp(self):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
-    self.subject = self.runner.benchmark_system.fake_subject
+    self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
 
     if ENDPOINT_URL:
       self.dashboard = Dashboard(ENDPOINT_URL)
@@ -24,12 +23,10 @@ class DashboardTests(TestCase):
       self.dashboard = Dashboard("", fake=True)
 
   def testDashboardJSON(self):
-    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
-
-    request = self.dashboard._FormatRequest(benchmark.results, "1.0", 1,
+    request = self.dashboard._FormatRequest(self.benchmark.results, "1.0", 1,
                                             "http://fake.com")
     print request
 
   def testDashboardReport(self):
-    benchmark = self.runner.RunBenchmark(self.subject, "tap", {}, [])
-    self.dashboard.ReportResults(benchmark.results, "1.0", 1, "http://fake.com")
+    self.dashboard.ReportResults(self.benchmark.results, "1.0", 1,
+                                 "http://fake.com")

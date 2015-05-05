@@ -9,9 +9,6 @@ from optofidelity.detection import (LEDEvent, ScreenCalibration, Trace,
                                     VideoProcessor)
 from optofidelity.system import BenchmarkSubject
 
-from .util import DebugViewTrace
-
-
 class LEDCalibrator(object):
   """Service to calibrate the delay between two LEDs.
 
@@ -67,7 +64,7 @@ class LEDCalibrator(object):
     :rtype Tuple[float, float]
     """
     if debug:
-      DebugViewTrace(trace)
+      print trace
 
     down_delays = []
     up_delays = []

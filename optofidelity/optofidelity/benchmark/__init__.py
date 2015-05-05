@@ -17,4 +17,3 @@ from .benchmark import Benchmark
 from .led_calibrator import LEDCalibrator
 from .results import BenchmarkResults, Measurement, MeasurementList
 from .runner import BenchmarkRunner
-from .util import DebugViewTrace
