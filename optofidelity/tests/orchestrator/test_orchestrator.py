@@ -25,8 +25,11 @@ class OrchestratorTests(TestCase):
   def createOrchestrator(self):
     dashboard = Dashboard("", fake=True)
     db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
-    return Orchestrator(self.runner.benchmark_system, self.runner, dashboard,
-                        self.tempdir, db_url, print_progress=True)
+    orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
+                                dashboard, self.tempdir, db_url,
+                                print_progress=True)
+    orchestrator.MIN_NUMBER_SAMPLES = 0
+    return orchestrator
 
   def tearDown(self):
     shutil.rmtree(self.tempdir)
@@ -44,6 +47,15 @@ class OrchestratorTests(TestCase):
       # the stored data is consistent.
       benchmark = Benchmark.Load(data_folder)
       benchmark.Save(data_folder, debug_info=True)
+
+  def testMinSamples(self):
+    orchestrator = self.createOrchestrator()
+    orchestrator.MIN_NUMBER_SAMPLES = 20
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    results = list(orchestrator.QueryResults())
+    # Should repeat test 5 times, with 2 measurement id's each
+    # resulting in 10 entries in the database.
+    self.assertEqual(len(results), 10)
 
   def testResultsPersistence(self):
     orchestrator = self.createOrchestrator()

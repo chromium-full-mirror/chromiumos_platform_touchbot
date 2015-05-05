@@ -32,6 +32,9 @@ class Orchestrator(object):
   MAX_BENCHMARK_TRIES = 3
   """Maximum number of tries to run a benchmark before giving up."""
 
+  MIN_NUMBER_SAMPLES = 20
+  """Minimum number of measurement samples before commiting to the dashboard."""
+
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
                results_db_url, print_progress=False):
     """
@@ -95,24 +98,18 @@ class Orchestrator(object):
 
     with self._runner.UseSubject(subject):
       for benchmark_type in benchmark_types:
-        time = datetime.now()
         benchmark_name = "%s/%s" % (subject.name, benchmark_type)
-        metadata["time"] = time
 
-        for repetition in range(self.MAX_BENCHMARK_TRIES):
-          rep_name = "Benchmark (repetiton=%d)" % repetition
-          self._progress.Info(benchmark_name, "Running %s" % rep_name)
+        aggregate = self._GatherBenchmarkSamples(subject, benchmark_type,
+                                                 metadata, debug_flags)
+        if not aggregate:
+          continue
+        self._progress.Info(benchmark_name, "Aggregate Results:")
+        print aggregate
 
-          benchmark = self._runner.RunBenchmark(benchmark_type, metadata,
-                                                debug_flags)
-          self._StoreBenchmark(benchmark, subject, time)
-
-          if not len(benchmark.results.error):
-            break
-          self._progress.Error(benchmark.name, "%s failed." % rep_name)
-
-        if repetition == self.MAX_RETRIES:
-          self._progress.Error("All repetitions failed. Giving up!")
+        self._progress.Info(benchmark_name, "Reporting results to dashboard")
+        self._dashboard.ReportResults(aggregate, subject_version,
+            subject.updater.GetVersionUID(subject_version), "")
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.
@@ -173,10 +170,70 @@ class Orchestrator(object):
     report_url = os.path.join(public_url, "report.html")
     self._progress.Info(benchmark.name, "Report available at: %s" % report_url)
 
-    if not benchmark.results.error:
-      self._progress.Info(benchmark.name, "Reporting results to dashboard")
-      self._dashboard.ReportResults(benchmark.results, subject_version,
-          subject.updater.GetVersionUID(subject_version), report_url)
+  def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,
+                              debug_flags):
+    """Runs benchmark until enough measurements are collected.
+
+    Returns None if running one of the benchmarks failed.
+
+    :type subject: BenchmarkSubject
+    :type benchmark_type: str
+    :type metadata: dict
+    :type debug_flags: List[str]
+    :rtype Optional[BenchmarkResults]
+    """
+    aggregate = BenchmarkResults(subject.name, benchmark_type, metadata)
+    while True:
+      benchmark = self._SafelyRunBenchmark(subject, benchmark_type, metadata,
+                                           debug_flags)
+      if not benchmark:
+        return None
+      aggregate.measurement_list.extend(benchmark.results.measurement_list)
+
+      enough_samples = True
+      generator = aggregate.measurement_list.IterByMeasurementID()
+      for mid, id_measurements in generator:
+        self._progress.Info(benchmark.name, "Collected %d samples for %s." %
+                                             (len(id_measurements), mid))
+        if len(id_measurements) < self.MIN_NUMBER_SAMPLES:
+          enough_samples = False
+      if not enough_samples:
+        self._progress.Info(benchmark.name, "Collecting more samples.")
+      else:
+        return aggregate
+
+  def _SafelyRunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
+    """Run benchmark and retry until successful.
+
+    Returns None if the the benchmark failed MAX_BENCHMARK_TRIES times.
+
+    :type subject: BenchmarkSubject
+    :type benchmark_type: str
+    :type metadata: dict
+    :type debug_flags: List[str]
+    :rtype Optional[Benchmark]
+    """
+    time = datetime.now()
+    benchmark_name = "%s/%s" % (subject.name, benchmark_type)
+    metadata["time"] = time
+
+    for repetition in range(self.MAX_BENCHMARK_TRIES):
+      rep_name = "Benchmark (repetiton=%d)" % repetition
+      self._progress.Info(benchmark_name, "Running %s" % rep_name)
+
+      benchmark = self._runner.RunBenchmark(benchmark_type, metadata,
+                                            debug_flags)
+      self._StoreBenchmark(benchmark, subject, time)
+
+      if not len(benchmark.results.error):
+        self._progress.Info(benchmark_name, "Results:")
+        print benchmark.results
+        return benchmark
+
+      self._progress.Error(benchmark.name, "%s failed." % rep_name)
+
+    self._progress.Error("All repetitions failed. Giving up!")
+    return None
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.
