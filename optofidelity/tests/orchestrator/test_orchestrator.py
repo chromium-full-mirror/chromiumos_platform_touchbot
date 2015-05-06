@@ -26,8 +26,7 @@ class OrchestratorTests(TestCase):
     dashboard = Dashboard("", fake=True)
     db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                dashboard, self.tempdir, db_url,
-                                print_progress=True)
+                                dashboard, self.tempdir, db_url)
     orchestrator.MIN_NUMBER_SAMPLES = 0
     return orchestrator
 
@@ -126,7 +125,7 @@ class OrchestratorTests(TestCase):
       self.skipTest("Define DB and GS to run online test.")
 
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                GS, DB, print_progress=True)
+                                GS, DB)
 
     orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())

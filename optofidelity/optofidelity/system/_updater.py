@@ -37,10 +37,10 @@ class ManualUpdater(Updater):
   def installed_version(self):
     return self._version
 
-  def Install(self, version, print_progress=False):
+  def Install(self, version):
     raise NotImplementedError()
 
-  def Uninstall(self, print_progress=False):
+  def Uninstall(self):
     raise NotImplementedError()
 
 
@@ -51,7 +51,6 @@ class ChromeUpdater(Updater):
     """
     :param str adb_device: USB serial of the device under test.
     :param str channel: stable or beta.
-    :param bool print_progress: Prints progress of commands to stdout.
     """
     if channel not in ("stable", "beta"):
       raise ValueError("No such channel '%s'" % channel)
@@ -95,19 +94,19 @@ class ChromeUpdater(Updater):
   def available_versions(self):
     return [version for version, uid in self._version_db]
 
-  def Uninstall(self, print_progress=False):
+  def Uninstall(self):
     msg = "Uninstalling %s" % self._package_name
-    with ProgressBar(msg, suppress=(not print_progress)):
+    with ProgressBar(msg):
       self._adb.UninstallPackage(self._package_name)
 
-  def Install(self, version, print_progress=False):
+  def Install(self, version):
     with NamedTemporaryFile(suffix=".apk") as apk_tempfile:
       msg = "Downloading APK version %s" % version
-      with ProgressBar(msg, suppress=(not print_progress)):
+      with ProgressBar(msg):
         self._DownloadAPK(version, apk_tempfile.name)
 
       msg = "Installing APK version %s" % version
-      with ProgressBar(msg, suppress=(not print_progress)):
+      with ProgressBar(msg):
         self._adb.InstallAPK(apk_tempfile.name)
 
   def _DownloadAPK(self, version, filename):

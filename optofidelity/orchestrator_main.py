@@ -52,10 +52,10 @@ Run tap test on all devices
 def RunBenchmarks(match, skip_update, debug_flags, force_version):
   system = BenchmarkSystem(config_file)
   video_processor = MultithreadedVideoProcessor()
-  runner = BenchmarkRunner(system, video_processor, print_progress=True)
+  runner = BenchmarkRunner(system, video_processor)
   dashboard = Dashboard(dashboard_endpoint, fake=False)
   orchestrator = Orchestrator(system, runner, dashboard, results_url,
-                              results_db_url, print_progress=True)
+                              results_db_url)
 
   if os.path.exists(state_file):
     system.LoadState(state_file)

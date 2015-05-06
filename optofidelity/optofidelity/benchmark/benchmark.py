@@ -124,14 +124,13 @@ class Benchmark(object):
     self.results = None
     return self.video
 
-  def ProcessVideo(self, video_processor, debug_flags, print_progress):
+  def ProcessVideo(self, video_processor, debug_flags):
     """Process the recorded video into a trace.
 
     This step requires that ExecuteOnSubject and CalibrateScreen (or
     UseExistingCalibration) have been called before.
 
     :param List[str] debug_flags: list of debug flags for the VideoProcessor.
-    :param bool print_progress: Print progress report to console.
     :param bool multithreaded: Use all cores of the system to do processing.
     :rtype Trace
     """
@@ -142,7 +141,7 @@ class Benchmark(object):
     start_t = time.time()
     self.trace = video_processor.ProcessVideo(self.video,
                                               self.screen_calibration,
-                                              debug_flags, print_progress)
+                                              debug_flags)
     self.results = None
 
     delta_t = (time.time() - start_t)
@@ -167,7 +166,7 @@ class Benchmark(object):
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results
 
-  def Save(self, url, debug_info=False, video=False, print_progress=False):
+  def Save(self, url, debug_info=False, video=False):
     """Serialize benchmark to a folder on disk.
 
     The benchmark is saved into multiple files in the folder specified in path.
@@ -177,7 +176,7 @@ class Benchmark(object):
     :param bool video: Save video too, this allows you to call ProcessVideo
            after serialization.
     """
-    with GSFolder(url, print_progress=print_progress) as path:
+    with GSFolder(url) as path:
       if not os.path.exists(path):
         os.makedirs(path)
 
@@ -186,7 +185,7 @@ class Benchmark(object):
       if debug_info:
         self._SaveDebugInfo(path)
       if video and self.video:
-        self.video.Save(self._GetVideoFileName(path), True)
+        self.video.Save(self._GetVideoFileName(path))
 
   def _SaveDebugInfo(self, path):
     """Save human readable debug information into benchmark folder.

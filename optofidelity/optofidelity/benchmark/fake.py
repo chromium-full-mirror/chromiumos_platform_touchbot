@@ -22,7 +22,7 @@ class FakeBenchmarkRunner(BenchmarkRunner):
   """
 
   def __init__(self, benchmark_system=None, video_processor=None,
-               fake_trace=None, fake_benchmark=None, print_progress=False):
+               fake_trace=None, fake_benchmark=None):
     """
     The FakeBenchmarkRunner will automatically create a FakeBenchmarkSystem
     as well as a FakeVideoProcessor if none are provided.
@@ -34,8 +34,7 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     """
     super(FakeBenchmarkRunner, self).__init__(
         benchmark_system or FakeBenchmarkSystem(),
-        video_processor or FakeVideoProcessor(),
-        print_progress)
+        video_processor or FakeVideoProcessor())
     self.fake_benchmark = fake_benchmark
     self.video_processor.fake_trace = fake_trace
 

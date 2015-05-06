@@ -90,11 +90,10 @@ class VideoReader(object):
         self.Prefetch(frames[i + 1])
       yield frame, self.FrameAt(frame)
 
-  def Save(self, filename, print_progress):
+  def Save(self, filename):
     """Save video to file.
 
     :type filename: str
-    :param bool print_progress: print progress to stdout
     """
     width = self.frame_shape[1]
     height = self.frame_shape[0]
@@ -102,14 +101,12 @@ class VideoReader(object):
                              (width, height))
 
     for i, frame in self.Frames():
-      if print_progress:
-        sys.stdout.write("\rWriting frame %d/%d" % (i, self.num_frames))
-        sys.stdout.flush()
+      sys.stdout.write("\rWriting frame %d/%d" % (i, self.num_frames))
+      sys.stdout.flush()
       frame = skimage.img_as_ubyte(frame)
       frame = skimage.color.gray2rgb(frame)
       writer.write(frame)
-    if print_progress:
-      print ""
+    print
     writer.release()
 
   @abstractmethod
@@ -233,7 +230,7 @@ class FileVideoReader(VideoReader):
   def Close(self):
     self.cap.release()
 
-  def Save(self, filename, print_progress):
+  def Save(self, filename):
     if os.path.abspath(self.filename) != os.path.abspath(filename):
       shutil.copyfile(self.filename, filename)
 

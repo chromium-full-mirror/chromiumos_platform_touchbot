@@ -60,10 +60,10 @@ class FakeUpdater(Updater):
   def installed_version(self):
     return self._installed_version
 
-  def Install(self, version, print_progress=False):
+  def Install(self, version):
     self._installed_version = version
 
-  def Uninstall(self, print_progress=False):
+  def Uninstall(self):
     self._installed_version = None
 
 

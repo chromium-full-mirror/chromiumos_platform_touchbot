@@ -47,14 +47,12 @@ class VideoProcessor(object):
     """
 
   @abstractmethod
-  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
-                   print_progress):
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     """Process video and return list of detected events.
 
     :param VideoReader video_reader: Video to process
     :type screen_calibration: ScreenCalibration
     :param List[str] debug_flags: List of debug flags
-    :param bool print_progress: True will print progress to stdout
     :returns Trace: List of events generated
     """
 

@@ -28,16 +28,14 @@ class BenchmarkRunner(object):
   __metaclass__ = InterfaceMeta
   MAX_REPETITIONS = 3
 
-  def __init__(self, benchmark_system, video_processor, print_progress=False):
+  def __init__(self, benchmark_system, video_processor):
     """
     :type benchmark_system: BenchmarkSystem
     :type video_processor: VideoProcessor
-    :type print_progress: bool
     """
     self.benchmark_system = benchmark_system
     self.video_processor = video_processor
-    self._progress = ProgressPrinter(_log, print_progress)
-    self._print_progress = print_progress
+    self._progress = ProgressPrinter(_log)
 
   @contextmanager
   def UseSubject(self, subject):
@@ -104,8 +102,7 @@ class BenchmarkRunner(object):
         self._progress.Info(benchmark.name, "Executing benchmark")
         benchmark.ExecuteOnSubject(self.benchmark_system)
         self._progress.Info(benchmark.name, "Processing video")
-        benchmark.ProcessVideo(self.video_processor, debug_flags,
-                               self._print_progress)
+        benchmark.ProcessVideo(self.video_processor, debug_flags)
         self._progress.Info(benchmark.name, "Processing trace")
         benchmark.ProcessTrace()
       except:

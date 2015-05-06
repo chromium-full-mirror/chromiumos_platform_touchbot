@@ -33,14 +33,14 @@ class Updater(object):
     """:returns int: Unique incrementing integer identifying a version."""
 
   @abstractmethod
-  def Install(self, version, print_progress=False):
+  def Install(self, version):
     """Install specific app version.
 
     :type version: str
     """
 
   @abstractmethod
-  def Uninstall(self, print_progress=False):
+  def Uninstall(self):
     """Uninstall app."""
 
 

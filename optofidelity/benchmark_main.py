@@ -42,8 +42,7 @@ def ProcessBenchmarkFromFile(path, out_dir, what, debug_flags):
   benchmark = Benchmark.Load(path)
   try:
     if what in ("all", "video"):
-      benchmark.ProcessVideo(debug_flags, print_progress=True,
-                             multithreaded=len(debug_flags) == 0)
+      benchmark.ProcessVideo(debug_flags, multithreaded=len(debug_flags) == 0)
     if what in ("all", "video", "trace"):
       benchmark.ProcessTrace()
     if what in ("all", "video", "trace", "report"):
@@ -67,7 +66,7 @@ def RunBenchmark(subject_name, benchmark_name, out_dir, save_video,
     subject.Open(False)
     benchmark = Benchmark(subject_name, benchmark_name, {})
     benchmark.CalibrateScreen(system)
-    results = benchmark.Run(system, debug_flags, print_progress=True)
+    results = benchmark.Run(system, debug_flags)
     print results
     subject.Close()
   finally:

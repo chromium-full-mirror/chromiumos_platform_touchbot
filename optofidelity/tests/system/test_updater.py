@@ -23,12 +23,12 @@ class ChromeUpdaterTests(TestCase):
 
     # Test install of latest version
     latest = updater.available_versions[0]
-    updater.Install(latest, print_progress=True)
+    updater.Install(latest)
     self.assertEqual(updater.installed_version, latest)
 
     # Test downgrading to previous version
     previous = updater.available_versions[1]
-    updater.Install(previous, print_progress=True)
+    updater.Install(previous)
     self.assertEqual(updater.installed_version, previous)
 
   def testChromeStableUpdater(self):
@@ -36,10 +36,10 @@ class ChromeUpdaterTests(TestCase):
 
     # Test install of latest version
     latest = updater.available_versions[0]
-    updater.Install(latest, print_progress=True)
+    updater.Install(latest)
     self.assertEqual(updater.installed_version, latest)
 
     # Test downgrading to previous version
     previous = updater.available_versions[1]
-    updater.Install(previous, print_progress=True)
+    updater.Install(previous)
     self.assertEqual(updater.installed_version, previous)

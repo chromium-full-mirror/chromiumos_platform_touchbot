@@ -40,7 +40,7 @@ class LEDCalibrator(object):
     screen_calibration = ScreenCalibration.CreateIdentity(
         video_reader.frame_shape)
     trace = self._video_processor.ProcessVideo(video_reader, screen_calibration,
-                                               [], True)
+                                               [])
     return self._ProcessTrace(trace, video_reader.ms_per_frame, debug)
 
   def _ExecuteCalibration(self, subject):

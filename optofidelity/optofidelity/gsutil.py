@@ -21,7 +21,7 @@ def GSPathExists(url):
 
 
 @contextmanager
-def GSFolder(url, upload=True, download=False, print_progress=False):
+def GSFolder(url, upload=True, download=False):
   if not url.startswith("gs://"):
     yield url
     return
@@ -31,13 +31,13 @@ def GSFolder(url, upload=True, download=False, print_progress=False):
   os.mkdir(target_folder)
   try:
     if download:
-      with ProgressBar("Downloading %s" % url, suppress=not print_progress):
+      with ProgressBar("Downloading %s" % url):
         _GSCopy(url, base_folder, recursive=True)
     try:
       yield target_folder
     finally:
       if upload:
-        with ProgressBar("Uploading %s" % url, suppress=not print_progress):
+        with ProgressBar("Uploading %s" % url):
           base_url = url[:-len(os.path.basename(url))]
           _GSCopy(target_folder, base_url, recursive=True)
   finally:
@@ -45,7 +45,7 @@ def GSFolder(url, upload=True, download=False, print_progress=False):
 
 
 @contextmanager
-def GSFile(url, upload=True, download=False, print_progress=False):
+def GSFile(url, upload=True, download=False):
   if not url.startswith("gs://"):
     yield url
     return
@@ -55,13 +55,13 @@ def GSFile(url, upload=True, download=False, print_progress=False):
   temp_file.close()
   try:
     if download:
-      with ProgressBar("Downloading %s" % url, suppress=not print_progress):
+      with ProgressBar("Downloading %s" % url):
         _GSCopy(url, temp_file.name)
     try:
       yield temp_file.name
     finally:
       if upload:
-        with ProgressBar("Uploading %s" % url, suppress=not print_progress):
+        with ProgressBar("Uploading %s" % url):
           _GSCopy(temp_file.name, url)
   finally:
     os.remove(temp_file.name)

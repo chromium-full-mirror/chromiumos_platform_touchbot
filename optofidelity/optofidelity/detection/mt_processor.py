@@ -108,8 +108,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     SinglethreadedVideoProcessor.__init__(self)
     self.num_processes = multiprocessing.cpu_count()
 
-  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
-                   print_progress):
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     self._InitDetectors()
     self.screen_calibration = screen_calibration
 
@@ -140,8 +139,6 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
 
       for i, frame in video_reader.Frames():
         def visualize():
-          if not print_progress:
-            return
           sys.stdout.write("\r")
           for b in buffer_list:
             sys.stdout.write("*" if b.done.is_set() else "-")
@@ -181,8 +178,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
 
     except:
       # Make sure all processes are killed in case of errors
-      if print_progress:
-        print
+      print
       _log.exception("Killing child processes due to exception")
       for process in processes:
         if process.pid  and process.is_alive():
@@ -201,14 +197,12 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     for i in sorted(data_map.keys()):
       msg = "Generating events %d/%d" % (i + 1, video_reader.num_frames)
       _log.debug(msg)
-      if print_progress:
-        sys.stdout.write("\r" + msg)
-        sys.stdout.flush()
+      sys.stdout.write("\r" + msg)
+      sys.stdout.flush()
 
       preprocessed_data = data_map[i]
       events.extend(self._GenerateEvents(i, preprocessed_data, None))
-    if print_progress:
-      print
+    print
     return Trace(events)
 
   def _Preprocess(self, calib_frame):

@@ -38,7 +38,7 @@ class Orchestrator(object):
   """Minimum number of measurement samples before commiting to the dashboard."""
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
-               results_db_url, print_progress=False):
+               results_db_url):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -50,11 +50,10 @@ class Orchestrator(object):
     self._runner = benchmark_runner
     self._dashboard = dashboard
     self._results_url = results_url
-    self._print_progress = print_progress
 
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
-    self._progress = ProgressPrinter(_log, print_progress)
+    self._progress = ProgressPrinter(_log)
 
   def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
                              skip_update=False):
@@ -147,7 +146,7 @@ class Orchestrator(object):
         self._progress.Info(subject.name, "Already installed")
         return False
     self._progress.Info(subject.name, "Installing %s" % target_version)
-    subject.updater.Install(target_version, self._print_progress)
+    subject.updater.Install(target_version)
     return True
 
   def QueryResults(self):
@@ -169,8 +168,7 @@ class Orchestrator(object):
     results_url, uid = self._FindUniqueResultsURL(time)
 
     self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
-    benchmark.Save(results_url, debug_info=True,
-                   print_progress=self._print_progress)
+    benchmark.Save(results_url, debug_info=True)
 
     self._progress.Info(benchmark.name, "Generating Report")
     self._GenerateBenchmarkReport(benchmark, results_url)
@@ -192,7 +190,7 @@ class Orchestrator(object):
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
-    with GSFolder(report_url, print_progress=self._print_progress) as report_path:
+    with GSFolder(report_url) as report_path:
       report = BenchmarkReport(report_path, "report.html",
                                benchmark.ms_per_frame,
                                benchmark.finger_calib_delay)
@@ -205,7 +203,7 @@ class Orchestrator(object):
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
-    with GSFolder(report_url, print_progress=self._print_progress) as report_path:
+    with GSFolder(report_url) as report_path:
       # TODO(denniskempin): Find a better way to pass around ms_per_frame or
       # do the conversion to ms in a central place (i.e MeasurementList)
       report = AggregateReport(report_path, "report.html", 3.33)

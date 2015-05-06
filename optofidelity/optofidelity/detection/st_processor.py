@@ -42,8 +42,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
   def _InitDetectors(self):
     self._detectors = [dtype() for dtype in self._detector_types]
 
-  def ProcessVideo(self, video_reader, screen_calibration, debug_flags,
-                   print_progress):
+  def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     self._InitDetectors()
     all_events = []
     prev_frame = None
@@ -58,9 +57,8 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     for i, frame in generator:
       msg = "Processing frame %d/%d" % (i + 1, video_reader.num_frames)
       _log.debug(msg)
-      if print_progress:
-        sys.stdout.write("\r" + msg)
-        sys.stdout.flush()
+      sys.stdout.write("\r" + msg)
+      sys.stdout.flush()
 
       events, debug_frame = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
                                                debug_flags)
@@ -69,8 +67,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
         viewer.DisplayFrame(debug_frame)
       prev_frame = frame
 
-    if print_progress:
-      print
+    print
     return Trace(all_events)
 
   def ProcessFrame(self, frame, prev_frame, screen_calibration, debug_flags):
