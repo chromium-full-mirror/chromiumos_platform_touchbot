@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{benchmark_type}} Latency Report{% endblock %}
+
+{% block header %}{{benchmark_type}} Latency Report{% endblock %}
+
+{% block subtitle %}
+  Device: {{subject_name}}
+  {{help_icon("overview", "white-text", True)}}
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+
+    <!-- Info and Metadata Section -->
+    <ul class="collection" style="margin-top: 1em;">
+      <li class="collection-item">
+        <strong>Benchmark Type:</strong> {{benchmark_type}}
+      </li>
+      <li class="collection-item">
+        <strong>Subject:</strong> {{subject_name}}
+      </li>
+      {% for key, value in metadata.items() %}
+        <li class="collection-item"><strong>{{key}}:</strong> {{value}}</li>
+      {% endfor %}
+    </ul>
+
+    <!-- Results Section -->
+    <h2 class="blue-text text-darken-2">Results</h2>
+
+    <!-- Overview Histograms -->
+    <div class="row">
+      {% for mid, id_measurements in measurement_list.IterByMeasurementID() %}
+        {{ plotcard(id = "histogram",
+                    src = "%s/%s_histogram" % (data_dir, mid),
+                    title = mid,
+                    subtitle = hist_subtitle(id_measurements),
+                    centered = True) }}
+      {% endfor %}
+    </div>
+
+    {% for i, rep_results in repetitions %}
+      <h5 class="blue-text text-darken-2">
+        Repetition #{{i}}
+        <a class="" href="{{rep_results.report_url}}">(Full Report)</a>
+      </h5>
+      <div class="row">
+        {% for mid, id_measurements in rep_results.measurement_list.IterByMeasurementID() %}
+          {{ plotcard(id = "histogram",
+                      src = "%s/rep%02d_%s_histogram" % (data_dir, i, mid),
+                      title = mid,
+                      subtitle = hist_subtitle(id_measurements),
+                      centered = True) }}
+        {% endfor %}
+      </div>
+    {% endfor %}
+{% endblock %}

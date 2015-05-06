@@ -4,7 +4,7 @@
 from safetynet import Any, Dict, Optional
 import numpy as np
 
-from optofidelity.benchmark import MeasurementList
+from optofidelity.benchmark import MeasurementList, AggregateResults
 import matplotlib.mlab as mlab
 
 from . import _styles
@@ -38,7 +38,7 @@ class HistogramFigure(SingleAxesFigure):
     :param MeasurementList measurement_list: measurements made during that pass.
     """
     label = "Pass %d" % pass_num
-    color = self._GetPassColor(pass_num)
+    color = self.GetRotationColor(pass_num)
     self.PlotPrimary(measurement_list.latencies,
                      measurement_list.draw_start_latencies, label, color)
 
@@ -59,9 +59,21 @@ class HistogramFigure(SingleAxesFigure):
       return
     for pass_num, pass_measurements in measurement_list.IterByPass():
       label = "Pass %d" % pass_num
-      color = self._GetPassColor(pass_num)
+      color = self.GetRotationColor(pass_num)
       self.PlotSecondary(pass_measurements.latencies, label, color)
 
+  def PlotAggregateHistogram(self, measurement_list, rep_measurement_lists):
+    """
+    """
+    color = _styles.SUMMARY_PDF_COLOR
+    msrmnt_list = measurement_list
+    self.PlotPrimary(msrmnt_list.latencies,
+                     msrmnt_list.draw_start_latencies, "Aggregate", color)
+
+    for i, rep_msrmnt in enumerate(rep_measurement_lists):
+      label = "Repetition #%02d" % i
+      color = self.GetRotationColor(i)
+      self.PlotSecondary(rep_msrmnt.latencies, label, color)
 
   def PlotPrimary(self, latencies, draw_start_latencies, label, color):
     """Plot latency numbers with histogram and PDF.
@@ -79,7 +91,7 @@ class HistogramFigure(SingleAxesFigure):
 
     if draw_start_latencies is not None:
       draw_start_values = self._InMS(draw_start_latencies)
-      self._PlotPDF(draw_start_values, label + "PDF (start)", color,
+      self._PlotPDF(draw_start_values, label + " PDF (start)", color,
                     _styles.DRAW_START_PDF_STYLE)
 
   def PlotSecondary(self, latencies, label, color):
@@ -115,13 +127,13 @@ class HistogramFigure(SingleAxesFigure):
     ys = mlab.normpdf(xs, mu, sigma)
     self.axes.plot(xs, ys, label=label, color=color, **style)
 
-  def _GetPassColor(self, pass_num):
-    """Map pass_num to color.
+  def GetRotationColor(self, i):
+    """Map integer to color.
 
-    :type pass_num: int
+    :type i: int
     :rtype str
     """
-    return _styles.COLOR_ROTATION[pass_num % len(_styles.COLOR_ROTATION)]
+    return _styles.COLOR_ROTATION[i % len(_styles.COLOR_ROTATION)]
 
   def _InMS(self, frame_index):
     """Convert high speed camera frame index into milliseconds."""

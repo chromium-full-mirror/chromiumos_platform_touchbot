@@ -6,11 +6,11 @@ import os
 import shutil
 
 from jinja2 import Environment, FileSystemLoader
-from safetynet import Optional, TypecheckMeta
+from safetynet import Optional, Tuple, TypecheckMeta
 import numpy as np
 import skimage.color
 
-from optofidelity.benchmark import BenchmarkResults
+from optofidelity.benchmark import BenchmarkResults, AggregateResults
 from optofidelity.detection import (Event, LEDEvent, ScreenCalibration,
                                     ScreenDrawEvent, Trace)
 from optofidelity.videoproc import Canvas, SaveImage, VideoReader
@@ -25,7 +25,7 @@ _res_dir = os.path.join(_script_dir, "res")
 
 
 class Report(object):
-  """Generates HTML reports of benchmarks.
+  """Generates HTML reports
 
   These reports include histograms of all measured latency numbers as well
   as a visualization of the generated trace and measurements made.
@@ -34,10 +34,7 @@ class Report(object):
   """
   __metaclass__ = TypecheckMeta
 
-  REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
-  """Color of the reference line in screenshots in a BGRA tuple"""
-
-  def __init__(self, path, filename, ms_per_frame, finger_delay):
+  def __init__(self, path, filename, ms_per_frame):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
@@ -49,6 +46,89 @@ class Report(object):
       os.makedirs(self.data_path)
     self.html_filename = os.path.join(self.path, filename)
     self.ms_per_frame = ms_per_frame
+
+  def _RenderTemplate(self, filename, variables, results):
+    """Generate target html file from template.
+
+    :type filename: str
+    :type variables: dict
+    :type results: BenchmarkResults
+    """
+    def FormatTime(frame_time):
+      return "%.2f ms" % (float(frame_time) * self.ms_per_frame)
+
+    env = Environment(loader=FileSystemLoader(_res_dir))
+    env.filters['FormatTime'] = FormatTime
+    template = env.get_template(filename)
+
+    common_variables = {
+      "subject_name": results.subject_name,
+      "benchmark_type": results.benchmark_type,
+      "metadata": results.metadata,
+      "data_dir": "report_data",
+      "measurement_list": results.measurement_list
+    }
+    common_variables.update(variables)
+
+    html = template.render(**common_variables)
+    with open(self.html_filename, "w") as file:
+      file.write(html)
+
+  def _SaveFigure(self, figure, filename):
+    """Save figure with and without legend.
+
+    :type figure: Figure
+    :type filename: str
+    """
+    path = os.path.join(self.data_path, filename)
+    figure.Save(path + ".png", False)
+    figure.Save(path + "_legend.png", True)
+
+  def _CopyResources(self):
+    """Copy required resource files to target folder."""
+    def _PrepareDir(path):
+      if not os.path.exists(path):
+        os.makedirs(path)
+    _PrepareDir(os.path.join(self.data_path, "css"))
+    _PrepareDir(os.path.join(self.data_path, "js"))
+
+    def _CopyResource(local_name, target_name):
+      local_file = os.path.join(_res_dir, local_name)
+      target_file = os.path.join(self.data_path, target_name)
+      if os.path.isdir(local_file):
+        if os.path.exists(target_file):
+          shutil.rmtree(target_file)
+        shutil.copytree(local_file, target_file)
+      else:
+        shutil.copy(local_file, target_file)
+    _CopyResource("style.css", "css/style.css")
+    _CopyResource("materialize/css/materialize.min.css",
+                 "css/materialize.min.css")
+    _CopyResource("materialize/js/materialize.min.js",
+                 "js/materialize.min.js")
+    _CopyResource("materialize/font", "font")
+
+
+class BenchmarkReport(Report):
+  """Generates Benchmark HTML reports
+
+  These reports include histograms of all measured latency numbers as well
+  as a visualization of the generated trace and measurements made.
+  The last section shows screenshots of every measured event to assist
+  verification of the results.
+  """
+
+  REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
+  """Color of the reference line in screenshots in a BGRA tuple"""
+
+  def __init__(self, path, filename, ms_per_frame, finger_delay):
+    """
+    :param str path: Path to folder in which to store report
+    :param str filename: Filename of report html file
+    :type ms_per_frame: float
+    :type finger_delay: Tuple[float, float]
+    """
+    super(BenchmarkReport, self).__init__(path, filename, ms_per_frame)
     self.finger_delay = finger_delay
 
   def GenerateReport(self, results, trace, screen_calibration, video):
@@ -61,7 +141,11 @@ class Report(object):
     :type screen_calibration: Optional[ScreenCalibration]
     :type video: Optional[VideoReader]
     """
-    self._GenerateHTMLReport(results)
+    variables = {
+      "passes": [p for p, m in results.measurement_list.IterByPass()]
+    }
+    self._RenderTemplate('benchmark.html', variables, results)
+
     self._GenerateHistograms(results)
     self._GenerateTraceFigures(trace, results)
     if video:
@@ -166,60 +250,43 @@ class Report(object):
       canvas.DrawVLine(self.REFERENCE_LINE_COLOR, int(event.location))
     return canvas.BlendWithImage(skimage.color.gray2rgb(screen_space))
 
-  def _SaveFigure(self, figure, filename):
-    """Save figure with and without legend.
 
-    :type figure: Figure
-    :type filename: str
+class AggregateReport(Report):
+  def GenerateReport(self, aggregate_results):
+    """ Generates a report of aggregated results.
+
+    The report provides an overview of multiple repetitions of a benchmark,
+    showing the aggregated histograms as well as histograms for each repetition.
+
+    :type aggregate_results: AggregateResults
     """
-    path = os.path.join(self.data_path, filename)
-    figure.Save(path + ".png", False)
-    figure.Save(path + "_legend.png", True)
-
-  def _GenerateHTMLReport(self, results):
-    """Generate HTML report file from template.
-
-    :type results: BenchmarkResults
-    """
-    def FormatTime(frame_time):
-      return "%.2f ms" % (float(frame_time) * self.ms_per_frame)
-
-    env = Environment(loader=FileSystemLoader(_res_dir))
-    env.filters['FormatTime'] = FormatTime
-    template = env.get_template('report.html')
-
     variables = {
-      "subject_name": results.subject_name,
-      "benchmark_type": results.benchmark_type,
-      "metadata": results.metadata, "data_dir": "report_data",
-      "measurement_list": results.measurement_list,
-      "passes": [p for p, m in results.measurement_list.IterByPass()]
+      "repetitions": enumerate(aggregate_results.repetitions)
     }
+    self._RenderTemplate('aggregate.html', variables, aggregate_results)
+    self._GenerateHistograms(aggregate_results)
+    self._CopyResources()
 
-    html = template.render(**variables)
-    with open(self.html_filename, "w") as file:
-      file.write(html)
+  def _GenerateHistograms(self, aggregate_results):
+    """Generate a histogram figure for each measurement ID and repetition
 
-  def _CopyResources(self):
-    """Copy required resource files to target folder."""
-    def _PrepareDir(path):
-      if not os.path.exists(path):
-        os.makedirs(path)
-    _PrepareDir(os.path.join(self.data_path, "css"))
-    _PrepareDir(os.path.join(self.data_path, "js"))
+    :type aggregate_results: AggregateResults
+    """
+    msrmnt_list = aggregate_results.measurement_list
+    for mid, id_measurements in msrmnt_list.IterByMeasurementID():
+      rep_msrmnt_lists = []
 
-    def _CopyResource(local_name, target_name):
-      local_file = os.path.join(_res_dir, local_name)
-      target_file = os.path.join(self.data_path, target_name)
-      if os.path.isdir(local_file):
-        if os.path.exists(target_file):
-          shutil.rmtree(target_file)
-        shutil.copytree(local_file, target_file)
-      else:
-        shutil.copy(local_file, target_file)
-    _CopyResource("style.css", "css/style.css")
-    _CopyResource("materialize/css/materialize.min.css",
-                 "css/materialize.min.css")
-    _CopyResource("materialize/js/materialize.min.js",
-                 "js/materialize.min.js")
-    _CopyResource("materialize/font", "font")
+      for i, rep_results in enumerate(aggregate_results.repetitions):
+        rep_msrmnts = rep_results.measurement_list.ByMeasurementID()[mid]
+        rep_msrmnt_lists.append(rep_msrmnts)
+
+        figure = HistogramFigure(460, 460, self.ms_per_frame)
+        figure.PlotPrimary(rep_msrmnts.latencies,
+                           rep_msrmnts.draw_start_latencies,
+                           "Repetition #%02d" % i, figure.GetRotationColor(i))
+        self._SaveFigure(figure, "rep%02d_%s_histogram" % (i, mid))
+
+      figure = HistogramFigure(460, 460, self.ms_per_frame)
+      figure.PlotAggregateHistogram(id_measurements, rep_msrmnt_lists)
+      self._SaveFigure(figure, "%s_histogram" % mid)
+

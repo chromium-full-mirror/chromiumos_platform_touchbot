@@ -9,10 +9,11 @@ import os
 
 from safetynet import List, Optional, TypecheckMeta
 
-from optofidelity.benchmark import (Benchmark, BenchmarkResults,
-                                    BenchmarkRunner, MeasurementList)
+from optofidelity.benchmark import (AggregateResults, Benchmark,
+                                    BenchmarkResults, BenchmarkRunner,
+                                    MeasurementList)
 from optofidelity.gsutil import GSFolder, GSPathExists
-from optofidelity.reporting import Report
+from optofidelity.reporting import AggregateReport, BenchmarkReport
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import ProgressPrinter
 import dataset
@@ -44,7 +45,6 @@ class Orchestrator(object):
     :type dashboard: Dashboard
     :type results_url: str
     :type results_db_url: str
-    :type results_url: str
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
@@ -108,6 +108,15 @@ class Orchestrator(object):
         self._progress.Info(benchmark_name, "Aggregate Results:")
         print aggregate
 
+        self._progress.Info(benchmark_name, "Generating Aggregate report:")
+        time = datetime.now()
+        results_url, uid = self._FindUniqueResultsURL(time)
+        self._GenerateAggregateReport(aggregate, results_url)
+
+        public_url = self._GetPublicReportUrl(results_url)
+        self._progress.Info(benchmark_name,
+                            "Report available at: %s" % public_url)
+
         self._progress.Info(benchmark_name, "Reporting results to dashboard")
         self._dashboard.ReportResults(aggregate, subject_version,
             subject.updater.GetVersionUID(subject_version), "")
@@ -163,26 +172,44 @@ class Orchestrator(object):
     benchmark.Save(results_url, debug_info=True,
                    print_progress=self._print_progress)
 
+    self._progress.Info(benchmark.name, "Generating Report")
     self._GenerateBenchmarkReport(benchmark, results_url)
     self._InsertResults(time, uid, subject_version, benchmark.results)
 
-    public_url = results_url.replace("gs://", "http://storage.googleapis.com/")
-    report_url = os.path.join(public_url, "report.html")
-    self._progress.Info(benchmark.name, "Report available at: %s" % report_url)
+    public_url = self._GetPublicReportUrl(results_url)
+    self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
+
+    benchmark.results.report_url = public_url
+    benchmark.results.uid = uid
+
+  def _GetPublicReportUrl(self, url):
+    public_url = url.replace("gs://", "http://storage.googleapis.com/")
+    return os.path.join(public_url, "report.html")
 
   def _GenerateBenchmarkReport(self, benchmark, report_url):
-    """Generate HTML into folder.
+    """Generate benchmark report into folder.
 
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
-    self._progress.Info(benchmark.name, "Generating Report")
-
     with GSFolder(report_url, print_progress=self._print_progress) as report_path:
-      report = Report(report_path, "report.html", benchmark.ms_per_frame,
-                      benchmark.finger_calib_delay)
+      report = BenchmarkReport(report_path, "report.html",
+                               benchmark.ms_per_frame,
+                               benchmark.finger_calib_delay)
       report.GenerateReport(benchmark.results, benchmark.trace,
                             benchmark.screen_calibration, benchmark.video)
+
+  def _GenerateAggregateReport(self, aggregate_results, report_url):
+    """Generate aggregate report into folder
+
+    :param str report_path: path to folder to save the report into.
+    :rtype Report
+    """
+    with GSFolder(report_url, print_progress=self._print_progress) as report_path:
+      # TODO(denniskempin): Find a better way to pass around ms_per_frame or
+      # do the conversion to ms in a central place (i.e MeasurementList)
+      report = AggregateReport(report_path, "report.html", 3.33)
+      report.GenerateReport(aggregate_results)
 
   def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,
                               debug_flags):
@@ -196,13 +223,13 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     :rtype Optional[BenchmarkResults]
     """
-    aggregate = BenchmarkResults(subject.name, benchmark_type, metadata)
+    aggregate = AggregateResults(subject.name, benchmark_type, metadata)
     while True:
       benchmark = self._SafelyRunBenchmark(subject, benchmark_type, metadata,
                                            debug_flags)
       if not benchmark:
         return None
-      aggregate.measurement_list.extend(benchmark.results.measurement_list)
+      aggregate.AddRepetition(benchmark.results)
 
       enough_samples = True
       generator = aggregate.measurement_list.IterByMeasurementID()

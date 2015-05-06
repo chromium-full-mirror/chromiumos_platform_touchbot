@@ -10,9 +10,12 @@ import shutil
 import sys
 import tempfile
 import webbrowser
+import copy
 
+from optofidelity.benchmark import AggregateResults
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.reporting import Report
+from optofidelity.reporting import BenchmarkReport, AggregateReport
+
 from . import test_data
 
 
@@ -35,11 +38,32 @@ class ReportTests(TestCase):
     metadata = {"OS Version": "23.0", "App Version": "42.0"}
 
     fake_trace = test_data.LoadTrace(filename)
-    benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", metadata)
-    report = Report(self.tempdir, "report.html", benchmark.ms_per_frame,
-                    benchmark.finger_calib_delay)
+    benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, benchmark_type,
+                                              metadata)
+    report = BenchmarkReport(self.tempdir, "report.html",
+                             benchmark.ms_per_frame, (0.0, 0.0))
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
+
+    self.userVerification(report.html_filename)
+    self.assertReportFilesExist(report.html_filename)
+
+  def testAggregateReport(self):
+    metadata = {"OS Version": "23.0", "App Version": "42.0"}
+
+    fake_trace = test_data.LoadTrace("tap_basic.trace")
+    benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", metadata)
+
+    aggregateResults = AggregateResults("fake_subject", "tap", metadata)
+    for repetition in range(10):
+      results = copy.deepcopy(benchmark.results)
+      for i in range(len(results.measurement_list)):
+        results.measurement_list[i].input_event.time -= repetition
+      aggregateResults.AddRepetition(results)
+
+    report = AggregateReport(self.tempdir, "report.html",
+                              benchmark.ms_per_frame)
+    report.GenerateReport(aggregateResults)
 
     self.userVerification(report.html_filename)
     self.assertReportFilesExist(report.html_filename)

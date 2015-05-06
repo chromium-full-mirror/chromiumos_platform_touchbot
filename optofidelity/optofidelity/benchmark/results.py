@@ -119,6 +119,13 @@ class MeasurementList(list):
     """
     return self._IterBy(lambda m: m.measurement_id)
 
+  def ByMeasurementID(self):
+    """Dict of measurements grouped by measurement id.
+
+    :returns Dict[str, MeasurementList]
+    """
+    return dict(self.IterByMeasurementID())
+
   def IterByPass(self):
     """Iterate over measurements grouped by pass name.
 
@@ -148,6 +155,8 @@ class BenchmarkResults(object):
     self.benchmark_type = benchmark_type
     self.metadata = metadata
     self.measurement_list = MeasurementList()
+    self.uid = ""
+    self.report_url = ""
     self.error = ""
     self._counter = 0
 
@@ -195,3 +204,15 @@ class BenchmarkResults(object):
           start_latency_list = str(measurements.draw_start_latencies)
           add_line(2, "%s(start): %s", id, start_latency_list)
     return "\n".join(lines)
+
+
+class AggregateResults(BenchmarkResults):
+  def __init__(self, subject_name, benchmark_type, metadata):
+    super(AggregateResults, self).__init__(subject_name, benchmark_type,
+                                           metadata)
+    self.repetitions = []
+
+  def AddRepetition(self, results):
+    self.repetitions.append(results)
+    self.measurement_list = MeasurementList([m for rep in self.repetitions
+                                               for m in rep.measurement_list])

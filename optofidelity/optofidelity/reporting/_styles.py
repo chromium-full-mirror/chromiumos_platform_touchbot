@@ -25,10 +25,17 @@ PASS_MARKER_STYLE = {
 
 # List of colors used for automatic color assignments.
 COLOR_ROTATION = [
-  "#FF9800",
-  "#9C27B0",
-  "#2196F3",
-  "#4CAF50",
+  "#d32f2f",
+  "#512da8",
+  "#0288d1",
+  "#388e3c",
+  "#fbc02d",
+  "#795548",
+  "#f50057",
+  "#536dfe",
+  "#00e5ff",
+  "#b2ff59",
+  "#ffe57f",
 ]
 
 
