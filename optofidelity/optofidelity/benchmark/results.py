@@ -155,10 +155,16 @@ class BenchmarkResults(object):
     self.benchmark_type = benchmark_type
     self.metadata = metadata
     self.measurement_list = MeasurementList()
+    self.ms_per_frame = 1.0
     self.uid = ""
     self.report_url = ""
     self.error = ""
     self._counter = 0
+
+  def InMS(self, frame_index):
+    """:returns float: timestamp in milliseconds of the specified frame index.
+    """
+    return frame_index * self.ms_per_frame
 
   def AddMeasurement(self, measurement_id, input_event, output_event,
                      pass_num=0):

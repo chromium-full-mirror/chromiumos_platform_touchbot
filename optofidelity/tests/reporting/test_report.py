@@ -40,8 +40,7 @@ class ReportTests(TestCase):
     fake_trace = test_data.LoadTrace(filename)
     benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, benchmark_type,
                                               metadata)
-    report = BenchmarkReport(self.tempdir, "report.html",
-                             benchmark.ms_per_frame, (0.0, 0.0))
+    report = BenchmarkReport(self.tempdir, "report.html", (0.0, 0.0))
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
 
@@ -61,8 +60,7 @@ class ReportTests(TestCase):
         results.measurement_list[i].input_event.time -= repetition
       aggregateResults.AddRepetition(results)
 
-    report = AggregateReport(self.tempdir, "report.html",
-                              benchmark.ms_per_frame)
+    report = AggregateReport(self.tempdir, "report.html")
     report.GenerateReport(aggregateResults)
 
     self.userVerification(report.html_filename)

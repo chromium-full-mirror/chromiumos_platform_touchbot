@@ -26,7 +26,7 @@ class TraceBuilder(object):
 
   @property
   def trace(self):
-    return Trace(self.events)
+    return Trace(self.events, 1.0)
 
   def AddLEDEvent(self, state):
     self.time += int(1.0 / self.report_rate)
@@ -176,7 +176,7 @@ class TraceTests(unittest.TestCase):
     # Expected time series
     target = np.asarray([np.nan, 100, 125, 150, 175, 200, 250, 300])
 
-    trace = Trace(events)
+    trace = Trace(events, 1.0)
     self.assertArrayAlmostEqual(trace.finger, target)
 
   def test_line_draw_steps(self):
@@ -186,7 +186,7 @@ class TraceTests(unittest.TestCase):
       LineDrawEvent(6, None, start_time=5),
       LineDrawEvent(8, 300.0, start_time=7),
     ]
-    trace = Trace(events)
+    trace = Trace(events, 1.0)
 
     # Expected time series
     nan = np.nan
@@ -336,6 +336,6 @@ class TraceTests(unittest.TestCase):
       self.assertLess(np.abs(trace.finger[finger_time] - location), 2.0)
 
   def test_empty_trace(self):
-    trace = Trace([])
+    trace = Trace([], 1.0)
     self.assertEqual(len(trace), 0)
     self.assertEqual(len(trace.finger), 0)

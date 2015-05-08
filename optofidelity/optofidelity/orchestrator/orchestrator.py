@@ -192,7 +192,6 @@ class Orchestrator(object):
     """
     with GSFolder(report_url) as report_path:
       report = BenchmarkReport(report_path, "report.html",
-                               benchmark.ms_per_frame,
                                benchmark.finger_calib_delay)
       report.GenerateReport(benchmark.results, benchmark.trace,
                             benchmark.screen_calibration, benchmark.video)
@@ -204,9 +203,7 @@ class Orchestrator(object):
     :rtype Report
     """
     with GSFolder(report_url) as report_path:
-      # TODO(denniskempin): Find a better way to pass around ms_per_frame or
-      # do the conversion to ms in a central place (i.e MeasurementList)
-      report = AggregateReport(report_path, "report.html", 3.33)
+      report = AggregateReport(report_path, "report.html")
       report.GenerateReport(aggregate_results)
 
   def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,

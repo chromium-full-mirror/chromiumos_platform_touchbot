@@ -113,7 +113,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     self.screen_calibration = screen_calibration
 
     if not self._detectors:
-      return Trace([])
+      return Trace([], video_reader.ms_per_frame)
 
     # Create shared memory buffer. This is a ring buffer.
     buffer_list = []
@@ -203,7 +203,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       preprocessed_data = data_map[i]
       events.extend(self._GenerateEvents(i, preprocessed_data, None))
     print
-    return Trace(events)
+    return Trace(events, video_reader.ms_per_frame)
 
   def _Preprocess(self, calib_frame):
     """Preprocess a single calibrated frame.

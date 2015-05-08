@@ -24,6 +24,14 @@ class Trace(list):
   """How much can the speed deviate from the target speed to be considered
      part of the linear motion area."""
 
+  ms_per_frame = 3.33
+  """Milliseconds per camera frame. Default value for older traces
+     loaded from pickle files."""
+
+  def __init__(self, iterable=[], ms_per_frame=3.33):
+    super(Trace, self).__init__(iterable)
+    self.ms_per_frame = ms_per_frame
+
   def __str__(self):
     return "\n".join([str(e) for e in self])
 
@@ -80,6 +88,11 @@ class Trace(list):
                 time."""
     return self._TimeSeries(LEDEvent)
 
+  def InMS(self, frame_index):
+    """:returns float: timestamp in milliseconds of the specified frame index.
+    """
+    return frame_index * self.ms_per_frame
+
   def RequireEventTypes(self, *event_types):
     """Raise an exception if any of the event types is not present.
 
@@ -107,7 +120,7 @@ class Trace(list):
     :param int end: end time of trim.
     :returns Trace
     """
-    return Trace([e for e in self if start <= e.time < end])
+    return Trace([e for e in self if start <= e.time < end], self.ms_per_frame)
 
   def Find(self, event_type, time, where="closest"):
     """Find first event of event_type around time.
@@ -179,12 +192,12 @@ class Trace(list):
     for event in self:
       if isinstance(event, LineDrawEvent) and event.location is None:
         if events:
-          yield Trace(events)
+          yield Trace(events, self.ms_per_frame)
           events = []
       else:
         events.append(event)
     if events:
-      yield Trace(events)
+      yield Trace(events, self.ms_per_frame)
 
   def SegmentedByLED(self):
     """Segment into traces starting with each LED on event."""
@@ -192,19 +205,20 @@ class Trace(list):
     for event in self:
       if isinstance(event, LEDEvent) and event.state == Event.STATE_ON:
         if events:
-          yield Trace(events)
+          yield Trace(events, self.ms_per_frame)
         events = []
       if events is not None:
         events.append(event)
     if events:
-      yield Trace(events)
+      yield Trace(events, self.ms_per_frame)
 
   def FilteredByType(self, event_type):
     """
     :param type event_type
     :returns Trace: filtered to only include events of event_type.
     """
-    return Trace([e for e in self if isinstance(e, event_type)])
+    return Trace([e for e in self if isinstance(e, event_type)],
+                 self.ms_per_frame)
 
   def FindLinearFingerMotion(self):
     """Return (start, end) event of range in which event shows linear motion.

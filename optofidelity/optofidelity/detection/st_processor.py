@@ -68,7 +68,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
       prev_frame = frame
 
     print
-    return Trace(all_events)
+    return Trace(all_events, video_reader.ms_per_frame)
 
   def ProcessFrame(self, frame, prev_frame, screen_calibration, debug_flags):
     self._InitDetectors()

@@ -20,7 +20,7 @@ from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
                               TouchMoveDelegate, TouchMoveStartDelegate)
 from ._tap_delegate import TapDelegate
-from .results import BenchmarkResults
+from .results import BenchmarkResults, MeasurementList
 
 _log = logging.getLogger("benchmark")
 _perf_log = logging.getLogger("perf")
@@ -94,10 +94,6 @@ class Benchmark(object):
     self.log = ""
 
   @property
-  def ms_per_frame(self):
-    return 1000.0 / float(self.framerate)
-
-  @property
   def calibrated_trace(self):
     """Trace with applied finger led calibration."""
     def ApplyLEDCalib(event):
@@ -109,7 +105,8 @@ class Benchmark(object):
           return LEDEvent(int(event.time + self.finger_calib_delay.up),
                           event.state)
       return event
-    return Trace([ApplyLEDCalib(e) for e in self.trace])
+    return Trace([ApplyLEDCalib(e) for e in self.trace],
+                 self.trace.ms_per_frame)
 
   def ExecuteOnSubject(self, benchmark_system):
     """Instruct the robot to execute the benchmark.
@@ -121,7 +118,7 @@ class Benchmark(object):
     self.framerate = self.video.framerate
     self.finger_calib_delay = benchmark_system.finger_calib_delay
     self.trace = None
-    self.results = None
+    self.results.measurement_list = MeasurementList()
     return self.video
 
   def ProcessVideo(self, video_processor, debug_flags):
@@ -142,7 +139,7 @@ class Benchmark(object):
     self.trace = video_processor.ProcessVideo(self.video,
                                               self.screen_calibration,
                                               debug_flags)
-    self.results = None
+    self.results.measurement_list = MeasurementList()
 
     delta_t = (time.time() - start_t)
     delta_t_per_frame = delta_t / self.video.num_frames
@@ -159,8 +156,7 @@ class Benchmark(object):
     assert self.trace is not None, "No test trace"
 
     start_t = time.time()
-    self.results = BenchmarkResults(self.subject_name, self.benchmark_type,
-                                    self.metadata)
+    self.results.measurement_list = MeasurementList()
     self._delegate.ProcessTrace(self.calibrated_trace, self.results)
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))

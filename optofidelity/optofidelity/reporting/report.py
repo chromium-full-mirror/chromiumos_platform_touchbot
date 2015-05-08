@@ -34,18 +34,16 @@ class Report(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, path, filename, ms_per_frame):
+  def __init__(self, path, filename):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
-    :type ms_per_frame: float
     """
     self.path = path
     self.data_path = os.path.join(self.path, "report_data")
     if not os.path.exists(self.data_path):
       os.makedirs(self.data_path)
     self.html_filename = os.path.join(self.path, filename)
-    self.ms_per_frame = ms_per_frame
 
   def _RenderTemplate(self, filename, variables, results):
     """Generate target html file from template.
@@ -54,8 +52,8 @@ class Report(object):
     :type variables: dict
     :type results: BenchmarkResults
     """
-    def FormatTime(frame_time):
-      return "%.2f ms" % (float(frame_time) * self.ms_per_frame)
+    def FormatTime(frame_index):
+      return "%.2f ms" % results.InMS(frame_index)
 
     env = Environment(loader=FileSystemLoader(_res_dir))
     env.filters['FormatTime'] = FormatTime
@@ -121,14 +119,13 @@ class BenchmarkReport(Report):
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
 
-  def __init__(self, path, filename, ms_per_frame, finger_delay):
+  def __init__(self, path, filename, finger_delay):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
-    :type ms_per_frame: float
     :type finger_delay: Tuple[float, float]
     """
-    super(BenchmarkReport, self).__init__(path, filename, ms_per_frame)
+    super(BenchmarkReport, self).__init__(path, filename)
     self.finger_delay = finger_delay
 
   def GenerateReport(self, results, trace, screen_calibration, video):
@@ -159,7 +156,7 @@ class BenchmarkReport(Report):
     """
     msrmnt_list = results.measurement_list
     for mid, id_measurements in msrmnt_list.IterByMeasurementID():
-      figure = HistogramFigure(460, 460, self.ms_per_frame)
+      figure = HistogramFigure(460, 460, results.ms_per_frame)
       figure.PlotOverviewHistogram(id_measurements)
       self._SaveFigure(figure, "%s_histogram" % mid)
 
@@ -172,7 +169,7 @@ class BenchmarkReport(Report):
     :type trace: Trace
     """
     mean_finger_delay = np.mean(self.finger_delay)
-    overview_figure = TraceOverviewFigure(980, 320, 140, self.ms_per_frame)
+    overview_figure = TraceOverviewFigure(980, 320, 140, results.ms_per_frame)
     overview_figure.PlotTrace(trace, 0.0, mean_finger_delay)
 
     for pass_num, pass_measurements in results.measurement_list.IterByPass():
@@ -181,9 +178,9 @@ class BenchmarkReport(Report):
                                      pass_measurements.end_time)
       event_types = pass_measurements.event_types
       if LEDEvent in event_types or ScreenDrawEvent in event_types:
-        figure = EventsMeasurementsFigure(980, 140, 140, self.ms_per_frame)
+        figure = EventsMeasurementsFigure(980, 140, 140, results.ms_per_frame)
       else:
-        figure = LocationMeasurementsFigure(980, 320, 140, self.ms_per_frame)
+        figure = LocationMeasurementsFigure(980, 320, 140, results.ms_per_frame)
       figure.PlotTrace(trace, 0.0, 0.0)
       figure.PlotMeasurements(pass_measurements)
       figure.SetLimits(pass_measurements.begin_time, pass_measurements.end_time)
@@ -280,13 +277,13 @@ class AggregateReport(Report):
         rep_msrmnts = rep_results.measurement_list.ByMeasurementID()[mid]
         rep_msrmnt_lists.append(rep_msrmnts)
 
-        figure = HistogramFigure(460, 460, self.ms_per_frame)
+        figure = HistogramFigure(460, 460, aggregate_results.ms_per_frame)
         figure.PlotPrimary(rep_msrmnts.latencies,
                            rep_msrmnts.draw_start_latencies,
                            "Repetition #%02d" % i, figure.GetRotationColor(i))
         self._SaveFigure(figure, "rep%02d_%s_histogram" % (i, mid))
 
-      figure = HistogramFigure(460, 460, self.ms_per_frame)
+      figure = HistogramFigure(460, 460, aggregate_results.ms_per_frame)
       figure.PlotAggregateHistogram(id_measurements, rep_msrmnt_lists)
       self._SaveFigure(figure, "%s_histogram" % mid)
 
