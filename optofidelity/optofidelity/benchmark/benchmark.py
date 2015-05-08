@@ -93,21 +93,6 @@ class Benchmark(object):
 
     self.log = ""
 
-  @property
-  def calibrated_trace(self):
-    """Trace with applied finger led calibration."""
-    def ApplyLEDCalib(event):
-      if isinstance(event, LEDEvent):
-        if event.state == LEDEvent.STATE_ON:
-          return LEDEvent(int(event.time - self.finger_calib_delay.down),
-                          event.state)
-        else:
-          return LEDEvent(int(event.time + self.finger_calib_delay.up),
-                          event.state)
-      return event
-    return Trace([ApplyLEDCalib(e) for e in self.trace],
-                 self.trace.ms_per_frame)
-
   def ExecuteOnSubject(self, benchmark_system):
     """Instruct the robot to execute the benchmark.
 
@@ -139,6 +124,8 @@ class Benchmark(object):
     self.trace = video_processor.ProcessVideo(self.video,
                                               self.screen_calibration,
                                               debug_flags)
+    self.trace.ApplyLEDCalib(*self.finger_calib_delay)
+
     self.results.measurement_list = MeasurementList()
 
     delta_t = (time.time() - start_t)
@@ -157,7 +144,7 @@ class Benchmark(object):
 
     start_t = time.time()
     self.results.measurement_list = MeasurementList()
-    self._delegate.ProcessTrace(self.calibrated_trace, self.results)
+    self._delegate.ProcessTrace(self.trace, self.results)
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results

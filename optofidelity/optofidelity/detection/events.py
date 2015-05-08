@@ -32,6 +32,24 @@ class Event(object):
     self.start_time = start_time
     self.state = state
 
+    self.uncalib_time = time
+    self.uncalib_start_time = start_time
+    self.uncalib_location = location
+
+  def __setstate__(self, state):
+    """Make sure we can read legacy pickled files.
+
+    Previous versions used to store the raw uncalibrated info in time,
+    start_time, location and state. Also we want to make sure the constructor
+    is called to initialize the Event correctly.
+    """
+    time = state.get("uncalib_time", state.get("time"))
+    location = state.get("uncalib_location", state.get("location"))
+    start_time = state.get("uncalib_start_time", state.get("start_time"))
+    event_state = state.get("state")
+    Event.__init__(self, time, location, start_time, event_state)
+    self.__dict__.update(state)
+
   def __repr__(self):
     optional = []
     if self.location is not None:

@@ -179,6 +179,20 @@ class TraceTests(unittest.TestCase):
     trace = Trace(events, 1.0)
     self.assertArrayAlmostEqual(trace.finger, target)
 
+  def test_calib_finger_interpolation(self):
+    events = [
+      FingerEvent(1, 100.0),
+      FingerEvent(5, 200.0),
+      FingerEvent(7, 300.0),
+    ]
+
+    # Expected time series. Same as in test_finger_interpolation minus 10.
+    target = np.asarray([np.nan, 90, 115, 140, 165, 190, 240, 290])
+
+    trace = Trace(events, 1.0)
+    trace.ApplyFingerLocationCalib(-10)
+    self.assertArrayAlmostEqual(trace.finger, target)
+
   def test_line_draw_steps(self):
     events = [
       LineDrawEvent(2, 100.0, start_time=1),
@@ -234,6 +248,22 @@ class TraceTests(unittest.TestCase):
     self.assertAlmostEqual(time_series[event_time(2)], 1)
     # 2nd led off
     self.assertAlmostEqual(time_series[event_time(3)], 0)
+
+  def test_calib_led_event_time_series(self):
+    trace = self.LEDCalibTrace()
+    trace.ApplyLEDCalib(2, -2)
+    time_series = trace.led
+
+    # start condition
+    self.assertAlmostEqual(time_series[0], 0)
+    # 1st led on
+    self.assertAlmostEqual(time_series[event_time(0) + 2], 1)
+    # 2nd led on
+    self.assertAlmostEqual(time_series[event_time(1) + 2], 2)
+    # 1st led off
+    self.assertAlmostEqual(time_series[event_time(2) - 2], 1)
+    # 2nd led off
+    self.assertAlmostEqual(time_series[event_time(3) - 2], 0)
 
   def test_tap_event_time_series(self):
     tap_trace = self.TapTrace()

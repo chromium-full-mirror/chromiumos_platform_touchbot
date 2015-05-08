@@ -38,55 +38,67 @@ class Trace(list):
   def __repr__(self):
     return str(self)
 
-  @const_property
+  @property
   def start_time(self):
     """:returns int: start time of first event."""
     if len(self) > 0:
       return self[0].start_time or self[0].time
     return 0
 
-  @const_property
+  @property
   def end_time(self):
     """:returns int: end time of last event."""
     if len(self) > 0:
       return self[-1].time
     return 0
 
-  @const_property
+  @property
   def finger(self):
-    """:returns np.ndarray: time-series array of the finger location."""
-    return self._TimeSeries(FingerEvent, interpolate=True)
+    """:returns np.ndarray: time-series array of the calibrated finger
+                location."""
+    return self._TimeSeries(FingerEvent, interpolate=True, calib=True)
 
-  @const_property
+  @property
   def finger_speed(self):
     """:returns np.ndarray: time-series array of finger speed."""
     return self._CalculateSpeed(self.finger)
 
-  @const_property
+  @property
   def line_draw_start(self):
     """:returns np.ndarray: time-series array of where line draws start."""
-    return self._TimeSeries(LineDrawEvent, True)
+    return self._TimeSeries(LineDrawEvent, True, calib=True)
 
-  @const_property
+  @property
   def line_draw_end(self):
     """:returns np.ndarray: time-series array of where line draws end."""
-    return self._TimeSeries(LineDrawEvent, False)
+    return self._TimeSeries(LineDrawEvent, False, calib=True)
 
-  @const_property
+  @property
   def screen_draw_start(self):
     """:returns np.ndarray: binary time-series of when screen draws start."""
-    return self._TimeSeries(ScreenDrawEvent, True)
+    return self._TimeSeries(ScreenDrawEvent, True, calib=True)
 
-  @const_property
+  @property
   def screen_draw_end(self):
     """:returns np.ndarray: binary time-series of when screen draws end."""
-    return self._TimeSeries(ScreenDrawEvent, False)
+    return self._TimeSeries(ScreenDrawEvent, False, calib=True)
 
-  @const_property
+  @property
   def led(self):
     """:returns np.ndarray: time-series of how many LEDs are on at any given
                 time."""
-    return self._TimeSeries(LEDEvent)
+    return self._TimeSeries(LEDEvent, calib=True)
+
+  def ApplyFingerLocationCalib(self, location_offset):
+    for event in self.FilteredByType(FingerEvent):
+      event.location = event.uncalib_location + location_offset
+
+  def ApplyLEDCalib(self, on_delay, off_delay):
+    for event in self.FilteredByType(LEDEvent):
+      if event.state is LEDEvent.STATE_ON:
+        event.time = event.time + on_delay
+      else:
+        event.time = event.time + off_delay
 
   def InMS(self, frame_index):
     """:returns float: timestamp in milliseconds of the specified frame index.
@@ -271,7 +283,8 @@ class Trace(list):
       raise Exception("Cannot find static motion range")
     return self.Find(FingerEvent, start), self.Find(FingerEvent, end)
 
-  def _TimeSeries(self, event_type, start_time=False, interpolate=False):
+  def _TimeSeries(self, event_type, start_time=False, interpolate=False,
+                  calib=False):
     """Turn list of events into a time series plot of this event.
 
     location based events will result in a location over time plot, whereas
@@ -282,6 +295,7 @@ class Trace(list):
     :param bool start_time: Use events start time in plot instead of time.
     :param bool interpolate: Use linear interpolation between events instead of
            a step function.
+    :param bool calib: Use calibrated values instead of raw values
     """
     if len(self) == 0:
       return np.empty((0,))
@@ -298,14 +312,18 @@ class Trace(list):
     last_time = 0
 
     for event in self.FilteredByType(event_type):
-      time = event.time
       if start_time and event.start_time is not None:
-        time = event.start_time
+        time = event.start_time if calib else event.uncalib_start_time
+      else:
+        time = event.time if calib else event.uncalib_time
 
       if event.state is not None:
         current_value += 1 if event.state else -1
       elif event.location is not None:
-        current_value = event.location
+        if calib:
+          current_value = event.location
+        else:
+          current_value = event.uncalib_location
       else:
         current_value = np.nan
 
