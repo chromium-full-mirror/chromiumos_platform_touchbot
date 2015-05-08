@@ -119,14 +119,13 @@ class BenchmarkReport(Report):
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
 
-  def __init__(self, path, filename, finger_delay):
+  def __init__(self, path, filename):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
     :type finger_delay: Tuple[float, float]
     """
     super(BenchmarkReport, self).__init__(path, filename)
-    self.finger_delay = finger_delay
 
   def GenerateReport(self, results, trace, screen_calibration, video):
     """ Generates a full HTML report.
@@ -168,9 +167,8 @@ class BenchmarkReport(Report):
     :type results: BenchmarkResults
     :type trace: Trace
     """
-    mean_finger_delay = np.mean(self.finger_delay)
     overview_figure = TraceOverviewFigure(980, 320, 140, results.ms_per_frame)
-    overview_figure.PlotTrace(trace, 0.0, mean_finger_delay)
+    overview_figure.PlotTrace(trace)
 
     for pass_num, pass_measurements in results.measurement_list.IterByPass():
       overview_figure.AddRangeMarker("Pass %d" % pass_num,
@@ -181,7 +179,7 @@ class BenchmarkReport(Report):
         figure = EventsMeasurementsFigure(980, 140, 140, results.ms_per_frame)
       else:
         figure = LocationMeasurementsFigure(980, 320, 140, results.ms_per_frame)
-      figure.PlotTrace(trace, 0.0, 0.0)
+      figure.PlotTrace(trace)
       figure.PlotMeasurements(pass_measurements)
       figure.SetLimits(pass_measurements.begin_time, pass_measurements.end_time)
       self._SaveFigure(figure, "pass_%d_trace" % pass_num)

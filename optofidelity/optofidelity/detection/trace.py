@@ -59,6 +59,12 @@ class Trace(list):
     return self._TimeSeries(FingerEvent, interpolate=True, calib=True)
 
   @property
+  def uncalib_finger(self):
+    """:returns np.ndarray: time-series array of the calibrated finger
+                location."""
+    return self._TimeSeries(FingerEvent, interpolate=True, calib=False)
+
+  @property
   def finger_speed(self):
     """:returns np.ndarray: time-series array of finger speed."""
     return self._CalculateSpeed(self.finger)
@@ -88,6 +94,12 @@ class Trace(list):
     """:returns np.ndarray: time-series of how many LEDs are on at any given
                 time."""
     return self._TimeSeries(LEDEvent, calib=True)
+
+  @property
+  def uncalib_led(self):
+    """:returns np.ndarray: time-series of how many LEDs are on at any given
+                time."""
+    return self._TimeSeries(LEDEvent, calib=False)
 
   def ApplyFingerLocationCalib(self, location_offset):
     for event in self.FilteredByType(FingerEvent):

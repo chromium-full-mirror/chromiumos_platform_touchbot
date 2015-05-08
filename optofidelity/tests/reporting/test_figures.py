@@ -113,7 +113,9 @@ class TraceOverviewFigureTests(FigureVerificationTests):
     figure = TraceOverviewFigure(self.WIDTH, self.LOCATION_HEIGHT,
                                  self.EVENTS_HEIGHT, self.MS_PER_FRAME)
     trace = test_data.LoadTrace(filename)
-    figure.PlotTrace(trace, 10.0, 2.0)
+    trace.ApplyFingerLocationCalib(10)
+    trace.ApplyLEDCalib(-10, 10)
+    figure.PlotTrace(trace)
     return figure
 
   def testLineDrawTraceOverviewFigure(self):

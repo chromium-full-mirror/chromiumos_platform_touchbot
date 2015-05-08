@@ -40,7 +40,9 @@ class ReportTests(TestCase):
     fake_trace = test_data.LoadTrace(filename)
     benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, benchmark_type,
                                               metadata)
-    report = BenchmarkReport(self.tempdir, "report.html", (0.0, 0.0))
+    benchmark.trace.ApplyFingerLocationCalib(10)
+    benchmark.trace.ApplyLEDCalib(-10, 10)
+    report = BenchmarkReport(self.tempdir, "report.html")
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
 

@@ -191,8 +191,7 @@ class Orchestrator(object):
     :rtype Report
     """
     with GSFolder(report_url) as report_path:
-      report = BenchmarkReport(report_path, "report.html",
-                               benchmark.finger_calib_delay)
+      report = BenchmarkReport(report_path, "report.html")
       report.GenerateReport(benchmark.results, benchmark.trace,
                             benchmark.screen_calibration, benchmark.video)
 
