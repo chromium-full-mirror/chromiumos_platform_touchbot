@@ -137,8 +137,15 @@ class BenchmarkReport(Report):
     :type screen_calibration: Optional[ScreenCalibration]
     :type video: Optional[VideoReader]
     """
+    link_list = [
+      ("Log", "log.txt"),
+      ("Raw Results", "results.txt"),
+      ("Trace", "trace.txt"),
+      ("Video", "video.avi"),
+    ]
     variables = {
-      "passes": [p for p, m in results.measurement_list.IterByPass()]
+      "passes": [p for p, m in results.measurement_list.IterByPass()],
+      "link_list": link_list
     }
     self._RenderTemplate('benchmark.html', variables, results)
 

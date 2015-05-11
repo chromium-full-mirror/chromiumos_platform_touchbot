@@ -23,6 +23,13 @@
       {% for key, value in metadata.items() %}
         <li class="collection-item"><strong>{{key}}:</strong> {{value}}</li>
       {% endfor %}
+      <li class="collection-item">
+        <strong>Links:</strong>
+        {% for title, url in link_list %}
+          <a href="{{url}}">{{title | capitalize}}</a>
+          {% if not loop.last %} | {% endif %}
+        {% endfor %}
+      </li>
     </ul>
 
     <!-- Results Section -->
