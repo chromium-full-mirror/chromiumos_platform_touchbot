@@ -168,7 +168,8 @@ class Orchestrator(object):
     results_url, uid = self._FindUniqueResultsURL(time)
 
     self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
-    benchmark.Save(results_url, debug_info=True)
+    save_video = bool(len(benchmark.results.error))
+    benchmark.Save(results_url, debug_info=True, video=save_video)
 
     self._progress.Info(benchmark.name, "Generating Report")
     self._GenerateBenchmarkReport(benchmark, results_url)
