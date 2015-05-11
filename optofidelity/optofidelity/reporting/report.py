@@ -235,16 +235,16 @@ class BenchmarkReport(Report):
     :returns np.ndarray: The processed RGBA image.
     """
     if isinstance(event, LEDEvent) or screen_calibration is None:
-      return skimage.color.gray2rgb(frame)
+      result = skimage.color.gray2rgb(frame)
+    else:
+      screen_space = screen_calibration.CameraToScreenSpace(frame)
+      screen_space = screen_calibration.NormalizeFrame(screen_space)
 
-    screen_space = screen_calibration.CameraToScreenSpace(frame)
-    screen_space = screen_calibration.NormalizeFrame(screen_space)
-
-    canvas = Canvas.FromShape(screen_space.shape)
-    if event.location is not None:
-      canvas.DrawVLine(self.REFERENCE_LINE_COLOR, int(event.location))
-    return canvas.BlendWithImage(skimage.color.gray2rgb(screen_space))
-
+      canvas = Canvas.FromShape(screen_space.shape)
+      if event.location is not None:
+        canvas.DrawVLine(self.REFERENCE_LINE_COLOR, int(event.location))
+      result = canvas.BlendWithImage(skimage.color.gray2rgb(screen_space))
+    return skimage.transform.resize(result, (240, 320))
 
 class AggregateReport(Report):
   def GenerateReport(self, aggregate_results):
