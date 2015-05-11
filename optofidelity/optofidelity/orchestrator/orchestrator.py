@@ -34,7 +34,7 @@ class Orchestrator(object):
   MAX_BENCHMARK_TRIES = 3
   """Maximum number of tries to run a benchmark before giving up."""
 
-  MIN_NUMBER_SAMPLES = 20
+  MIN_NUMBER_SAMPLES = 100
   """Minimum number of measurement samples before commiting to the dashboard."""
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
@@ -54,6 +54,27 @@ class Orchestrator(object):
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
     self._progress = ProgressPrinter(_log)
+
+  def RunHistoryBenchmarks(self, match, debug_flags, first_version):
+    for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
+      subject = self._system.subjects[subject_name]
+
+      versions = subject.updater.available_versions
+      first_version_idx = versions.index(first_version)
+      versions_to_test = versions[:(first_version_idx + 1)]
+      self._progress.Info(subject_name,
+                          "Versions to test: %s" % (versions_to_test,))
+      for version in reversed(versions_to_test):
+        try:
+          self._progress.Info(subject_name,
+                              "Running benchmarks: %s" % (benchmark_types,))
+          self.UpdateSubject(subject, version)
+          self.RunSubjectBenchmarks(subject, benchmark_types, debug_flags)
+        except KeyboardInterrupt:
+          raise
+        except:
+          self._progress.Exception(subject.name)
+          self._progress.Error(subject.name, "Version %s failed" % version)
 
   def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
                              skip_update=False):
@@ -80,6 +101,8 @@ class Orchestrator(object):
             self._progress.Info(subject.name, "Skipping benchmarks.")
             continue
         self.RunSubjectBenchmarks(subject, benchmark_types, debug_flags)
+      except KeyboardInterrupt:
+        raise
       except:
         self._progress.Exception(subject.name)
         self._progress.Error(subject.name, "Subject in bad state")
@@ -127,7 +150,6 @@ class Orchestrator(object):
     :param Optional[str] forced_version: Force version number install
     :returns bool: True if the subject has been updated.
     """
-    self._progress.Info(subject.name, "Checking for updates")
     available = subject.updater.available_versions
 
     target_version = None
@@ -136,7 +158,8 @@ class Orchestrator(object):
         if fnmatch(version, forced_version):
           target_version = version
           break
-      self._progress.Info(subject.name, "Forcing version %s" % target_version)
+      self._progress.Info(subject.name, "Forcing update to version %s" %
+                          target_version)
       if not target_version:
         raise ValueError("Version %s is not available" % forced_version)
     else:

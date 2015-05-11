@@ -49,7 +49,7 @@ Run tap test on all devices
 """
 
 
-def RunBenchmarks(match, skip_update, debug_flags, force_version):
+def RunBenchmarks(match, skip_update, debug_flags, force_version, history):
   system = BenchmarkSystem(config_file)
   video_processor = MultithreadedVideoProcessor()
   runner = BenchmarkRunner(system, video_processor)
@@ -60,8 +60,11 @@ def RunBenchmarks(match, skip_update, debug_flags, force_version):
   if os.path.exists(state_file):
     system.LoadState(state_file)
 
-  orchestrator.UpdateAndRunBenchmarks(match, debug_flags, force_version,
-                                      skip_update=skip_update)
+  if history:
+    orchestrator.RunHistoryBenchmarks(match, debug_flags, history)
+  else:
+    orchestrator.UpdateAndRunBenchmarks(match, debug_flags, force_version,
+                                        skip_update=skip_update)
 
 
 def Main():
@@ -73,11 +76,14 @@ def Main():
   parser.add_option("--force-version", "-f",
                     dest="force_version", default=None,
                     help="Force update to specific version.")
-
+  parser.add_option("--history",
+                    dest="history", default=None,
+                    help="Benchmark all versions since specified version.")
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
-  RunBenchmarks(match, not options.update, [], options.force_version)
+  RunBenchmarks(match, not options.update, [], options.force_version,
+                options.history)
 
 
 if __name__ == "__main__":
