@@ -1,16 +1,34 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from StringIO import StringIO
+from urllib import urlencode
 import json
-import requests
 
 from safetynet import TypecheckMeta
 
 from optofidelity.benchmark import BenchmarkResults
+import pycurl
 
-import socket
-import httplib
-import requests
+
+def HTTPPost(url, data):
+  buffer = StringIO()
+  curl = pycurl.Curl()
+  curl.setopt(curl.URL, url)
+
+  postfields = urlencode(data)
+  curl.setopt(curl.POSTFIELDS, postfields)
+  curl.setopt(curl.WRITEDATA, buffer)
+  curl.setopt(curl.IPRESOLVE, curl.IPRESOLVE_V4)
+  curl.perform()
+  status_code = curl.getinfo(pycurl.HTTP_CODE)
+  curl.close()
+
+  if status_code != 200:
+      print buffer.getvalue()
+      raise Exception("Error while reporting results to dashboard.")
+
+  return buffer.getvalue()
 
 
 class Dashboard(object):
@@ -36,10 +54,7 @@ class Dashboard(object):
       return
 
     params = dict(data=json.dumps(payload))
-    result = requests.post(self.endpoint_url, data=params)
-    if result.status_code != 200:
-      print result.text
-      raise Exception("Error while reporting results to dashboard.")
+    print HTTPPost(self.endpoint_url, params)
 
   def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
     charts = {}
@@ -69,4 +84,3 @@ class Dashboard(object):
       "chart_data": chart_data
     }
     return data
-
