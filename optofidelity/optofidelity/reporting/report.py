@@ -251,7 +251,7 @@ class BenchmarkReport(Report):
       if event.location is not None:
         canvas.DrawVLine(self.REFERENCE_LINE_COLOR, int(event.location))
       result = canvas.BlendWithImage(skimage.color.gray2rgb(screen_space))
-    return skimage.transform.resize(result, (240, 320))
+    return skimage.transform.resize(result, (240, 420))
 
 class AggregateReport(Report):
   def GenerateReport(self, aggregate_results):
