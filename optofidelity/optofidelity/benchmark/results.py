@@ -155,7 +155,7 @@ class BenchmarkResults(object):
     self.benchmark_type = benchmark_type
     self.metadata = metadata
     self.measurement_list = MeasurementList()
-    self.ms_per_frame = 1.0
+    self.ms_per_frame = None
     self.uid = ""
     self.report_url = ""
     self.error = ""
@@ -219,6 +219,7 @@ class AggregateResults(BenchmarkResults):
     self.repetitions = []
 
   def AddRepetition(self, results):
+    self.ms_per_frame = results.ms_per_frame
     self.repetitions.append(results)
     self.measurement_list = MeasurementList([m for rep in self.repetitions
                                                for m in rep.measurement_list])

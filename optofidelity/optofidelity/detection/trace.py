@@ -108,9 +108,9 @@ class Trace(list):
   def ApplyLEDCalib(self, on_delay, off_delay):
     for event in self.FilteredByType(LEDEvent):
       if event.state is LEDEvent.STATE_ON:
-        event.time = event.time + on_delay
+        event.time = int(event.time + on_delay)
       else:
-        event.time = event.time + off_delay
+        event.time = int(event.time + off_delay)
 
   def InMS(self, frame_index):
     """:returns float: timestamp in milliseconds of the specified frame index.

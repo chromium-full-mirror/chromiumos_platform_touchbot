@@ -87,4 +87,4 @@ class LEDCalibrator(object):
 
     down_delay = np.mean(np.asarray(down_delays))
     up_delay = np.mean(np.asarray(up_delays))
-    return down_delay * ms_per_frame, up_delay * ms_per_frame
+    return down_delay, up_delay

@@ -23,6 +23,5 @@ class LEDCalibratiorTests(unittest.TestCase):
       LEDEvent(50, False),
       LEDEvent(56, False),  # Up delay = 6
     ])
-    ms_per_frame = 1.0 / 300.0 * 1000.0
     delays = self.calibrator.CalibrateLED(self.subject, False)
-    self.assertEqual(delays, (4 * ms_per_frame, 6 * ms_per_frame))
+    self.assertEqual(delays, (4, 6))

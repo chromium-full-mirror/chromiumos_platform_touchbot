@@ -28,7 +28,7 @@ class FigureVerificationTests(unittest.TestCase):
   LOCATION_HEIGHT = 512
   EVENTS_HEIGHT = 256
   LATENCIES_HEIGHT = 256
-  MS_PER_FRAME = 1.0
+  MS_PER_FRAME = 3.33
 
   def addSimplePlots(self, figure):
     location_timeseries = np.asarray(range(0, 1000, 10))
@@ -199,7 +199,7 @@ class HistogramFigureTests(FigureVerificationTests):
       103.12146378,   86.08486046,   96.05411581,  100.33152484,
        97.48061073,  114.82677329,   97.51435366,  112.37953043,
        89.52607202,  101.50421159,   83.53152664,  110.11220344,
-       98.69820428,  101.37292205,  111.51249425,   98.52950697 ])
+       98.69820428,  101.37292205,  111.51249425,   98.52950697 ]) / 3.33
 
   def testPrimaryHistogram(self):
     figure = HistogramFigure(512, 512, self.MS_PER_FRAME)

@@ -58,6 +58,7 @@ class Dashboard(object):
 
   def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
     charts = {}
+    ms_per_frame = benchmark_results.ms_per_frame
     measurements = benchmark_results.measurement_list
     for mid, id_measurements in measurements.IterByMeasurementID():
       charts[mid] = {}
@@ -65,7 +66,7 @@ class Dashboard(object):
         "type": "list_of_scalar_values",
         "file": report_url,
         "units": "ms",
-        "values": list(measurements.latencies)
+        "values": list(measurements.latencies * ms_per_frame)
       }
 
     chart_data = {
