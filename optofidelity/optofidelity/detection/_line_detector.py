@@ -98,6 +98,9 @@ class LineDetector(Detector):
     return profile
 
   def GenerateEvents(self, preprocessed_data, frame_index, debugger):
+    def log(msg, *params):
+      _log.debug("%04d: " + msg, frame_index, *params)
+
     profile = preprocessed_data
 
     def Reset():
@@ -114,7 +117,7 @@ class LineDetector(Detector):
     self._last_no_draw_map[no_draw_indices] = frame_index
 
     if self._suppress_until and frame_index < self._suppress_until:
-      _log.debug("Suppressing. until=%d", self._suppress_until)
+      log("Suppressing. until=%d", self._suppress_until)
       return []
 
     # Segment line in current frame
@@ -154,7 +157,7 @@ class LineDetector(Detector):
       # Wait until the median color level meets the DRAW_END_MIN_COLOR
       # requirement, then generate draw events.
       level = np.median(profile[new_slice])
-      _log.debug("New segment. level=%d", level)
+      log("New segment. level=%d", level)
       if level > self.DRAW_END_MIN_COLOR:
         last_no_draw = np.max(self._last_no_draw_map[new_slice])
         self._line_obj = new_line

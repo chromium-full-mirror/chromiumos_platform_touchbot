@@ -48,6 +48,9 @@ class LEDDetector(Detector):
     self.recent_flash_times = []
 
   def Preprocess(self, calib_frame, debugger):
+    def log(msg, *params):
+      _log.debug("%04d: " + msg, calib_frame.frame_index, *params)
+
     # Create mask showing everything outside the active screen.
     if calib_frame.has_calibration:
       margin = self.LED_SCREEN_MARGIN
@@ -62,9 +65,9 @@ class LEDDetector(Detector):
     # LED events during this time.
     if calib_frame.has_calibration:
       screen_avg_delta = np.mean(np.abs(calib_frame.screen_space_delta))
-      _log.debug("screen_avg_delta=%.2f", screen_avg_delta)
+      log("screen_avg_delta=%.2f", screen_avg_delta)
       if screen_avg_delta > self.SCREEN_MAX_AVG_DELTA:
-        _log.debug("Suspending LED detection")
+        log("Suspending LED detection")
         return []
 
     # Look for an LED shaped large change in the masked area.

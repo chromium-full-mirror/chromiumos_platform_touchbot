@@ -77,7 +77,6 @@ class PreprocessWorker(multiprocessing.Process):
       i, index, prev_index = self.input_queue.get()
       if index is None:
         break
-      _log.debug("PreProcessing frame %d" % i)
 
       # Read current and previous image from shared memory buffer
       image = self.buffer_list[index].image
@@ -196,12 +195,13 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     events = []
     for i in sorted(data_map.keys()):
       msg = "Generating events %d/%d" % (i + 1, video_reader.num_frames)
-      _log.debug(msg)
       sys.stdout.write("\r" + msg)
       sys.stdout.flush()
 
       preprocessed_data = data_map[i]
-      events.extend(self._GenerateEvents(i, preprocessed_data, None))
+      generated_events = self._GenerateEvents(i, preprocessed_data, None)
+      _log.debug("%04d generated events: %s", i + 1, generated_events)
+      events.extend(generated_events)
     print
     return Trace(events, video_reader.ms_per_frame)
 

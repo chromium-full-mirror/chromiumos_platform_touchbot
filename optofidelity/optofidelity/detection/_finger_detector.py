@@ -27,6 +27,9 @@ class FingerDetector(Detector):
     self._current_location = None
 
   def Preprocess(self, calib_frame, debugger):
+    def log(msg, *params):
+      _log.debug("%04d: " + msg, calib_frame.frame_index, *params)
+
     binary = calib_frame.screen_space_foreground
 
     # we are looking for a big object that touches the top of the image,
@@ -44,7 +47,7 @@ class FingerDetector(Detector):
       coords = finger_shape.coords
       bottom_row = coords[coords[:, 0] == max(coords[:, 0]), :]
       location = bottom_row[:, 1].mean()
-      _log.debug("location=%.2f", location)
+      log("location=%.2f", location)
       if debugger:
         debugger.screen_space_canvas.DrawMask(Canvas.GREEN,
                                               finger_shape.contour)

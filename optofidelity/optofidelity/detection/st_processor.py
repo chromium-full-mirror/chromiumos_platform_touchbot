@@ -30,6 +30,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
 
   def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
                       screen_draw=False):
+    self._detector_types = []
     if line_draw:
       self._AddDetector(LineDetector)
     if led:
