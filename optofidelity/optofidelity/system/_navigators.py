@@ -4,6 +4,7 @@
 """Implementations of the Navigator interface."""
 
 import os
+import time
 
 from safetynet import Any, Dict
 
@@ -141,7 +142,9 @@ class ADBNavigator(Navigator):
     self._adb.SendKey("KEYCODE_HOME")
 
   def OpenPage(self, page_name):
+    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
     self._OpenFile("%s.html" % page_name.lower())
+    time.sleep(1.0)  # Wait for chrome to load the page
 
   def ClosePage(self):
     self.Close()
