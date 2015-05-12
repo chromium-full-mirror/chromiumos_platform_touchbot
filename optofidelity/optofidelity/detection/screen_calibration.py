@@ -20,7 +20,7 @@ _log = logging.getLogger(__name__)
 class ScreenCalibration(object):
   __metaclass__ = TypecheckMeta
 
-  SHAPE_MARGIN = 4
+  SHAPE_MARGIN = 12
   """The test area is reduced in size by this margin to account for potential
      camera shake."""
 

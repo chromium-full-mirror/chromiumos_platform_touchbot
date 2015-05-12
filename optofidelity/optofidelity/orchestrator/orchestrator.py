@@ -321,7 +321,7 @@ class Orchestrator(object):
     subject_names = self._system.subjects.keys()
     benchmarks = { ("%s/%s" % (s, t)): (s, t) for s in subject_names
                                               for t in type_names }
-    match_fn = lambda name: fnmatch(name, match) or name.startswith(match)
+    match_fn = lambda name: fnmatch(name, match)
     matches = [n for n in benchmarks.iterkeys() if match_fn(n)]
     grouped = defaultdict(list)
     for match in matches:

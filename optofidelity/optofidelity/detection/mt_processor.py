@@ -221,7 +221,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     """ Generate events from a single frame.
 
     :param int frame_index
-    :param Dict[str, Any] preprocessed_data_map
+    :param Dict[str, Optional[Any]] preprocessed_data_map
     :param Optional[DetectorDebugger] debugger
     """
     all_events = []

@@ -15,7 +15,7 @@ class LineDrawDelegate(BenchmarkDelegate):
   CALIB_MOVE_DISTANCE = 10.0
   """Distance to move for the calibration movement (in mm)."""
 
-  COMMANDS_DURATION = 2000
+  COMMANDS_DURATION = 7000
   """Duration of the full set of robot commands (in # of camera frames)."""
 
   CAMERA_FRAMERATE = 300
@@ -44,9 +44,9 @@ class LineDrawDelegate(BenchmarkDelegate):
     up = 10.0
 
     # Tap to reset the screen, then draw from left to right.
-    subject.TapOnTestPlane(left, blocking=True)
+    subject.TapOnTestPlane(left)
+    subject.MoveOnTestPlane(left, down, blocking=True)
     subject.camera.Trigger()
-    subject.MoveOnTestPlane(left, down)
     subject.MoveOnTestPlane(left_calib_stop, down)
     subject.MoveOnTestPlane(right, down)
     subject.MoveOnTestPlane(right, up)
@@ -114,7 +114,7 @@ class LineDrawStartDelegate(BenchmarkDelegate):
   scroll_distance = 10
   """Distance to move for each scroll (in mm)."""
 
-  COMMANDS_DURATION = 2000
+  COMMANDS_DURATION = 7000
   """Duration of the full set of robot commands (in # of camera frames)."""
 
   CAMERA_FRAMERATE = 300
