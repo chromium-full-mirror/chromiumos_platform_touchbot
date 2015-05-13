@@ -141,7 +141,7 @@ class Orchestrator(object):
 
         self._progress.Info(benchmark_name, "Reporting results to dashboard")
         self._dashboard.ReportResults(aggregate, subject_version,
-            subject.updater.GetVersionUID(subject_version), "")
+            subject.updater.GetVersionUID(subject_version), public_url)
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.

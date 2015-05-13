@@ -3,12 +3,16 @@
 # found in the LICENSE file.
 from StringIO import StringIO
 from urllib import urlencode
+import logging
 import json
 
 from safetynet import TypecheckMeta
 
 from optofidelity.benchmark import BenchmarkResults
 import pycurl
+
+
+_log = logging.getLogger(__name__)
 
 
 def HTTPPost(url, data):
@@ -53,25 +57,27 @@ class Dashboard(object):
       print json.dumps(payload, indent=2)
       return
 
+    for line in json.dumps(payload, indent=2).split("\n"):
+      _log.info("    %s" % line)
+
     params = dict(data=json.dumps(payload))
     print HTTPPost(self.endpoint_url, params)
 
   def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
     charts = {}
+    charts[benchmark_results.benchmark_type] = {}
     ms_per_frame = benchmark_results.ms_per_frame
     measurements = benchmark_results.measurement_list
     for mid, id_measurements in measurements.IterByMeasurementID():
-      charts[mid] = {}
-      charts[mid]["overall"] = {
+      charts[benchmark_results.benchmark_type][mid] = {
         "type": "list_of_scalar_values",
-        "file": report_url,
         "units": "ms",
         "values": list(measurements.latencies * ms_per_frame)
       }
 
     chart_data = {
       "format_version": "1.0",
-      "benchmark_name": "touch_latency.%s" % benchmark_results.benchmark_type,
+      "benchmark_name": "touch_latency",
       "charts": charts
     }
     data = {
@@ -79,9 +85,12 @@ class Dashboard(object):
       "bot": benchmark_results.subject_name.replace("/", "."),
       "point_id": version_uid,
       "versions": {
-        "chrome": version
+        "chrome_version": version
       },
-      "supplemental": {},
+      "supplemental": {
+        "stdio_uri": report_url,
+        "default_rev": "r_chrome_version",
+      },
       "chart_data": chart_data
     }
     return data

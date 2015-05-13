@@ -9,8 +9,7 @@ from optofidelity.orchestrator import Dashboard
 
 from . import test_data
 
-#ENDPOINT_URL = "https://chromeperf.appspot.com/add_point"
-ENDPOINT_URL = ""
+ENDPOINT_URL = "https://chromeperf.appspot.com/add_point"
 
 class DashboardTests(TestCase):
   def setUp(self):

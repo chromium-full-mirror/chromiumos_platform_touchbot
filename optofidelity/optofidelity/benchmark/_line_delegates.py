@@ -84,7 +84,7 @@ class LineDrawDelegate(BenchmarkDelegate):
       for draw_event in draw_events:
         finger_event = pass_trace.FindFingerCrossing(draw_event.location,
                                                      draw_event.time)
-        results.AddMeasurement("Line Draw Latency", finger_event, draw_event,
+        results.AddMeasurement("LineDrawLatency", finger_event, draw_event,
                                pass_num)
 
 
