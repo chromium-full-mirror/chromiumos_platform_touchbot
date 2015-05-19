@@ -201,14 +201,29 @@ class BenchmarkResults(object):
     lines = []
     def add_line(indent, fmt, *params):
       lines.append("  " * indent + (fmt % params))
+    def add_field(field_name):
+      add_line(1, "%s: %s", field_name, str(getattr(self, field_name)))
 
+    add_line(0, "%s/%s Benchmark Results", self.subject_name,
+             self.benchmark_type)
+
+    add_line(1, "metadata:")
+    for key, value in self.metadata.iteritems():
+      add_line(2, "%s: %s", key, value)
+
+    add_field("ms_per_frame")
+    add_field("uid")
+    add_field("report_url")
+    add_field("error")
+
+    add_line(1, "Measurements:")
     for pass_num, pass_measurements in self.measurement_list.IterByPass():
-      add_line(1, "Pass %d:", pass_num)
+      add_line(2, "Pass %d:", pass_num)
       for id, measurements in pass_measurements.IterByMeasurementID():
-        add_line(2, "%s: %s", id, str(measurements.latencies))
+        add_line(3, "%s: %s", id, str(measurements.latencies))
         if measurements.has_draw_start:
           start_latency_list = str(measurements.draw_start_latencies)
-          add_line(2, "%s(start): %s", id, start_latency_list)
+          add_line(3, "%s(start): %s", id, start_latency_list)
     return "\n".join(lines)
 
 
