@@ -6,7 +6,8 @@ from tempfile import NamedTemporaryFile
 from unittest import TestCase
 import os
 
-from optofidelity.gsutil import GSFile, GSFolder, GSOpenFile
+from optofidelity.gsutil import (GSFile, GSFindUniqueFilename, GSFolder,
+                                 GSOpenFile, GSTouch)
 
 GS_URL = None
 GS_FILE_URL = os.path.join(GS_URL, "test.txt") if GS_URL else None
@@ -18,6 +19,14 @@ class GSUtilTests(TestCase):
 
   def tearDown(self):
     os.system("gsutil rm " + GS_FILE_URL)
+
+  def testUniqueFilename(self):
+    path1, file1 = GSFindUniqueFilename(GS_URL, "base_name")
+    GSTouch(os.path.join(path1, ".exists"))
+    path2, file2 = GSFindUniqueFilename(GS_URL, "base_name")
+    self.assertTrue(file1.startswith("base_name"))
+    self.assertTrue(file2.startswith("base_name"))
+    self.assertNotEqual(file1, file2)
 
   def testGSOpenFile(self):
     with NamedTemporaryFile() as temp_file:

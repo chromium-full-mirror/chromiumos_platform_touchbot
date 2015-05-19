@@ -13,6 +13,20 @@ from optofidelity.util import ProgressBar
 _log = logging.getLogger(__name__)
 
 
+def GSFindUniqueFilename(folder_url, base_name):
+  for i in range(999):
+    filename = "%s_%03d" % (base_name, i)
+    path = os.path.join(folder_url, filename)
+    if not GSPathExists(path):
+      return path, filename
+  raise Exception("Cannot find unique results path")
+
+
+def GSTouch(url):
+  with GSOpenFile(url, "w") as file_obj:
+    file_obj.write("exists")
+
+
 def GSPathExists(url):
   if url.startswith("gs://"):
     return len(_GSList(url)) > 0
@@ -82,7 +96,8 @@ def _GSList(path):
 
   process = subprocess.Popen(command, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE)
-  lines = [process.stdout.readlines()]
+  lines = process.stdout.readlines()
+  process.communicate()
   if process.returncode == 0:
     return lines
   return []

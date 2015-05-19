@@ -12,7 +12,7 @@ from safetynet import List, Optional, TypecheckMeta
 from optofidelity.benchmark import (AggregateResults, Benchmark,
                                     BenchmarkResults, BenchmarkRunner,
                                     MeasurementList)
-from optofidelity.gsutil import GSFolder, GSPathExists
+from optofidelity.gsutil import GSFindUniqueFilename, GSFolder, GSPathExists
 from optofidelity.reporting import AggregateReport, BenchmarkReport
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import ProgressPrinter
@@ -304,13 +304,8 @@ class Orchestrator(object):
     :type time: datetime
     :rtype str
     """
-    for i in range(999):
-      timestamp = time.strftime("%Y%m%d_%H%M")
-      uid = "%s_%03d" % (timestamp, i)
-      results_path = os.path.join(self._results_url, uid)
-      if not GSPathExists(results_path):
-        return results_path, uid
-    raise Exception("Cannot find unique results path")
+    base_name = str(time.strftime("%Y%m%d_%H%M"))
+    return GSFindUniqueFilename(self._results_url, base_name)
 
   def _ListMatchingBenchmarks(self, match):
     """Lists (subject_name, benchmark_type) for a match string
