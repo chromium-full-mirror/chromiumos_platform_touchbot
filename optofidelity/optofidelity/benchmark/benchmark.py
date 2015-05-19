@@ -144,8 +144,8 @@ class Benchmark(object):
 
     start_t = time.time()
     self.results.measurement_list = MeasurementList()
-    self._delegate.ProcessTrace(self.trace, self.results)
     self.results.ms_per_frame = self.trace.ms_per_frame
+    self._delegate.ProcessTrace(self.trace, self.results)
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results

@@ -63,6 +63,7 @@ class Report(object):
       "subject_name": results.subject_name,
       "benchmark_type": results.benchmark_type,
       "metadata": results.metadata,
+      "error": results.error,
       "data_dir": "report_data",
       "measurement_list": results.measurement_list
     }
@@ -166,6 +167,11 @@ class BenchmarkReport(Report):
       figure.PlotOverviewHistogram(id_measurements)
       self._SaveFigure(figure, "%s_histogram" % mid)
 
+      for pass_num, pass_measurements in id_measurements.IterByPass():
+        figure = HistogramFigure(460, 460, results.ms_per_frame)
+        figure.PlotOverviewHistogram(pass_measurements)
+        self._SaveFigure(figure, "pass_%d_%s_histogram" % (pass_num, mid))
+
   def _GenerateTraceFigures(self, trace, results):
     """Generate trace figures.
 
@@ -214,7 +220,7 @@ class BenchmarkReport(Report):
 
       basename = "%d" % msrmnt.measurement_number
       SaveFrames("%s_input" % basename, msrmnt.input_event,
-                msrmnt.input_event.time)
+                msrmnt.input_event.uncalib_time)
       SaveFrames("%s_output_start" % basename, msrmnt.output_event,
                 msrmnt.output_event.start_time)
       SaveFrames("%s_output" % basename, msrmnt.output_event,
@@ -229,7 +235,7 @@ class BenchmarkReport(Report):
     :type screen_calibration: Optional[ScreenCalibration]
     :type video: VideoReader
     """
-    frame = video.FrameAt(time - 1)
+    frame = video.FrameAt(time)
     frame = self._ProcessFrame(frame, event, screen_calibration)
     SaveImage(filename, frame)
 

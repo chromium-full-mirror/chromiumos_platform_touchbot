@@ -21,3 +21,6 @@ div.card-table tr {
 .tabs .indicator {
   background-color: #1976D2 !important;
 }
+div.container {
+  width: 1072px !important;
+}

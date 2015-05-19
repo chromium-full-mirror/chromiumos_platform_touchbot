@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block content %}
-  <div class="container" style="width: 1072px;">
+  <div class="container">
 
     <!-- Info and Metadata Section -->
     <ul class="collection" style="margin-top: 1em;">
@@ -30,6 +30,11 @@
           {% if not loop.last %} | {% endif %}
         {% endfor %}
       </li>
+      {% if error %}
+      <li class="collection-item">
+        <strong>Error:</strong> {{error}}
+      </li>
+      {% endif %}
     </ul>
 
     <!-- Results Section -->
@@ -145,8 +150,8 @@
 
               <!-- Input Event -->
               {{ detail("%s/%d_input" % (data_dir, msrmnt.measurement_number),
-                        msrmnt.input_event.time,
-                        0,
+                        msrmnt.input_event.uncalib_time,
+                        msrmnt.input_event.time - msrmnt.input_event.uncalib_time,
                         msrmnt.input_event.EVENT_TYPE_NAME) }}
 
               <!-- Optional Output Start Draw Event -->

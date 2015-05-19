@@ -5,16 +5,16 @@
 """Main module for command line interface to optofidelity latency tests."""
 
 from optparse import OptionParser
-import logging
 import os
 import sys
 
 from optofidelity.benchmark import Benchmark, LEDCalibrator
 from optofidelity.detection import (MultithreadedVideoProcessor,
                                     ScreenCalibration)
+from optofidelity.reporting import BenchmarkReport
 from optofidelity.system import BenchmarkSystem
 
-logging.basicConfig(level=logging.INFO)
+from config import (config_file, state_file)
 
 
 usage_string = """Benchmark usage examples:
@@ -31,10 +31,6 @@ $ %s -i dir -p trace
 Open benchmark from dir, re-process trace. Does not require video.
 """
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
-config_file = os.path.join(script_dir, "optofidelity.xml")
-state_file = os.path.join(script_dir, "optofidelity.state")
-
 
 def ProcessBenchmarkFromFile(path, out_dir, what, debug_flags):
   if out_dir is None:
@@ -46,7 +42,9 @@ def ProcessBenchmarkFromFile(path, out_dir, what, debug_flags):
     if what in ("all", "video", "trace"):
       benchmark.ProcessTrace()
     if what in ("all", "video", "trace", "report"):
-      benchmark.GenerateReport(out_dir)
+      report = BenchmarkReport(out_dir, "report.html")
+      report.GenerateReport(benchmark.results, benchmark.trace,
+                            benchmark.screen_calibration, benchmark.video)
   finally:
     benchmark.Save(out_dir, debug_info=True, video=True)
 
