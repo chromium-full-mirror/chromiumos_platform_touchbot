@@ -24,7 +24,7 @@ class CalibratedFrameTest(TestCase):
     self.assertTrue(np.all(calibrated_frame.screen_space_foreground == False))
 
     self.assertEqual(calibrated_frame.camera_space_shape, (720, 1280))
-    self.assertEqual(calibrated_frame.screen_space_shape, (342, 586))
+    self.assertEqual(calibrated_frame.screen_space_shape, (322, 566))
 
   def testDelta(self):
     prev_frame = test_data.CalibrationBlackImage()

@@ -3,18 +3,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Main module for command line interface to optofidelity latency tests."""
+import logging
+logging.basicConfig(level=logging.WARN)
+logging.getLogger("optofidelity").setLevel(level=logging.DEBUG)
+logging.captureWarnings(True)
 
 from optparse import OptionParser
 import os
 import sys
 
+from config import config_file, state_file
 from optofidelity.benchmark import Benchmark, LEDCalibrator
 from optofidelity.detection import (MultithreadedVideoProcessor,
-                                    ScreenCalibration)
+                                    ScreenCalibration,
+                                    SinglethreadedVideoProcessor)
 from optofidelity.reporting import BenchmarkReport
 from optofidelity.system import BenchmarkSystem
-
-from config import (config_file, state_file)
 
 
 usage_string = """Benchmark usage examples:
@@ -38,7 +42,8 @@ def ProcessBenchmarkFromFile(path, out_dir, what, debug_flags):
   benchmark = Benchmark.Load(path)
   try:
     if what in ("all", "video"):
-      benchmark.ProcessVideo(debug_flags, multithreaded=len(debug_flags) == 0)
+      video_processor = SinglethreadedVideoProcessor()
+      benchmark.ProcessVideo(video_processor, debug_flags)
     if what in ("all", "video", "trace"):
       benchmark.ProcessTrace()
     if what in ("all", "video", "trace", "report"):

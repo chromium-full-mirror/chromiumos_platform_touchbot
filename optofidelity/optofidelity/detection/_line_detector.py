@@ -56,6 +56,9 @@ class LineDetector(Detector):
   MIN_SEGMENT_LENGTH = 3
   """Minimum length of a line segment."""
 
+  RESET_MIN_SEGMENT_LENGTH = 20
+  """Minimum length of a disappearing line segment to generate a line reset."""
+
   LINE_WIDTH = 8
   """Width of drawn line in rectified space pixels."""
 
@@ -94,7 +97,7 @@ class LineDetector(Detector):
     profile = _CalculateProfile(1 - calib_frame.screen_space_normalized, mask)
     if debugger:
       debugger.screen_space_canvas.DrawMask(Canvas.RED, mask)
-      debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile.array)
+      debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile)
     return profile
 
   def GenerateEvents(self, preprocessed_data, frame_index, debugger):
@@ -146,10 +149,10 @@ class LineDetector(Detector):
       # New segment draw on right side of existing line.
       new_location = new_line.end - 1
       new_slice = np.s_[self._line_obj.end:new_line.end]
-    elif self._line_obj.start - new_line.start < -self.MIN_SEGMENT_LENGTH:
+    elif self._line_obj.start - new_line.start < -self.RESET_MIN_SEGMENT_LENGTH:
       # Left side of line is disappearing. Reset.
       return Reset()
-    elif new_line.end - self._line_obj.end < -self.MIN_SEGMENT_LENGTH:
+    elif new_line.end - self._line_obj.end < -self.RESET_MIN_SEGMENT_LENGTH:
       # Right side of line is disappearing. Reset.
       return Reset()
 

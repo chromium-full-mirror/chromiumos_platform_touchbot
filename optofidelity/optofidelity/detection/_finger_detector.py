@@ -51,7 +51,7 @@ class FingerDetector(Detector):
       if debugger:
         debugger.screen_space_canvas.DrawMask(Canvas.GREEN,
                                               finger_shape.contour)
-        debugger.screen_space_canvas.DrawHLine(Canvas.GREEN, location)
+        debugger.screen_space_canvas.DrawVLine(Canvas.GREEN, int(location))
       return location
     return None
 

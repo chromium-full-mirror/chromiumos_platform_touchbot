@@ -52,7 +52,7 @@ class LineDetectorTest(DetectorTest):
     expected_events = {
         6: LineDrawEvent(time=6, location=49.0, start_time=4),
         10: LineDrawEvent(time=10, location=69.0, start_time=8),
-        12: LineDrawEvent(time=12, location=None, start_time=12),
+        13: LineDrawEvent(time=13, location=None, start_time=13),
     }
 
     # Test if series of profiles generates expected events.
