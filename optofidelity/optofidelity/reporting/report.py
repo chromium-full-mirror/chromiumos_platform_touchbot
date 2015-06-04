@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Report class implementation."""
+from contextlib import contextmanager
 import os
 import shutil
 
@@ -10,10 +11,11 @@ from safetynet import Optional, Tuple, TypecheckMeta
 import numpy as np
 import skimage.color
 
-from optofidelity.benchmark import BenchmarkResults, AggregateResults
+from optofidelity.benchmark import AggregateResults, BenchmarkResults
 from optofidelity.detection import (Event, LEDEvent, ScreenCalibration,
                                     ScreenDrawEvent, Trace)
 from optofidelity.videoproc import Canvas, SaveImage, VideoReader
+import matplotlib.pyplot as plt
 
 from ._figures import Figure
 from ._hist_figure import HistogramFigure
@@ -34,16 +36,18 @@ class Report(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, path, filename):
+  def __init__(self, path, filename, xkcd=False):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
+    :param bool xkcd: Give report more authority
     """
     self.path = path
     self.data_path = os.path.join(self.path, "report_data")
     if not os.path.exists(self.data_path):
       os.makedirs(self.data_path)
     self.html_filename = os.path.join(self.path, filename)
+    self._xkcd = xkcd
 
   def _RenderTemplate(self, filename, variables, results):
     """Generate target html file from template.
@@ -65,7 +69,8 @@ class Report(object):
       "metadata": results.metadata,
       "error": results.error,
       "data_dir": "report_data",
-      "measurement_list": results.measurement_list
+      "measurement_list": results.measurement_list,
+      "xkcd": self._xkcd
     }
     common_variables.update(variables)
 
@@ -107,6 +112,13 @@ class Report(object):
                  "js/materialize.min.js")
     _CopyResource("materialize/font", "font")
 
+  @contextmanager
+  def _XKCDMode(self):
+    if self._xkcd:
+      with plt.xkcd():
+        yield
+    else:
+      yield
 
 class BenchmarkReport(Report):
   """Generates Benchmark HTML reports
@@ -120,13 +132,13 @@ class BenchmarkReport(Report):
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
 
-  def __init__(self, path, filename):
+  def __init__(self, path, filename, xkcd=False):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
-    :type finger_delay: Tuple[float, float]
+    :param bool xkcd: Give report more authority
     """
-    super(BenchmarkReport, self).__init__(path, filename)
+    super(BenchmarkReport, self).__init__(path, filename, xkcd=xkcd)
 
   def GenerateReport(self, results, trace, screen_calibration, video):
     """ Generates a full HTML report.
@@ -150,8 +162,9 @@ class BenchmarkReport(Report):
     }
     self._RenderTemplate('benchmark.html', variables, results)
 
-    self._GenerateHistograms(results)
-    self._GenerateTraceFigures(trace, results)
+    with self._XKCDMode():
+      self._GenerateHistograms(results)
+      self._GenerateTraceFigures(trace, results)
     if video:
       self._GenerateSnapshots(results, screen_calibration, video)
     self._CopyResources()
@@ -272,7 +285,8 @@ class AggregateReport(Report):
       "repetitions": enumerate(aggregate_results.repetitions)
     }
     self._RenderTemplate('aggregate.html', variables, aggregate_results)
-    self._GenerateHistograms(aggregate_results)
+    with self._XKCDMode():
+      self._GenerateHistograms(aggregate_results)
     self._CopyResources()
 
   def _GenerateHistograms(self, aggregate_results):
@@ -297,4 +311,3 @@ class AggregateReport(Report):
       figure = HistogramFigure(460, 460, aggregate_results.ms_per_frame)
       figure.PlotAggregateHistogram(id_measurements, rep_msrmnt_lists)
       self._SaveFigure(figure, "%s_histogram" % mid)
-

@@ -49,13 +49,14 @@ Run tap test on all devices
 """
 
 
-def RunBenchmarks(match, skip_update, debug_flags, force_version, history):
+def RunBenchmarks(match, skip_update, debug_flags, force_version, history,
+                  xkcd):
   system = BenchmarkSystem(config_file)
   video_processor = MultithreadedVideoProcessor()
   runner = BenchmarkRunner(system, video_processor)
   dashboard = Dashboard(dashboard_endpoint, fake=False)
   orchestrator = Orchestrator(system, runner, dashboard, results_url,
-                              results_db_url)
+                              results_db_url, xkcd=xkcd)
 
   if os.path.exists(state_file):
     system.LoadState(state_file)
@@ -79,11 +80,14 @@ def Main():
   parser.add_option("--history",
                     dest="history", default=None,
                     help="Benchmark all versions since specified version.")
+  parser.add_option("--xkcd",
+                    dest="xkcd", default=False, action="store_true",
+                    help="Give reports more authority.")
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
   RunBenchmarks(match, not options.update, [], options.force_version,
-                options.history)
+                options.history, options.xkcd)
 
 
 if __name__ == "__main__":

@@ -38,13 +38,14 @@ class Orchestrator(object):
   """Minimum number of measurement samples before commiting to the dashboard."""
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
-               results_db_url):
+               results_db_url, xkcd=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
     :type dashboard: Dashboard
     :type results_url: str
     :type results_db_url: str
+    :param bool xkcd: Give reports more authority
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
@@ -54,6 +55,7 @@ class Orchestrator(object):
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
     self._progress = ProgressPrinter(_log)
+    self._xkcd = xkcd
 
   def RunHistoryBenchmarks(self, match, debug_flags, first_version):
     for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
@@ -215,7 +217,7 @@ class Orchestrator(object):
     :rtype Report
     """
     with GSFolder(report_url) as report_path:
-      report = BenchmarkReport(report_path, "report.html")
+      report = BenchmarkReport(report_path, "report.html", xkcd=self._xkcd)
       report.GenerateReport(benchmark.results, benchmark.trace,
                             benchmark.screen_calibration, benchmark.video)
 
@@ -226,7 +228,7 @@ class Orchestrator(object):
     :rtype Report
     """
     with GSFolder(report_url) as report_path:
-      report = AggregateReport(report_path, "report.html")
+      report = AggregateReport(report_path, "report.html", xkcd=self._xkcd)
       report.GenerateReport(aggregate_results)
 
   def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,

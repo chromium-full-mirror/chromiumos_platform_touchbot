@@ -19,9 +19,8 @@
             "reading this report!", 4000)
     });
   </script>
-
 </head>
-<body>
+<body {% if xkcd %}class="xkcd"{% endif %}>
 
   {% macro help_icon(modal_id, class="", right=False) -%}
     <a href="#help_{{ modal_id }}" class="help {{ class }}"

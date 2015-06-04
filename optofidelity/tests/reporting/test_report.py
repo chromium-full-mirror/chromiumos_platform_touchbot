@@ -34,7 +34,7 @@ class ReportTests(TestCase):
   def testTapReport(self):
     self.runReportTest("tap_basic.trace", "tap")
 
-  def runReportTest(self, filename, benchmark_type):
+  def runReportTest(self, filename, benchmark_type, xkcd=False):
     metadata = {"OS Version": "23.0", "App Version": "42.0"}
 
     fake_trace = test_data.LoadTrace(filename)
@@ -42,7 +42,7 @@ class ReportTests(TestCase):
                                               metadata)
     benchmark.trace.ApplyFingerLocationCalib(10)
     benchmark.trace.ApplyLEDCalib(-10, 10)
-    report = BenchmarkReport(self.tempdir, "report.html")
+    report = BenchmarkReport(self.tempdir, "report.html", xkcd=xkcd)
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
 
@@ -67,6 +67,9 @@ class ReportTests(TestCase):
 
     self.userVerification(report.html_filename)
     self.assertReportFilesExist(report.html_filename)
+
+  def testXKCDReport(self):
+    self.runReportTest("line_draw_basic.trace", "touch_move", xkcd=True)
 
   def assertReportFilesExist(self, filename):
     with open(filename, "r") as file:
