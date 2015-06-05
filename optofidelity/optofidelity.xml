@@ -1,7 +1,7 @@
 <optofidelity>
   <robot host="192.168.0.11" port="8000" />
   <camera host="192.168.0.4" />
-  <finger-calibration down-delay="4" up-delay="4" />
+  <finger-calibration down-delay="-4" up-delay="4" />
   <led-calibration-subject backend-name="calibration" />
 
   <subject-type type-name="clank_tablet" name="clank" margin="(30, 15)">
@@ -14,8 +14,24 @@
     <updater type="chrome" channel="beta" />
   </subject-type>
 
-  <dut name="nexus5" adb="08a9896c255d540b">
+  <dut name="nexus5" adb="08a9896c255d540b" orientation="left">
     <subject type="clank_phone" />
+  </dut>
+
+  <dut name="nexus6" adb="NP5A340401" orientation="left">
+    <subject type="clank_phone" />
+  </dut>
+
+  <dut name="nexus4" adb="04f6cafb8c976e5a" orientation="left">
+    <subject type="clank_phone" />
+  </dut>
+
+  <dut name="nexus7" adb="071c76bf" orientation="right">
+    <subject type="clank_tablet" />
+  </dut>
+
+  <dut name="nexus9" adb="HT4AEJT02069" orientation="right">
+    <subject type="clank_tablet" />
   </dut>
 
 </optofidelity>
