@@ -29,30 +29,20 @@
    </a>
   {%- endmacro %}
 
-  {% macro hist_subtitle(measurements) -%}
+  {% macro hist_subtitle(series_info, values) -%}
     <div class="card-table">
       <table>
         <tr>
           <td>
-            <strong>&mu; =</strong> {{ measurements.mean | FormatTime }}
+            <strong>&mu; =</strong> {{ "%.2f" % (values | mean)  }} {{ series_info.units }}
           </td>
           <td>
-            <strong>&mu;<sub>ds</sub> =</strong>
-            {{ measurements.draw_start_mean | FormatTime }}
-          </td>
-        </tr>
-        <tr>
-          <td>
-            <strong>&sigma; =</strong> {{ measurements.std | FormatTime }}
-          </td>
-          <td>
-            <strong>&sigma;<sub>ds</sub> =</strong>
-            {{ measurements.draw_start_std | FormatTime }}
+            <strong>&sigma; =</strong> {{ "%.2f" % (values | std) }} {{ series_info.units }}
           </td>
         </tr>
         <tr>
           <td>
-            <strong>N =</strong> {{ "%d" % (measurements | count) }}
+            <strong>N =</strong> {{ "%d" % (values | count) }}
           </td>
         </tr>
       </table>

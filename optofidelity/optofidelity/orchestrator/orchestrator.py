@@ -8,10 +8,10 @@ import logging
 import os
 
 from safetynet import List, Optional, TypecheckMeta
+import numpy as np
 
 from optofidelity.benchmark import (AggregateResults, Benchmark,
-                                    BenchmarkResults, BenchmarkRunner,
-                                    MeasurementList)
+                                    BenchmarkResults, BenchmarkRunner)
 from optofidelity.gsutil import GSFindUniqueFilename, GSFolder, GSPathExists
 from optofidelity.reporting import AggregateReport, BenchmarkReport
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
@@ -33,9 +33,6 @@ class Orchestrator(object):
 
   MAX_BENCHMARK_TRIES = 3
   """Maximum number of tries to run a benchmark before giving up."""
-
-  MIN_NUMBER_SAMPLES = 100
-  """Minimum number of measurement samples before commiting to the dashboard."""
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
                results_db_url, xkcd=False):
@@ -252,11 +249,12 @@ class Orchestrator(object):
       aggregate.AddRepetition(benchmark.results)
 
       enough_samples = True
-      generator = aggregate.measurement_list.IterByMeasurementID()
-      for mid, id_measurements in generator:
+      msrmnts = aggregate.measurements
+      for series_name, series_info in msrmnts.series_infos.iteritems():
+        series_values = msrmnts.SummarizeValues(series_name)
         self._progress.Info(benchmark.name, "Collected %d samples for %s." %
-                                             (len(id_measurements), mid))
-        if len(id_measurements) < self.MIN_NUMBER_SAMPLES:
+                                             (len(series_values), series_name))
+        if len(series_values) < series_info.min_num_samples:
           enough_samples = False
       if not enough_samples:
         self._progress.Info(benchmark.name, "Collecting more samples.")
@@ -336,11 +334,8 @@ class Orchestrator(object):
     """
     dump = lambda array: ", ".join(str(array))
 
-    if len(results.error):
-      generator = [("", MeasurementList())]
-    else:
-      generator = results.measurement_list.IterByMeasurementID()
-    for mid, id_measurements in generator:
+    for series_name in results.measurements.series_infos:
+      values = results.measurements.SummarizeValues(series_name)
       row_data = dict(
           time=time,
           uid=uid,
@@ -348,12 +343,9 @@ class Orchestrator(object):
           subject_version=subject_version,
           benchmark_type=results.benchmark_type,
           error=results.error,
-          measurement_id=mid,
-          draw_start_mean=id_measurements.draw_start_mean,
-          draw_start_std=id_measurements.draw_start_std,
-          draw_end_mean=id_measurements.mean,
-          draw_end_std=id_measurements.std,
-          draw_start_latencies=dump(id_measurements.draw_start_latencies),
-          draw_end_latencies=dump(id_measurements.latencies)
+          series_name=series_name,
+          mean=np.mean(values),
+          std=np.std(values),
+          values=dump(values)
       )
       self._results_table.insert(row_data)

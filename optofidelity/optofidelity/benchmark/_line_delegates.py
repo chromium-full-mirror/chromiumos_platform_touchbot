@@ -7,7 +7,7 @@ from optofidelity.detection import FingerEvent, LineDrawEvent
 from optofidelity.system import BenchmarkSubject
 
 from ._delegate import BenchmarkDelegate
-
+from .results import DrawEventLatencySeries
 
 class LineDrawDelegate(BenchmarkDelegate):
   """Contains the logic to perform line draw latency benchmarks."""
@@ -60,8 +60,12 @@ class LineDrawDelegate(BenchmarkDelegate):
 
     return subject.camera.ReceiveVideo()
 
-  def ProcessTrace(self, trace, results):
+  def ProcessTrace(self, trace, measurements):
+    measurements.AddSeriesInfo("LineDrawLatency", DrawEventLatencySeries)
+
     for pass_num, pass_trace in enumerate(trace.SegmentedByLineReset()):
+      series = measurements.AddSeries("LineDrawLatency", pass_num)
+
       # Find pause after first movement to calibrate the offset between
       # finger and line location.
       calib_start, calib_end = pass_trace.FindStationaryFinger()
@@ -81,12 +85,12 @@ class LineDrawDelegate(BenchmarkDelegate):
       draw_events = pass_trace.FilteredByType(LineDrawEvent)
       draw_events = [e for e in draw_events if e.location >= start_location and
                                                e.location < end_location]
+
+
       for draw_event in draw_events:
         finger_event = pass_trace.FindFingerCrossing(draw_event.location,
                                                      draw_event.time)
-        results.AddMeasurement("LineDrawLatency", finger_event, draw_event,
-                               pass_num)
-
+        series.AddMeasurement(finger_event, draw_event)
 
 class TouchMoveDelegate(LineDrawDelegate):
   """Performs line draw benchmark on the "Move" page."""
@@ -148,7 +152,9 @@ class LineDrawStartDelegate(BenchmarkDelegate):
       subject.MoveOnTestPlane(float(i), up)
     return subject.camera.ReceiveVideo()
 
-  def ProcessTrace(self, trace, results):
+  def ProcessTrace(self, trace, measurements):
+    measurements.AddSeriesInfo("ScrollStartLatency", DrawEventLatencySeries)
+    series = measurements.AddSeries("ScrollStartLatency")
     for segmented_trace in trace.SegmentedByLED():
 
       # Find first line draw start in this segment
@@ -166,7 +172,7 @@ class LineDrawStartDelegate(BenchmarkDelegate):
         break
 
       finger_moved_event = segmented_trace.Find(FingerEvent, finger_moved_time)
-      results.AddMeasurement("ScrollStartLatency", finger_moved_event, line_draw)
+      series.AddMeasurement(finger_moved_event, line_draw)
 
 
 class TouchMoveStartDelegate(LineDrawStartDelegate):

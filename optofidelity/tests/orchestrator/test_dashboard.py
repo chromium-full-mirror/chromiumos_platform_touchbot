@@ -9,17 +9,14 @@ from optofidelity.orchestrator import Dashboard
 
 from . import test_data
 
-ENDPOINT_URL = "https://chromeperf.appspot.com/add_point"
+#ENDPOINT_URL = "https://chromeperf.appspot.com/add_point"
+ENDPOINT_URL = None
 
 class DashboardTests(TestCase):
   def setUp(self):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
-
-    if ENDPOINT_URL:
-      self.dashboard = Dashboard(ENDPOINT_URL)
-    else:
-      self.dashboard = Dashboard("", fake=True)
+    self.dashboard = Dashboard(ENDPOINT_URL)
 
   def testDashboardJSON(self):
     request = self.dashboard._FormatRequest(self.benchmark.results, "1.0", 1,

@@ -7,7 +7,7 @@ import itertools
 from safetynet import Any, Dict, Optional
 import numpy as np
 
-from optofidelity.benchmark import MeasurementList
+from optofidelity.benchmark import DrawEventLatencySeries
 from optofidelity.detection import LEDEvent, ScreenDrawEvent, Trace
 
 from . import _styles
@@ -174,29 +174,31 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
                       _styles.SCREEN_DRAW_END_STYLE)
     self.UpdateAxes()
 
-  def PlotMeasurements(self, measurement_list):
+  def PlotMeasurements(self, series_list):
     """Plot measurement and latencies into all available axes.
 
-    :type measurement_list: MeasurementList
+
     """
     color_iter = iter(itertools.cycle(_styles.COLOR_ROTATION))
 
-    for m_id, id_measurements in measurement_list.IterByMeasurementID():
+    for series in series_list:
       location_pairs = []
       events_pairs = []
       latencies = []
-      for measurement in id_measurements:
-        in_ev = measurement.input_event
-        out_ev = measurement.output_event
-        if in_ev.location is not None:
-          in_coords = (in_ev.time, in_ev.location)
-          out_coords = (out_ev.time, out_ev.location)
-          location_pairs += [(in_coords, out_coords)]
-        elif in_ev.state is not None:
-          events_pairs += [((in_ev.time, 0.5), (out_ev.time, 0.5))]
-        latencies += [(out_ev.time, out_ev.time - in_ev.time)]
 
-      label = "%s Measurement" % m_id
+      if isinstance(series, DrawEventLatencySeries):
+        for measurement in series:
+          in_ev = measurement.input_event
+          out_ev = measurement.output_event
+          if in_ev.location is not None:
+            in_coords = (in_ev.time, in_ev.location)
+            out_coords = (out_ev.time, out_ev.location)
+            location_pairs += [(in_coords, out_coords)]
+          elif in_ev.state is not None:
+            events_pairs += [((in_ev.time, 0.5), (out_ev.time, 0.5))]
+          latencies += [(out_ev.time, out_ev.time - in_ev.time)]
+
+      label = "%s Measurement" % series.series_name
       color = color_iter.next()
       self.PlotLatencies(np.asarray(latencies), label, color)
       self.PlotEventsMeasurements(events_pairs, label, color)

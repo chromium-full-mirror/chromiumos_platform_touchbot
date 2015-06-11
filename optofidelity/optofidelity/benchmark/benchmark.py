@@ -20,7 +20,7 @@ from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
                               TouchMoveDelegate, TouchMoveStartDelegate)
 from ._tap_delegate import TapDelegate
-from .results import BenchmarkResults, MeasurementList
+from .results import BenchmarkResults, BenchmarkMeasurements
 
 _log = logging.getLogger("benchmark")
 _perf_log = logging.getLogger("perf")
@@ -103,7 +103,7 @@ class Benchmark(object):
     self.framerate = self.video.framerate
     self.finger_calib_delay = benchmark_system.finger_calib_delay
     self.trace = None
-    self.results.measurement_list = MeasurementList()
+    self.results.measurements = None
     return self.video
 
   def ProcessVideo(self, video_processor, debug_flags):
@@ -126,7 +126,7 @@ class Benchmark(object):
                                               debug_flags)
     self.trace.ApplyLEDCalib(*self.finger_calib_delay)
 
-    self.results.measurement_list = MeasurementList()
+    self.results.measurements = None
 
     delta_t = (time.time() - start_t)
     delta_t_per_frame = delta_t / self.video.num_frames
@@ -143,9 +143,8 @@ class Benchmark(object):
     assert self.trace is not None, "No test trace"
 
     start_t = time.time()
-    self.results.measurement_list = MeasurementList()
-    self.results.ms_per_frame = self.trace.ms_per_frame
-    self._delegate.ProcessTrace(self.trace, self.results)
+    self.results.measurements = BenchmarkMeasurements(self.trace.ms_per_frame)
+    self._delegate.ProcessTrace(self.trace, self.results.measurements)
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results
@@ -186,9 +185,8 @@ class Benchmark(object):
 
     def DumpProperty(variable_name):
       data = getattr(self, variable_name)
-      if data is not None:
-        with open(os.path.join(path, "%s.txt" % variable_name), "w") as file:
-          file.write(str(data))
+      with open(os.path.join(path, "%s.txt" % variable_name), "w") as file:
+        file.write(str(data) if data is not None else "")
     DumpProperty("trace")
     DumpProperty("results")
     DumpProperty("metadata")

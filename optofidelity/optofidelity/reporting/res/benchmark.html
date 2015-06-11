@@ -42,11 +42,11 @@
 
     <!-- Overview Histograms -->
     <div class="row">
-      {% for mid, id_measurements in measurement_list.IterByMeasurementID() %}
+      {% for series_name, series_info in measurements.series_infos.iteritems() %}
         {{ plotcard(id = "histogram",
-                    src = "%s/%s_histogram" % (data_dir, mid),
-                    title = mid,
-                    subtitle = hist_subtitle(id_measurements),
+                    src = "%s/%s_histogram" % (data_dir, series_name),
+                    title = series_name,
+                    subtitle = hist_subtitle(series_info, measurements.SummarizeValues(series_name)),
                     centered = True) }}
       {% endfor %}
     </div>
@@ -62,11 +62,11 @@
     </h2>
 
     <!-- Tabs -->
-    {% if passes|count > 1 %}
+    {% if measurements|count > 1 %}
       <div class="row">
         <div class="col s12">
           <ul class="tabs z-depth-1">
-            {% for pass_num in passes %}
+            {% for pass_num in measurements %}
               <li class="tab col">
                 <a href="#pass_{{pass_num}}">Pass {{pass_num}}</a>
               </li>
@@ -78,20 +78,20 @@
   </div>
 
   <!-- For each pass -->
-  {% for pass, pass_measurements in measurement_list.IterByPass() %}
-    {% set pass_path = "%s/pass_%d" % (data_dir, pass) %}
+  {% for pass_num, pass_msrmnts in measurements.iteritems() %}
+    {% set pass_path = "%s/pass_%d" % (data_dir, pass_num) %}
 
-    <div id="pass_{{pass}}">
+    <div id="pass_{{pass_num}}">
 
       <div class="container">
         <div class="row">
           <!-- Optional Pass Histograms -->
-          {% if passes|count > 1 %}
-            {% for mid, id_measurements in pass_measurements.IterByMeasurementID() %}
+          {% if measurements|count > 1 %}
+            {% for series in pass_msrmnts.values() %}
               {{ plotcard(id = "histogram",
-                          src = "%s_%s_histogram" % (pass_path, mid),
-                          title = mid,
-                          subtitle = hist_subtitle(id_measurements),
+                          src = "%s_%s_histogram" % (pass_path, series.series_name),
+                          title = series.series_name,
+                          subtitle = hist_subtitle(measurements.series_infos[series.series_name], series.values),
                           centered = True) }}
             {% endfor %}
           {% endif %}
@@ -99,7 +99,7 @@
           <!-- Pass Trace -->
           {{ plotcard(id = "pass_trace",
                       src = "%s_trace" % (pass_path),
-                      title = "Pass %d Measurements" % pass) }}
+                      title = "Pass %d Measurements" % pass_num) }}
         </div>
       </div>
 
@@ -122,10 +122,12 @@
         </thead>
 
         <tbody>
-          {% for msrmnt in pass_measurements %}
+          {% for series in pass_msrmnts.values() %}
+          {% for msrmnt in series %}
+            {% if series.type_name == "DrawEventLatencySeries" %}
             <tr>
               <!-- Heading -->
-              <th>#{{msrmnt.measurement_number}}: {{msrmnt.measurement_id}}</th>
+              <th>{{series.series_name}} #{{loop.index}}</th>
 
               {% macro detail(src, time, delta, type) %}
               <td>
@@ -149,26 +151,28 @@
               {% endmacro %}
 
               <!-- Input Event -->
-              {{ detail("%s/%d_input" % (data_dir, msrmnt.measurement_number),
+              {{ detail("%s/%d_%d_input" % (data_dir, pass_num, loop.index - 1),
                         msrmnt.input_event.uncalib_time,
                         msrmnt.input_event.time - msrmnt.input_event.uncalib_time,
                         msrmnt.input_event.EVENT_TYPE_NAME) }}
 
               <!-- Optional Output Start Draw Event -->
               {% if msrmnt.output_event.start_time %}
-              {{ detail("%s/%d_output_start" % (data_dir, msrmnt.measurement_number),
+              {{ detail("%s/%d_%d_output_start" % (data_dir, pass_num, loop.index - 1),
                         msrmnt.output_event.start_time,
                         msrmnt.output_event.start_time - msrmnt.input_event.time,
                         msrmnt.output_event.EVENT_TYPE_NAME) }}
               {% endif %}
 
               <!-- Output Event -->
-              {{ detail("%s/%d_output" % (data_dir, msrmnt.measurement_number),
+              {{ detail("%s/%d_%d_output" % (data_dir, pass_num, loop.index - 1),
                         msrmnt.output_event.time,
                         msrmnt.output_event.time - msrmnt.input_event.time,
                         msrmnt.output_event.EVENT_TYPE_NAME) }}
 
             </tr>
+            {% endif %}
+          {% endfor %}
           {% endfor %}
         </tbody>
       </table>

@@ -6,141 +6,211 @@
 Includes definition of MeasurementList, which is a list of Measurement
 instances.
 """
-from collections import defaultdict
+from abc import abstractmethod, abstractproperty
+from collections import defaultdict, namedtuple
+import itertools
 
-from safetynet import Optional, TypecheckMeta
+from safetynet import Optional, TypecheckMeta, List
 import numpy as np
 
 from optofidelity.detection import Event
 
 
-class Measurement(object):
+MeasurementSeriesInfo = namedtuple("MeasurementSeriesInfo",
+    ("series_name", "series_type", "units", "min_num_samples"))
+
+class MeasurementSeries(list):
+  """A series of measurements made in a single pass.
+
+  This is an abstract class which leaves it to the subclass to define the
+  type of items in this list. However the subclass has to define the values
+  property to return floating point values as results.
+  """
+  DEFAULT_UNITS = "ms"
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, pass_num, measurement_id, measurement_number,
-               input_event, output_event):
-    """A single measurement from an input event to an output event.
-
-    :param int pass_num: Number of the measurement pass. (i.e. some
-           benchmarks do a left to right, then right to left pass.)
-    :param str measurement_id: Identifier of the type of measurement.
-    :param int measurement_number: Each measurement has an incrementing number
-           assigned to it to identify it.
-    :param Event input_event: Input event at which the measurement starts.
-    :param Event output_event: Output event at which the measurement ends.
-    """
+  def __init__(self, series_name, pass_num, ms_per_frame):
+    self.series_name = series_name
     self.pass_num = pass_num
-    self.measurement_id = measurement_id
-    self.measurement_number = measurement_number
-    self.input_event = input_event
-    self.output_event = output_event
+    self.type_name = type(self).__name__
+    self.ms_per_frame = ms_per_frame
 
   def __str__(self):
-    args = (self.measurement_id, self.measurement_number, self.pass_num,
-            self.input_event, self.output_event)
-    return "(%s #%2d pass=%s, in=%s, out=%s)" % args
+    return "%s (Pass #%d): %s" % (self.series_name, self.pass_num, self.values)
 
-  def __repr__(self):
-    return str(self)
+  @abstractproperty
+  def begin_time(self):
+    """:returns int: time at which the first measurement starts."""
 
-class MeasurementList(list):
-  """Collection to store a list of measurement.
+  @abstractproperty
+  def end_time(self):
+    """:returns int: time at which the last measurement ends."""
 
-  While being a standard python list of Measurement object, this list type
-  allows measurements specific information to be extracted and provides
-  helper methods to iterate over measurements grouped by certain fields.
+  @abstractproperty
+  def values(self):
+    """:returns List[float]: values of this series of measurements"""
+
+DrawEventLatencyMeasurement = namedtuple("DrawEventLatencyMeasurement",
+                                         ("input_event", "output_event"))
+
+class DrawEventLatencySeries(MeasurementSeries):
+  """A series that measures the latency between an input and a draw event."""
+
+  def AddMeasurement(self, input_event, output_event):
+    """
+    :type input_event: Event
+    :type outout_event: Event
+    """
+    self.append(DrawEventLatencyMeasurement(input_event, output_event))
+
+  @property
+  def begin_time(self):
+    return min(m.input_event.time for m in self)
+
+  @property
+  def end_time(self):
+    return max(m.output_event.time for m in self)
+
+  @property
+  def values(self):
+    return [float(m.output_event.time - m.input_event.time)  * self.ms_per_frame
+            for m in self]
+
+
+class PassMeasurements(dict):
+  """A dictionary of MeasurementSeries made in a single pass.
+
+  This dictionary maps the series name to the instance of that series.
   """
+
   @property
   def begin_time(self):
     """:returns int: time at which the first measurement starts."""
-    return min([m.input_event.time for m in self])
+    return min([s.begin_time for s in self.itervalues()])
 
   @property
   def end_time(self):
     """:returns int: time at which the last measurement ends."""
-    return max([m.output_event.time for m in self])
+    return max([s.end_time for s in self.itervalues()])
 
-  @property
-  def latencies(self):
-    """:returns np.ndarray: array of latencies between input and output"""
-    return np.asarray([m.output_event.time - m.input_event.time
-                       for m in self])
 
-  @property
-  def has_draw_start(self):
-    """:returns bool: True if all output events have a draw start time."""
-    return np.all([m.output_event.start_time is not None for m in self])
+class BenchmarkMeasurements(defaultdict):
+  """A dictionary of all MeasurementSeries made in one benchmark.
 
-  @property
-  def draw_start_latencies(self):
-    """:returns np.ndarray: array of latencies between input and the draw start
-                of output"""
-    return np.asarray([m.output_event.start_time - m.input_event.time
-                       for m in self])
+  The dictionary maps a pass number to a PassMeasurements instance, which
+  contains the MeasurementSeries made in the benchmark.
+  """
+  __metaclass__ = TypecheckMeta
 
-  @property
-  def mean(self):
-    """:returns float: average latency"""
-    return np.mean(self.latencies)
+  DEFAULT_MIN_NUM_SAMPLES = 100
 
-  @property
-  def draw_start_mean(self):
-    """:returns float: average latency when measured to the draw start time."""
-    return np.mean(self.draw_start_latencies)
-
-  @property
-  def std(self):
-    """:returns float: standard deviation of latency"""
-    return np.std(self.latencies)
-
-  @property
-  def draw_start_std(self):
-    """:returns float: standard deviation of latency when measured to the draw
-                start time."""
-    return np.std(self.draw_start_latencies)
-
-  @property
-  def event_types(self):
-    """:returns List[type]: List of types of events that appear in
-                the measurements."""
-    types = []
-    for measurement in self:
-      types.append(type(measurement.input_event))
-      types.append(type(measurement.output_event))
-    return set(types)
-
-  def IterByMeasurementID(self):
-    """Iterate over measurements grouped by measurement id.
-
-    Yields tuples of a measurement id and a MeasurementList containing the
-    measurements with that id.
-
-    :returns Iterable[Tuple[str, MeasurementList]]
+  def __new__(cls, ms_per_frame=None):
     """
-    return self._IterBy(lambda m: m.measurement_id)
-
-  def ByMeasurementID(self):
-    """Dict of measurements grouped by measurement id.
-
-    :returns Dict[str, MeasurementList]
     """
-    return dict(self.IterByMeasurementID())
+    self = super(BenchmarkMeasurements, cls).__new__(cls)
+    self.series_infos = dict()
+    self.ms_per_frame = ms_per_frame or 3.33
+    return self
 
-  def IterByPass(self):
-    """Iterate over measurements grouped by pass name.
+  def __init__(self, *args, **kwargs):
+    super(BenchmarkMeasurements, self).__init__(PassMeasurements)
 
-    Yields tuples of a pass name and a MeasurementList containing the
-    measurements in that pass.
+  def AddSeriesInfo(self, series_name, series_type, units=None,
+                    min_num_samples=None):
+    """Register a new type of MeasurementSeries.
 
-    :returns Iterable[Tuple[int, MeasurementList]]
+    This method has to be called before calling AddSeries with that series_name.
+
+    :param str series_name: Name of the measurement series
+    :param type series_type: Type of the series (subclass of MeasurementSeries)
+    :param Optional[str] unit: Optional unit for display purposes.
+    :param int min_num_samples: Minimum number of samples to collect.
     """
-    return self._IterBy(lambda m: m.pass_num)
+    if units is None:
+      units = series_type.DEFAULT_UNITS
+    self.series_infos[series_name] = MeasurementSeriesInfo(series_name,
+        series_type, units, min_num_samples or self.DEFAULT_MIN_NUM_SAMPLES)
 
-  def _IterBy(self, key):
-    res = defaultdict(MeasurementList)
-    for measurement in self:
-      res[key(measurement)].append(measurement)
-    return res.iteritems()
+  def AddSeries(self, series_name, pass_num=0):
+    """Add an empty new series to include measurements.
+
+    :param str series_name: Name of the measurement series as previously
+           registered with AddSeriesInfo
+    :param Optional[int]: Pass number for this series.
+    :returns MeasurementSeries: An instance of series_type for this series_name.
+    """
+    series_info = self.series_infos[series_name]
+    series = series_info.series_type(series_name, pass_num, self.ms_per_frame)
+    self[pass_num][series_name] = series
+    return series
+
+  def SummarizeValues(self, series_name):
+    """Collects all MeasurementSeries.values for the specified series_name.
+
+    This summarizes the values from multiple passes.
+
+    :param str series_name: Name of the measurement series.
+    :returns List[float]: List of values.
+    """
+    series_list = (pass_msrmnts.get(series_name)
+                   for pass_msrmnts in self.values()
+                   if series_name in pass_msrmnts)
+    return [value for series in series_list
+                  for value in series.values]
+
+  def __str__(self):
+    lines = []
+    def add_line(indent, fmt, *params):
+      lines.append("  " * indent + (fmt % params))
+    add_line(1, "Benchmark Measurements:")
+    for pass_num, pass_msrmnts in self.iteritems():
+      add_line(2, "Pass %d:", pass_num)
+      for series in pass_msrmnts.itervalues():
+        add_line(3, "%s: %s", series.series_name, str(series.values))
+    return "\n".join(lines)
+
+class AggregateMeasurements(defaultdict):
+  """A dictionary of measurements from multiple benchmarks"""
+  __metaclass__ = TypecheckMeta
+
+  def __init__(self, type=None):
+    """
+    :param child_type: ignored. Necessary since during unpickling the
+           defaultdict child type is provided as a parameter.
+    """
+    super(AggregateMeasurements, self).__init__(BenchmarkMeasurements)
+
+  @property
+  def series_infos(self):
+    """Aggregated series_infos from all BenchmarkMeasurements."""
+    return dict((k, v) for benchmark_msrmnts in self.itervalues()
+                       for k, v in benchmark_msrmnts.series_infos.iteritems())
+
+  def SummarizeValues(self, series_name):
+    """Collects all MeasurementSeries.values for the specified series_name.
+
+    This summarizes the values from multiple benchmarks and passes.
+
+    :param str series_name: Name of the measurement series.
+    :returns List[float]: List of values.
+    """
+    return [value for benchmark_msrmnts in self.itervalues()
+                  for value in benchmark_msrmnts.SummarizeValues(series_name)]
+
+  def __str__(self):
+    lines = []
+    def add_line(indent, fmt, *params):
+      lines.append("  " * indent + (fmt % params))
+    add_line(1, "Aggregate Measurements:")
+    for series_name in self.series_infos:
+      add_line(2, "%s: %s", series_name, self.SummarizeValues(series_name))
+    return "\n".join(lines)
+
+class Measurement(object):
+  """For backwards compability to older pickle files."""
+
+class MeasurementList(list):
+  """For backwards compability to older pickle files."""
 
 
 class BenchmarkResults(object):
@@ -150,37 +220,18 @@ class BenchmarkResults(object):
   An optional error string describing why the measurement might have failed and
   a list of calibration measurements.
   """
+  __metaclass__ = TypecheckMeta
+
   def __init__(self, subject_name, benchmark_type, metadata):
     self.subject_name = subject_name
     self.benchmark_type = benchmark_type
     self.metadata = metadata
-    self.measurement_list = MeasurementList()
-    self.ms_per_frame = None
+
     self.uid = ""
     self.report_url = ""
     self.error = ""
     self._counter = 0
-
-  def InMS(self, frame_index):
-    """:returns float: timestamp in milliseconds of the specified frame index.
-    """
-    return frame_index * self.ms_per_frame
-
-  def AddMeasurement(self, measurement_id, input_event, output_event,
-                     pass_num=0):
-    """Add a measurement to the results.
-
-    :param str measurement_id: identifier of the type of measurement.
-    :param Event input_event: Event at which the measurement starts.
-    :param Event output_event: Event at which the measurement ends.
-    :param int pass_num: Measurements can be made in multiple passes,
-           this field identifies which pass the measurement belongs to.
-    """
-    measurement_number = self._counter
-    self._counter += 1
-    measurement = Measurement(pass_num, measurement_id, measurement_number,
-                              input_event, output_event)
-    self.measurement_list.append(measurement)
+    self.measurements = None
 
   def AddCalibration(self, input_event, output_event, pass_num=0):
     """Add a calibration measurement to the results.
@@ -195,6 +246,22 @@ class BenchmarkResults(object):
     self.__init__(state.get("subject_name", ""),
                   state.get("benchmark_type", ""),
                   state.get("metadata", {}))
+    old_list = state.get("measurement_list", None)
+    if old_list:
+      self.measurements = BenchmarkMeasurements(state.get("ms_per_frame"))
+      for item in old_list:
+        series_name = item.measurement_id
+        pass_num = item.pass_num
+
+        if series_name not in self.measurements.series_infos:
+          self.measurements.AddSeriesInfo(series_name,
+                                          DrawEventLatencySeries)
+
+        if series_name not in self.measurements[pass_num]:
+          self.measurements.AddSeries(series_name, pass_num)
+
+        series = self.measurements[pass_num][series_name]
+        series.AddMeasurement(item.input_event, item.output_event)
     self.__dict__.update(state)
 
   def __str__(self):
@@ -211,19 +278,12 @@ class BenchmarkResults(object):
     for key, value in self.metadata.iteritems():
       add_line(2, "%s: %s", key, value)
 
-    add_field("ms_per_frame")
     add_field("uid")
     add_field("report_url")
     add_field("error")
 
-    add_line(1, "Measurements:")
-    for pass_num, pass_measurements in self.measurement_list.IterByPass():
-      add_line(2, "Pass %d:", pass_num)
-      for id, measurements in pass_measurements.IterByMeasurementID():
-        add_line(3, "%s: %s", id, str(measurements.latencies))
-        if measurements.has_draw_start:
-          start_latency_list = str(measurements.draw_start_latencies)
-          add_line(3, "%s(start): %s", id, start_latency_list)
+    if self.measurements:
+      lines.append(str(self.measurements))
     return "\n".join(lines)
 
 
@@ -232,9 +292,8 @@ class AggregateResults(BenchmarkResults):
     super(AggregateResults, self).__init__(subject_name, benchmark_type,
                                            metadata)
     self.repetitions = []
+    self.measurements = AggregateMeasurements()
 
   def AddRepetition(self, results):
-    self.ms_per_frame = results.ms_per_frame
     self.repetitions.append(results)
-    self.measurement_list = MeasurementList([m for rep in self.repetitions
-                                               for m in rep.measurement_list])
+    self.measurements[len(self.repetitions) - 1] = results.measurements

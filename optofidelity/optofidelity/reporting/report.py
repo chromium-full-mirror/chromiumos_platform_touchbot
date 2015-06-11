@@ -6,19 +6,20 @@ from contextlib import contextmanager
 import os
 import shutil
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from safetynet import Optional, Tuple, TypecheckMeta
 import numpy as np
 import skimage.color
 
-from optofidelity.benchmark import AggregateResults, BenchmarkResults
+from optofidelity.benchmark import (AggregateResults, BenchmarkResults,
+                                    DrawEventLatencySeries)
 from optofidelity.detection import (Event, LEDEvent, ScreenCalibration,
                                     ScreenDrawEvent, Trace)
 from optofidelity.videoproc import Canvas, SaveImage, VideoReader
 import matplotlib.pyplot as plt
 
 from ._figures import Figure
-from ._hist_figure import HistogramFigure
+from ._hist_figure import LatencyHistogramFigure, HistogramFigure
 from ._trace_figures import (EventsMeasurementsFigure,
                              LocationMeasurementsFigure, TraceOverviewFigure)
 
@@ -57,10 +58,13 @@ class Report(object):
     :type results: BenchmarkResults
     """
     def FormatTime(frame_index):
-      return "%.2f ms" % results.InMS(frame_index)
+      return "%.2f ms" % (frame_index * results.measurements.ms_per_frame)
 
-    env = Environment(loader=FileSystemLoader(_res_dir))
+    env = Environment(loader=FileSystemLoader(_res_dir),
+                      undefined=StrictUndefined)
     env.filters['FormatTime'] = FormatTime
+    env.filters['mean'] = np.mean
+    env.filters['std'] = np.std
     template = env.get_template(filename)
 
     common_variables = {
@@ -69,7 +73,6 @@ class Report(object):
       "metadata": results.metadata,
       "error": results.error,
       "data_dir": "report_data",
-      "measurement_list": results.measurement_list,
       "xkcd": self._xkcd
     }
     common_variables.update(variables)
@@ -157,7 +160,7 @@ class BenchmarkReport(Report):
       ("Video", "video.avi"),
     ]
     variables = {
-      "passes": [p for p, m in results.measurement_list.IterByPass()],
+      "measurements": results.measurements,
       "link_list": link_list
     }
     self._RenderTemplate('benchmark.html', variables, results)
@@ -174,16 +177,24 @@ class BenchmarkReport(Report):
 
     :type results: BenchmarkResults
     """
-    msrmnt_list = results.measurement_list
-    for mid, id_measurements in msrmnt_list.IterByMeasurementID():
-      figure = HistogramFigure(460, 460, results.ms_per_frame)
-      figure.PlotOverviewHistogram(id_measurements)
-      self._SaveFigure(figure, "%s_histogram" % mid)
+    msrmnts = results.measurements
+    for series_name, series_info in msrmnts.series_infos.iteritems():
+      pass_values = dict((pass_num, pass_msrmnts[series_name].values)
+                         for pass_num, pass_msrmnts in msrmnts.iteritems())
+      if series_info.units == "ms":
+        figure = LatencyHistogramFigure(460, 460)
+        figure.PlotOverviewHistogram(pass_values, "Pass")
+      elif series_info.units == "%":
+        figure = HistogramFigure(460, 460, "%", 0, 1)
+        figure.PlotOverviewHistogram(pass_values, "Pass")
+      self._SaveFigure(figure, "%s_histogram" % series_name)
 
-      for pass_num, pass_measurements in id_measurements.IterByPass():
-        figure = HistogramFigure(460, 460, results.ms_per_frame)
-        figure.PlotOverviewHistogram(pass_measurements)
-        self._SaveFigure(figure, "pass_%d_%s_histogram" % (pass_num, mid))
+      for pass_num, pass_msrmnts in msrmnts.iteritems():
+        series = pass_msrmnts[series_name]
+        figure = LatencyHistogramFigure(460, 460)
+        figure.PlotPassHistogram(series.pass_num, series.values)
+        filename = "pass_%d_%s_histogram" % (pass_num, series_name)
+        self._SaveFigure(figure, filename)
 
   def _GenerateTraceFigures(self, trace, results):
     """Generate trace figures.
@@ -193,21 +204,23 @@ class BenchmarkReport(Report):
     :type results: BenchmarkResults
     :type trace: Trace
     """
-    overview_figure = TraceOverviewFigure(980, 320, 140, results.ms_per_frame)
+    ms_per_frame = results.measurements.ms_per_frame
+    overview_figure = TraceOverviewFigure(980, 320, 140, ms_per_frame)
     overview_figure.PlotTrace(trace)
 
-    for pass_num, pass_measurements in results.measurement_list.IterByPass():
-      overview_figure.AddRangeMarker("Pass %d" % pass_num,
-                                     pass_measurements.begin_time,
-                                     pass_measurements.end_time)
-      event_types = pass_measurements.event_types
-      if LEDEvent in event_types or ScreenDrawEvent in event_types:
-        figure = EventsMeasurementsFigure(980, 140, 140, results.ms_per_frame)
+    msrmnts = results.measurements
+    for pass_num, pass_msrmnts in msrmnts.iteritems():
+      begin_time, end_time = pass_msrmnts.begin_time, pass_msrmnts.end_time
+      overview_figure.AddRangeMarker("Pass %d" % pass_num, begin_time, end_time)
+
+      if trace.HasEventTypes(LEDEvent) or trace.HasEventTypes(ScreenDrawEvent):
+        figure = EventsMeasurementsFigure(980, 140, 140, ms_per_frame)
       else:
-        figure = LocationMeasurementsFigure(980, 320, 140, results.ms_per_frame)
+        figure = LocationMeasurementsFigure(980, 320, 140, ms_per_frame)
+
       figure.PlotTrace(trace)
-      figure.PlotMeasurements(pass_measurements)
-      figure.SetLimits(pass_measurements.begin_time, pass_measurements.end_time)
+      figure.PlotMeasurements(pass_msrmnts.values())
+      figure.SetLimits(begin_time, end_time)
       self._SaveFigure(figure, "pass_%d_trace" % pass_num)
     self._SaveFigure(overview_figure, "trace_overview")
 
@@ -224,20 +237,26 @@ class BenchmarkReport(Report):
     :type screen_calibration: Optional[ScreenCalibration]
     :type video: VideoReader
     """
-    for msrmnt in results.measurement_list:
-      def SaveFrames(basename, event, time):
-        path = os.path.join(self.data_path, basename)
-        self._SaveFrame(path + "_prev.png", time - 1, event, screen_calibration,
-                        video)
-        self._SaveFrame(path + ".png", time, event, screen_calibration, video)
+    msrmnts = results.measurements
+    all_series = (series for pass_msrmnts in msrmnts.values()
+                         for series in pass_msrmnts.values())
+    for series in all_series:
+      if not isinstance(series, DrawEventLatencySeries):
+        continue
+      for i, msrmnt in enumerate(series):
+        def SaveFrames(basename, event, time):
+          path = os.path.join(self.data_path, basename)
+          self._SaveFrame(path + "_prev.png", time - 1, event, screen_calibration,
+                          video)
+          self._SaveFrame(path + ".png", time, event, screen_calibration, video)
 
-      basename = "%d" % msrmnt.measurement_number
-      SaveFrames("%s_input" % basename, msrmnt.input_event,
-                msrmnt.input_event.uncalib_time)
-      SaveFrames("%s_output_start" % basename, msrmnt.output_event,
-                msrmnt.output_event.start_time)
-      SaveFrames("%s_output" % basename, msrmnt.output_event,
-                msrmnt.output_event.time)
+        basename = "%d_%d" % (series.pass_num, i)
+        SaveFrames("%s_input" % basename, msrmnt.input_event,
+                   msrmnt.input_event.uncalib_time)
+        SaveFrames("%s_output_start" % basename, msrmnt.output_event,
+                   msrmnt.output_event.start_time)
+        SaveFrames("%s_output" % basename, msrmnt.output_event,
+                   msrmnt.output_event.time)
 
   def _SaveFrame(self, filename, time, event, screen_calibration, video):
     """Loads frame from video and saves it after processing.
@@ -282,7 +301,8 @@ class AggregateReport(Report):
     :type aggregate_results: AggregateResults
     """
     variables = {
-      "repetitions": enumerate(aggregate_results.repetitions)
+      "measurements": aggregate_results.measurements,
+      "repetitions": aggregate_results.repetitions,
     }
     self._RenderTemplate('aggregate.html', variables, aggregate_results)
     with self._XKCDMode():
@@ -294,20 +314,19 @@ class AggregateReport(Report):
 
     :type aggregate_results: AggregateResults
     """
-    msrmnt_list = aggregate_results.measurement_list
-    for mid, id_measurements in msrmnt_list.IterByMeasurementID():
-      rep_msrmnt_lists = []
+    msrmnts = aggregate_results.measurements
+    for series_name in msrmnts.series_infos:
 
-      for i, rep_results in enumerate(aggregate_results.repetitions):
-        rep_msrmnts = rep_results.measurement_list.ByMeasurementID()[mid]
-        rep_msrmnt_lists.append(rep_msrmnts)
+      for rep_num, rep_msrmnts in msrmnts.iteritems():
+        figure = LatencyHistogramFigure(460, 460)
+        primary_plot = np.asarray(rep_msrmnts.SummarizeValues(series_name))
+        figure.PlotPrimary(primary_plot, "Repetition #%02d" % rep_num,
+                           figure.GetRotationColor(rep_num))
+        self._SaveFigure(figure, "rep%02d_%s_histogram" % (rep_num, series_name))
 
-        figure = HistogramFigure(460, 460, aggregate_results.ms_per_frame)
-        figure.PlotPrimary(rep_msrmnts.latencies,
-                           rep_msrmnts.draw_start_latencies,
-                           "Repetition #%02d" % i, figure.GetRotationColor(i))
-        self._SaveFigure(figure, "rep%02d_%s_histogram" % (i, mid))
+      rep_values = dict((rep_num, rep_msrmnts.SummarizeValues(series_name))
+                        for rep_num, rep_msrmnts in msrmnts.iteritems())
 
-      figure = HistogramFigure(460, 460, aggregate_results.ms_per_frame)
-      figure.PlotAggregateHistogram(id_measurements, rep_msrmnt_lists)
-      self._SaveFigure(figure, "%s_histogram" % mid)
+      figure = LatencyHistogramFigure(460, 460)
+      figure.PlotOverviewHistogram(rep_values, "Repetition")
+      self._SaveFigure(figure, "%s_histogram" % series_name)

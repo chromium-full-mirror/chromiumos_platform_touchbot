@@ -55,5 +55,7 @@ class BenchmarkRunnerTests(TestCase):
 
   def assertBenchmarkComplete(self, benchmark):
     num_taps = 4
+    msrmnts = benchmark.results.measurements
     self.assertEqual(len(benchmark.trace), num_taps * 4)
-    self.assertEqual(len(benchmark.results.measurement_list), num_taps * 2)
+    self.assertEqual(len(msrmnts[0]["DownLatency"]), num_taps)
+    self.assertEqual(len(msrmnts[0]["UpLatency"]), num_taps)

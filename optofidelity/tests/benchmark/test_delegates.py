@@ -17,7 +17,7 @@ from optofidelity.benchmark._line_delegates import (ScrollDelegate,
                                                     TouchMoveDelegate,
                                                     TouchMoveStartDelegate)
 from optofidelity.benchmark._tap_delegate import TapDelegate
-from optofidelity.benchmark.results import BenchmarkResults
+from optofidelity.benchmark.results import BenchmarkMeasurements, BenchmarkResults
 from optofidelity.system import BenchmarkSystem
 from optofidelity.system.fake import FakeBenchmarkSystem
 
@@ -59,22 +59,27 @@ class AbstractDelegateTests(unittest.TestCase):
     trace_path = test_data.Path(trace_file)
     trace = pickle.load(open(trace_path, "r"))
 
-    results = BenchmarkResults("", "", {})
-    delegate.ProcessTrace(trace, results)
+    measurements = BenchmarkMeasurements()
+    delegate.ProcessTrace(trace, measurements)
     print "Trace file:", trace_file
-    print "Calculated Latencies:", results.measurement_list.latencies
-    print "Expected Latencies:", expected_latencies
-    self.assertTrue(np.allclose(results.measurement_list.latencies,
-                                expected_latencies))
 
+    for series_name in measurements.series_infos:
+      latencies = measurements.SummarizeValues(series_name)
+      print "Measurement", series_name
+      print "Calculated Latencies:", latencies
+      print "Expected Latencies:", expected_latencies[series_name]
+      self.assertTrue(np.allclose(latencies, expected_latencies[series_name]))
 
 class LineDrawDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
-    "line_draw_basic.trace":
-        [37, 37, 45, 44, 42, 46, 48, 48, 50, 48,
-         42, 48, 46, 43, 44, 43, 43, 39, 44],
-    "line_draw_incomplete.trace":
-        [29, 28, 28, 29, 29, 30, 31, 35, 35, 35, 40, 40, 45, 44, 46, 47]
+    "line_draw_basic.trace": {
+      "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48,
+                                     42, 48, 46, 43, 44, 43, 43, 39, 44]) * 3.33
+    },
+    "line_draw_incomplete.trace": {
+      "LineDrawLatency": np.asarray([29, 28, 28, 29, 29, 30, 31, 35, 35,
+                                     35, 40, 40, 45, 44, 46, 47]) * 3.33
+    },
   }
 
   def testExecuteOnSubject(self):
@@ -103,8 +108,14 @@ class LineDrawStartDelegateTests(AbstractDelegateTests):
 
 class TapDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
-    "tap_unfinished.trace": [31, 31, 28, 29, 31, 26, 28],
-    "tap_basic.trace": [31, 32, 28, 30, 31, 27, 28, 25]
+    "tap_unfinished.trace": {
+      "DownLatency": np.asarray([31, 28, 31, 28]) * 3.33,
+      "UpLatency": np.asarray([31, 29, 26]) * 3.33
+    },
+    "tap_basic.trace": {
+      "DownLatency": np.asarray([31, 28, 31, 28]) * 3.33,
+      "UpLatency": np.asarray([32, 30, 27, 25]) * 3.33
+    }
   }
 
   def testExecuteOnSubject(self):
@@ -114,3 +125,32 @@ class TapDelegateTests(AbstractDelegateTests):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
       delegate = TapDelegate()
       self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
+
+class TestResultsCompability(unittest.TestCase):
+  def generateResults(self):
+    trace_path = test_data.Path("line_draw_basic.trace")
+    trace = pickle.load(open(trace_path, "r"))
+
+    results = BenchmarkResults("", "", {})
+    results.measurements = BenchmarkMeasurements(3.33)
+    delegate = ScrollDelegate()
+    delegate.ProcessTrace(trace, results.measurements)
+    return results
+
+  def testLoading(self):
+    results = self.generateResults()
+
+    file_obj = open(test_data.Path("line_draw_basic.results"), "r")
+    loaded_results = pickle.load(file_obj)
+    loaded_msrmnts = loaded_results.measurements
+    self.assertEqual(results.measurements.SummarizeValues("LineDrawLatency"),
+                     loaded_msrmnts.SummarizeValues("LineDrawLatency"))
+
+  def testSaveAndLoad(self):
+    results = self.generateResults()
+    pickled = pickle.dumps(results)
+    loaded_results = pickle.loads(pickled)
+
+    loaded_msrmnts = loaded_results.measurements
+    self.assertEqual(results.measurements.SummarizeValues("LineDrawLatency"),
+                     loaded_msrmnts.SummarizeValues("LineDrawLatency"))

@@ -7,7 +7,7 @@ import os
 import shutil
 import tempfile
 
-from optofidelity.benchmark import Benchmark
+from optofidelity.benchmark import Benchmark, BenchmarkMeasurements
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.orchestrator import Orchestrator, Dashboard
 
@@ -23,11 +23,11 @@ class OrchestratorTests(TestCase):
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
-    dashboard = Dashboard("", fake=True)
+    dashboard = Dashboard(None)
     db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
                                 dashboard, self.tempdir, db_url)
-    orchestrator.MIN_NUMBER_SAMPLES = 0
+    BenchmarkMeasurements.DEFAULT_MIN_NUM_SAMPLES = 0
     return orchestrator
 
   def tearDown(self):
@@ -49,7 +49,7 @@ class OrchestratorTests(TestCase):
 
   def testMinSamples(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.MIN_NUMBER_SAMPLES = 20
+    BenchmarkMeasurements.DEFAULT_MIN_NUM_SAMPLES = 20
     orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())
     # Should repeat test 5 times, with 2 measurement id's each
@@ -76,7 +76,7 @@ class OrchestratorTests(TestCase):
     orchestrator = self.createOrchestrator()
     orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())
-    self.assertEqual(len(results), 3)
+    self.assertEqual(len(results), 6)
     for result in results:
       self.assertEqual(result["error"], "Error Message")
 

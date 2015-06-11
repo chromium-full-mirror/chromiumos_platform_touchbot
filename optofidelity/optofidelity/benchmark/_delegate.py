@@ -11,7 +11,7 @@ from optofidelity.detection import Trace, VideoProcessor
 from optofidelity.system import BenchmarkSubject
 from optofidelity.videoproc import VideoReader
 
-from .results import BenchmarkResults
+from .results import BenchmarkMeasurements
 
 
 class BenchmarkDelegate(object):
@@ -43,12 +43,11 @@ class BenchmarkDelegate(object):
     """
 
   @abstractmethod
-  def ProcessTrace(self, trace, results):
+  def ProcessTrace(self, trace, measurements):
     """Process the trace and put measurements into the results object
 
     The trace is generated from the video returned by ExecuteTest. This
-    method calculates the measurements from the trace and passes them into
-    results.AddMeasurement()
+    method calculates the measurements from the trace.
     :param Trace trace
-    :param BenchmarkResults results
+    :param BenchmarkMeasurements measurements
     """

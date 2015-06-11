@@ -1,107 +1,86 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-from safetynet import Any, Dict, Optional
+import itertools
+
+from safetynet import Any, Dict, List, Optional
 import numpy as np
 
-from optofidelity.benchmark import MeasurementList, AggregateResults
 import matplotlib.mlab as mlab
 
 from . import _styles
 from ._figures import SingleAxesFigure
 
+def MergeLists(list_of_lists):
+  return np.fromiter(itertools.chain(*list_of_lists), np.float)
 
 class HistogramFigure(SingleAxesFigure):
-  """Figure showing multiple latency histograms."""
-
-  def __init__(self, width, height, ms_per_frame):
+  def __init__(self, width, height, unit_label, x_min, x_max):
     """Create empty histogram figure.
 
     :param int width: Width of image in pixels.
     :param int height: Height of image in pixels.
     :param float ms_per_frame: Milliseconds per camera frame ratio
     """
-    super(HistogramFigure, self).__init__(width, height, "Latency [ms]",
+    super(HistogramFigure, self).__init__(width, height, unit_label,
         "Relative Frequency")
-    self.ms_per_frame = ms_per_frame
-    self.axes.set_xlim(_styles.MIN_LATENCY, _styles.MAX_LATENCY)
+    self.axes.set_xlim(x_min, x_max)
     self.axes.set_ylim(0, _styles.MAX_REL_FREQ)
+    self.x_min = x_min
+    self.x_max = x_max
 
-  def PlotPassHistogram(self, pass_num, measurement_list):
-    """Plot histogram of latencies in a single pass.
+  def PlotPassHistogram(self, pass_num, value_list):
+    """Plot histogram of values in a single pass.
 
-    Plots all latencies in measurement_list. The color of the plot
-    is selected based on pass_num and identical to the one used in the
-    overview histogram.
-
-    :param int pass_num: pass number of measurements in measurement_list.
-    :param MeasurementList measurement_list: measurements made during that pass.
+    :param int pass_num: Pass number of measurement
+    :param List[float] value_list: List of measurement values
     """
     label = "Pass %d" % pass_num
     color = self.GetRotationColor(pass_num)
-    self.PlotPrimary(measurement_list.latencies,
-                     measurement_list.draw_start_latencies, label, color)
+    self.PlotPrimary(np.asarray(value_list), label, color)
 
-  def PlotOverviewHistogram(self, measurement_list):
-    """Plot overview histogram of multiple passes.
+  def PlotOverviewHistogram(self, values_map, subplot_title):
+    """Plot overview histogram with multiple sub histograms.
 
     Each pass will have a sepearate PDF of an automatically assigned color,
     additionally we will plot a full histogram and PDF of all measurements
     combined.
 
-    :param MeasurementList measurement_list: measurements to plot
+    :param Dict[int, List[float]] values_map: Dictionary mapping key number to
+           values for that histogram.
+    :param str subplot_title: Title for each sub histogram.
+
     """
     color = _styles.SUMMARY_PDF_COLOR
-    self.PlotPrimary(measurement_list.latencies,
-                     measurement_list.draw_start_latencies, "Overall", color)
 
-    if len(list(measurement_list.IterByPass())) == 1:
+    all_values = MergeLists(values_map.values())
+    self.PlotPrimary(all_values, "Overall", color)
+
+    if len(values_map) == 1:
       return
-    for pass_num, pass_measurements in measurement_list.IterByPass():
-      label = "Pass %d" % pass_num
+    for pass_num, values in values_map.iteritems():
+      label = "%s %d" % (subplot_title, pass_num)
       color = self.GetRotationColor(pass_num)
-      self.PlotSecondary(pass_measurements.latencies, label, color)
+      self.PlotSecondary(np.asarray(values), label, color)
 
-  def PlotAggregateHistogram(self, measurement_list, rep_measurement_lists):
-    """
-    """
-    color = _styles.SUMMARY_PDF_COLOR
-    msrmnt_list = measurement_list
-    self.PlotPrimary(msrmnt_list.latencies,
-                     msrmnt_list.draw_start_latencies, "Aggregate", color)
-
-    for i, rep_msrmnt in enumerate(rep_measurement_lists):
-      label = "Repetition #%02d" % i
-      color = self.GetRotationColor(i)
-      self.PlotSecondary(rep_msrmnt.latencies, label, color)
-
-  def PlotPrimary(self, latencies, draw_start_latencies, label, color):
+  def PlotPrimary(self, values, label, color):
     """Plot latency numbers with histogram and PDF.
 
-    Draws a full histogram as well as PDF with the provided latencies.
-    Optionally includes draw start latencies as a dashed plot next to it.
-    :type latencies: np.ndarray
-    :type draw_start_latencies: Optional[np.ndarray]
+    Draws a full histogram as well as PDF with the provided values.
+    :type values: np.ndarray
     :param str label: Label of this plot for the legend.
     :param str color: Color of plot.
     """
-    values = self._InMS(latencies)
     self._PlotHistogram(values, _styles.HISTOGRAM_STYLE)
     self._PlotPDF(values, label + " PDF", color, _styles.MAIN_PDF_STYLE)
 
-    if draw_start_latencies is not None:
-      draw_start_values = self._InMS(draw_start_latencies)
-      self._PlotPDF(draw_start_values, label + " PDF (start)", color,
-                    _styles.DRAW_START_PDF_STYLE)
-
-  def PlotSecondary(self, latencies, label, color):
+  def PlotSecondary(self, values, label, color):
     """Plot latency numbers with histogram only
 
-    :type latencies: np.ndarray
+    :type values: np.ndarray
     :param str label: Label of this plot for the legend.
     :param str color: Color of plot.
     """
-    values = self._InMS(latencies)
     self._PlotPDF(values, label, color, _styles.SECONDARY_PDF_STYLE)
 
   def _PlotHistogram(self, values, style):
@@ -110,7 +89,7 @@ class HistogramFigure(SingleAxesFigure):
     :type values: np.ndarray
     :type style: Dict[str, Any]
     """
-    bins = range(_styles.MIN_LATENCY, _styles.MAX_LATENCY, 10)
+    bins = np.linspace(self.x_min, self.x_max, 25)
     self.axes.hist(values, normed=1, bins=bins, **style)
 
   def _PlotPDF(self, values, label, color, style):
@@ -121,7 +100,7 @@ class HistogramFigure(SingleAxesFigure):
     :type color: str
     :type style: Dict[str, Any]
     """
-    xs = np.linspace(_styles.MIN_LATENCY, _styles.MAX_LATENCY, 240)
+    xs = np.linspace(self.x_min, self.x_max, 240)
     mu = np.mean(values)
     sigma = np.std(values)
     ys = mlab.normpdf(xs, mu, sigma)
@@ -135,6 +114,14 @@ class HistogramFigure(SingleAxesFigure):
     """
     return _styles.COLOR_ROTATION[i % len(_styles.COLOR_ROTATION)]
 
-  def _InMS(self, frame_index):
-    """Convert high speed camera frame index into milliseconds."""
-    return frame_index * self.ms_per_frame
+class LatencyHistogramFigure(HistogramFigure):
+  """Figure showing multiple latency histograms."""
+
+  def __init__(self, width, height):
+    """Create empty histogram figure.
+
+    :param int width: Width of image in pixels.
+    :param int height: Height of image in pixels.
+    """
+    super(LatencyHistogramFigure, self).__init__(width, height, "Latency [ms]",
+        _styles.MIN_LATENCY, _styles.MAX_LATENCY)

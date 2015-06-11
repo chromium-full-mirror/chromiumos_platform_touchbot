@@ -10,7 +10,6 @@ import shutil
 import sys
 import tempfile
 import webbrowser
-import copy
 
 from optofidelity.benchmark import AggregateResults
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
@@ -45,9 +44,9 @@ class ReportTests(TestCase):
     report = BenchmarkReport(self.tempdir, "report.html", xkcd=xkcd)
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
-
-    self.userVerification(report.html_filename)
+    benchmark.Save(self.tempdir, debug_info=True)
     self.assertReportFilesExist(report.html_filename)
+    self.userVerification(report.html_filename)
 
   def testAggregateReport(self):
     metadata = {"OS Version": "23.0", "App Version": "42.0"}
@@ -56,17 +55,15 @@ class ReportTests(TestCase):
     benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", metadata)
 
     aggregateResults = AggregateResults("fake_subject", "tap", metadata)
-    for repetition in range(10):
-      results = copy.deepcopy(benchmark.results)
-      for i in range(len(results.measurement_list)):
-        results.measurement_list[i].input_event.time -= repetition
-      aggregateResults.AddRepetition(results)
+    for repetition in range(3):
+      aggregateResults.AddRepetition(benchmark.results)
 
     report = AggregateReport(self.tempdir, "report.html")
     report.GenerateReport(aggregateResults)
+    benchmark.Save(self.tempdir, debug_info=True)
 
-    self.userVerification(report.html_filename)
     self.assertReportFilesExist(report.html_filename)
+    self.userVerification(report.html_filename)
 
   def testXKCDReport(self):
     self.runReportTest("line_draw_basic.trace", "touch_move", xkcd=True)
@@ -82,7 +79,8 @@ class ReportTests(TestCase):
         for match in re.finditer(regex, html):
           yield match.group(1)
     for path in FindHTMLPaths(html):
-      if path.startswith("http") or path.startswith("#"):
+      if (path.startswith("http") or path.startswith("#") or
+          path.endswith(".avi")):
         continue
       full_path = os.path.join(self.tempdir, path)
       self.assertTrue(os.path.exists(full_path),

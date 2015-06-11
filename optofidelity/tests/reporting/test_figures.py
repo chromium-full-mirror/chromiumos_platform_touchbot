@@ -9,14 +9,16 @@ import skimage.color as color
 import skimage.feature as feature
 import skimage.io
 
+from optofidelity.benchmark.results import (AggregateMeasurements,
+                                            BenchmarkMeasurements,
+                                            DrawEventLatencySeries)
+from optofidelity.detection.events import Event
 from optofidelity.reporting._figures import (PrimarySecondaryAxesFigure,
                                              SingleAxesFigure)
-from optofidelity.reporting._hist_figure import HistogramFigure
+from optofidelity.reporting._hist_figure import LatencyHistogramFigure
 from optofidelity.reporting._trace_figures import (EventsMeasurementsFigure,
                                                    LocationMeasurementsFigure,
                                                    TraceOverviewFigure)
-from optofidelity.benchmark.results import BenchmarkResults
-from optofidelity.detection.events import Event
 from optofidelity.videoproc import DebugView
 
 from . import test_data
@@ -145,17 +147,21 @@ class TraceOverviewFigureTests(FigureVerificationTests):
 
 class MeasurementsFigureTests(FigureVerificationTests):
   def createSimpleResults(self):
-    results = BenchmarkResults("", "", {})
-    for i in range(0, 100, 10):
-      results.AddMeasurement("Location",
-                             Event(time=i, location=float(i * 10)),
-                             Event(time=i + 5, location=float((i * 10) + 50)))
+    measurements = BenchmarkMeasurements()
+    measurements.AddSeriesInfo("Location", DrawEventLatencySeries)
+    measurements.AddSeriesInfo("Events", DrawEventLatencySeries)
 
-    results.AddMeasurement("Events", Event(time=15, state=False),
-                           Event(time=25, state=True))
-    results.AddMeasurement("Events", Event(time=75, state=True),
-                           Event(time=85, state=False))
-    return results
+    location_series = measurements.AddSeries("Location")
+    for i in range(0, 100, 10):
+      location_series.AddMeasurement(Event(time=i, location=float(i * 10)),
+                                     Event(time=i + 5,
+                                           location=float((i * 10) + 50)))
+    event_series = measurements.AddSeries("Events")
+    event_series.AddMeasurement(Event(time=15, state=False),
+                                Event(time=25, state=True))
+    event_series.AddMeasurement(Event(time=75, state=True),
+                                Event(time=85, state=False))
+    return measurements
 
   def testLatencyPlot(self):
     figure = EventsMeasurementsFigure(self.WIDTH, self.EVENTS_HEIGHT,
@@ -179,8 +185,8 @@ class MeasurementsFigureTests(FigureVerificationTests):
                                       self.LATENCIES_HEIGHT,
                                       self.MS_PER_FRAME)
     self.addSimplePlots(figure)
-    results = self.createSimpleResults()
-    figure.PlotMeasurements(results.measurement_list)
+    measurements = self.createSimpleResults()
+    figure.PlotMeasurements(measurements[0].values())
     self.assertImageMatches(figure.AsImage(True), "event_measurements.png")
 
   def testLocationMeasurementsPlot(self):
@@ -188,8 +194,8 @@ class MeasurementsFigureTests(FigureVerificationTests):
                                         self.LATENCIES_HEIGHT,
                                         self.MS_PER_FRAME)
     self.addSimplePlots(figure)
-    results = self.createSimpleResults()
-    figure.PlotMeasurements(results.measurement_list)
+    measurements = self.createSimpleResults()
+    figure.PlotMeasurements(measurements[0].values())
     self.assertImageMatches(figure.AsImage(True), "location_measurements.png")
 
 
@@ -199,26 +205,48 @@ class HistogramFigureTests(FigureVerificationTests):
       103.12146378,   86.08486046,   96.05411581,  100.33152484,
        97.48061073,  114.82677329,   97.51435366,  112.37953043,
        89.52607202,  101.50421159,   83.53152664,  110.11220344,
-       98.69820428,  101.37292205,  111.51249425,   98.52950697 ]) / 3.33
+       98.69820428,  101.37292205,  111.51249425,   98.52950697 ])
+
+  def createMultiPassResults(self, offset):
+    measurements = BenchmarkMeasurements()
+    measurements.AddSeriesInfo("TestMeasurement", DrawEventLatencySeries)
+    series = [measurements.AddSeries("TestMeasurement", 0),
+              measurements.AddSeries("TestMeasurement", 1)]
+    for i, latency in enumerate(self.LATENCIES):
+      pass_num = i % 2
+      late_time = int(i + latency / 3.33 + offset)
+      series[pass_num].AddMeasurement(Event(i, start_time=i - 20),
+                                      Event(late_time,
+                                            start_time=int(i + latency) - 20))
+    return measurements
 
   def testPrimaryHistogram(self):
-    figure = HistogramFigure(512, 512, self.MS_PER_FRAME)
-    figure.PlotPrimary(self.LATENCIES, self.LATENCIES - 20, "Test", "r")
+    figure = LatencyHistogramFigure(512, 512)
+    figure.PlotPrimary(self.LATENCIES, "Test", "r")
     self.assertImageMatches(figure.AsImage(False), "histogram_main.png")
 
   def testSecondaryHistogram(self):
-    figure = HistogramFigure(512, 512, self.MS_PER_FRAME)
+    figure = LatencyHistogramFigure(512, 512)
     figure.PlotSecondary(self.LATENCIES, "Test", "r")
     self.assertImageMatches(figure.AsImage(False), "histogram_secondary.png")
 
   def testOverviewHistogram(self):
-    results = BenchmarkResults("", "", {})
-    for i, latency in enumerate(self.LATENCIES):
-      pass_num = i % 2
-      late_time = int(i + latency)
-      results.AddMeasurement("Test", Event(i, start_time=i - 20),
-                             Event(late_time, start_time=int(i + latency) - 20),
-                            pass_num)
-    figure = HistogramFigure(512, 512, self.MS_PER_FRAME)
-    figure.PlotOverviewHistogram(results.measurement_list)
+    msrmnts = self.createMultiPassResults(0.0)
+    pass_values = dict((pass_num, pass_msrmnts["TestMeasurement"].values)
+                       for pass_num, pass_msrmnts in msrmnts.iteritems())
+    figure = LatencyHistogramFigure(512, 512)
+    figure.PlotOverviewHistogram(pass_values, "Pass")
     self.assertImageMatches(figure.AsImage(False), "histogram_overview.png")
+
+  def testAggregateHistogram(self):
+    msrmnts = AggregateMeasurements()
+    msrmnts[0] = self.createMultiPassResults(-5)
+    msrmnts[1] = self.createMultiPassResults(0)
+    msrmnts[2] = self.createMultiPassResults(+5)
+
+    rep_values = dict((rep_num, rep_msrmnts.SummarizeValues("TestMeasurement"))
+                      for rep_num, rep_msrmnts in msrmnts.iteritems())
+
+    figure = LatencyHistogramFigure(512, 512)
+    figure.PlotOverviewHistogram(rep_values, "Repetition")
+    self.assertImageMatches(figure.AsImage(False), "histogram_aggregate.png")

@@ -6,7 +6,7 @@ from urllib import urlencode
 import logging
 import json
 
-from safetynet import TypecheckMeta
+from safetynet import Optional, TypecheckMeta
 
 from optofidelity.benchmark import BenchmarkResults
 import pycurl
@@ -38,13 +38,13 @@ def HTTPPost(url, data):
 class Dashboard(object):
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, endpoint_url, fake=False):
+  def __init__(self, endpoint_url):
     """
-    :param str endpoint_url: URL of dashboard endpoint to post results to.
-    :param bool fake: Print JSON requests instead of sending them.
+    :param Optional[str] endpoint_url: URL of dashboard endpoint to post results
+           to, will dump JSON requests instead of posting them to the URL if
+           this parameter is None.
     """
     self.endpoint_url = endpoint_url
-    self.fake = fake
 
   def ReportResults(self, benchmark_results, version, version_uid, report_url):
     """Report results of benchmark to dashboard.
@@ -55,24 +55,23 @@ class Dashboard(object):
                                   report_url)
     if not self.endpoint_url:
       print json.dumps(payload, indent=2)
-      return
+    else:
+      params = dict(data=json.dumps(payload))
+      print HTTPPost(self.endpoint_url, params)
 
     for line in json.dumps(payload, indent=2).split("\n"):
       _log.info("    %s" % line)
 
-    params = dict(data=json.dumps(payload))
-    print HTTPPost(self.endpoint_url, params)
-
   def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
     charts = {}
     charts[benchmark_results.benchmark_type] = {}
-    ms_per_frame = benchmark_results.ms_per_frame
-    measurements = benchmark_results.measurement_list
-    for mid, id_measurements in measurements.IterByMeasurementID():
-      charts[benchmark_results.benchmark_type][mid] = {
+    msrmnts = benchmark_results.measurements
+    for series_name, series_info in msrmnts.series_infos.iteritems():
+      values = msrmnts.SummarizeValues(series_name)
+      charts[benchmark_results.benchmark_type][series_name] = {
         "type": "list_of_scalar_values",
-        "units": "ms",
-        "values": list(measurements.latencies * ms_per_frame)
+        "units": series_info.units,
+        "values": [value for value in values]
       }
 
     chart_data = {
