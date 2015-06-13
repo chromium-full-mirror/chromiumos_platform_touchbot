@@ -73,12 +73,14 @@ class AbstractDelegateTests(unittest.TestCase):
 class LineDrawDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
     "line_draw_basic.trace": {
-      "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48,
-                                     42, 48, 46, 43, 44, 43, 43, 39, 44]) * 3.33
+      "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48, 42,
+                                     48, 46, 43, 44, 43, 43, 39, 44]) * 3.33,
+      "DroppedFrameFrequency": np.asarray([0.42105263157894735])
     },
     "line_draw_incomplete.trace": {
       "LineDrawLatency": np.asarray([29, 28, 28, 29, 29, 30, 31, 35, 35,
-                                     35, 40, 40, 45, 44, 46, 47]) * 3.33
+                                     35, 40, 40, 45, 44, 46, 47]) * 3.33,
+      "DroppedFrameFrequency": np.asarray([25])
     },
   }
 

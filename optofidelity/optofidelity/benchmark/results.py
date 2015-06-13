@@ -27,6 +27,8 @@ class MeasurementSeries(list):
   property to return floating point values as results.
   """
   DEFAULT_UNITS = "ms"
+  DEFAULT_MIN_NUM_SAMPLES = 100
+
   __metaclass__ = TypecheckMeta
 
   def __init__(self, series_name, pass_num, ms_per_frame):
@@ -75,6 +77,47 @@ class DrawEventLatencySeries(MeasurementSeries):
   def values(self):
     return [float(m.output_event.time - m.input_event.time)  * self.ms_per_frame
             for m in self]
+
+class DroppedFramesSeries(MeasurementSeries):
+  """Measures the percent of dropped frames assuming a 60Hz refresh rate."""
+  DEFAULT_UNITS = "%"
+  DEFAULT_MIN_NUM_SAMPLES = 0
+
+  def AddMeasurement(self, draw_event):
+    """
+    :type draw_event: Event
+    """
+    self.append(draw_event)
+
+  @property
+  def begin_time(self):
+    return min(e.time for e in self)
+
+  @property
+  def end_time(self):
+    return max(e.time for e in self)
+
+  @property
+  def dropped_times(self):
+    dropped_times = []
+    last_time = None
+    for event in self:
+      if last_time is None:
+        last_time = event.time
+        continue
+
+      expected_frame = last_time + 5
+      while expected_frame < event.time - 1:
+        dropped_times.append(expected_frame)
+        expected_frame += 5
+      last_time = event.time
+    return dropped_times
+
+  @property
+  def values(self):
+    if len(self):
+      return [float(len(self.dropped_times)) / float(len(self)) * 100.0]
+    return [100.0]
 
 
 class PassMeasurements(dict):
@@ -128,8 +171,9 @@ class BenchmarkMeasurements(defaultdict):
     """
     if units is None:
       units = series_type.DEFAULT_UNITS
+    min_num_samples = min_num_samples or series_type.DEFAULT_MIN_NUM_SAMPLES
     self.series_infos[series_name] = MeasurementSeriesInfo(series_name,
-        series_type, units, min_num_samples or self.DEFAULT_MIN_NUM_SAMPLES)
+        series_type, units, min_num_samples)
 
   def AddSeries(self, series_name, pass_num=0):
     """Add an empty new series to include measurements.

@@ -7,7 +7,7 @@ import itertools
 from safetynet import Any, Dict, Optional
 import numpy as np
 
-from optofidelity.benchmark import DrawEventLatencySeries
+from optofidelity.benchmark import DrawEventLatencySeries, DroppedFramesSeries
 from optofidelity.detection import LEDEvent, ScreenDrawEvent, Trace
 
 from . import _styles
@@ -197,7 +197,9 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
           elif in_ev.state is not None:
             events_pairs += [((in_ev.time, 0.5), (out_ev.time, 0.5))]
           latencies += [(out_ev.time, out_ev.time - in_ev.time)]
-
+      elif isinstance(series, DroppedFramesSeries):
+        for dropped_time in series.dropped_times:
+          latencies += [(dropped_time, 30), (np.nan, np.nan)]
       label = "%s Measurement" % series.series_name
       color = color_iter.next()
       self.PlotLatencies(np.asarray(latencies), label, color)
