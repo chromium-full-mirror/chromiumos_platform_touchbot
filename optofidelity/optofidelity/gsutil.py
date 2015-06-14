@@ -47,13 +47,11 @@ def GSFolder(url, upload=True, download=False):
     if download:
       with ProgressBar("Downloading %s" % url):
         _GSCopy(url, base_folder, recursive=True)
-    try:
-      yield target_folder
-    finally:
-      if upload:
-        with ProgressBar("Uploading %s" % url):
-          base_url = url[:-len(os.path.basename(url))]
-          _GSCopy(target_folder, base_url, recursive=True)
+    yield target_folder
+    if upload:
+      with ProgressBar("Uploading %s" % url):
+        base_url = url[:-len(os.path.basename(url))]
+        _GSCopy(target_folder, base_url, recursive=True)
   finally:
     shutil.rmtree(base_folder)
 
@@ -71,12 +69,10 @@ def GSFile(url, upload=True, download=False):
     if download:
       with ProgressBar("Downloading %s" % url):
         _GSCopy(url, temp_file.name)
-    try:
-      yield temp_file.name
-    finally:
-      if upload:
-        with ProgressBar("Uploading %s" % url):
-          _GSCopy(temp_file.name, url)
+    yield temp_file.name
+    if upload:
+      with ProgressBar("Uploading %s" % url):
+        _GSCopy(temp_file.name, url)
   finally:
     os.remove(temp_file.name)
 
@@ -115,5 +111,9 @@ def _GSCopy(from_path, to_path, recursive=False):
                              stderr=subprocess.PIPE)
   ret = process.communicate()
   if process.returncode > 0:
+    for line in ret[0].split("\n"):
+      _log.warn("    " + line.strip())
+    for line in ret[1].split("\n"):
+      _log.error("    " + line.strip())
     raise Exception("'%s' returned with %d" % (" ".join(command),
                                                process.returncode))
