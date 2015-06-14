@@ -11,6 +11,8 @@ _log = logging.getLogger(__name__)
 
 class ADB(object):
   """Wrapper around the adb command line tool."""
+  KEY_POWER = "26"
+  KEY_UNLOCK = "82"
 
   def __init__(self, adb_device):
     """
@@ -44,6 +46,19 @@ class ADB(object):
     if match:
       return match.group(1)
     return None
+
+  def PowerOn(self):
+    if not self.IsAwake():
+      self.SendKey(self.KEY_POWER)
+      self.SendKey(self.KEY_UNLOCK)
+
+  def PowerOff(self):
+    if self.IsAwake():
+      self.SendKey(self.KEY_POWER)
+
+  def IsAwake(self):
+    power_dump = self.ExecuteShell(["dumpsys", "power"])
+    return "mWakefulness=Awake" in power_dump
 
   def SendKey(self, key_name):
     self.ExecuteShell(["input", "keyevent", key_name])

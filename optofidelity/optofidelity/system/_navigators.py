@@ -135,11 +135,12 @@ class ADBNavigator(Navigator):
     pass
 
   def Open(self, safe):
+    self._adb.PowerOn()
     self._UploadFiles()
     self.Reset()
 
   def Close(self):
-    self._adb.SendKey("KEYCODE_HOME")
+    self._adb.PowerOff()
 
   def OpenPage(self, page_name):
     self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
@@ -147,10 +148,10 @@ class ADBNavigator(Navigator):
     time.sleep(1.0)  # Wait for chrome to load the page
 
   def ClosePage(self):
-    self.Close()
+    self._adb.SendKey("KEYCODE_HOME")
 
   def Reset(self):
-    self.Close()
+    self._adb.SendKey("KEYCODE_HOME")
     self._UploadFiles()
 
   def _UploadFiles(self):
