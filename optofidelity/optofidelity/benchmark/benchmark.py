@@ -61,8 +61,6 @@ class Benchmark(object):
   BENCHMARK_TYPES = {
     "touch_move": TouchMoveDelegate,
     "scroll": ScrollDelegate,
-    "scroll_start": ScrollStartDelegate,
-    "touch_move_start": TouchMoveStartDelegate,
     "tap": TapDelegate
   }
 
