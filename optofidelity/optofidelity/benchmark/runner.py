@@ -45,12 +45,14 @@ class BenchmarkRunner(object):
     close the subject on exiting.
     :type subject: BenchmarkSubject
     """
-    self._screen_calibration = self._OpenAndCalibrateSubject(subject)
-    self._current_subject = subject
-    yield
-    self._screen_calibration = None
-    self._current_subject = None
-    subject.Close()
+    try:
+      self._screen_calibration = self._OpenAndCalibrateSubject(subject)
+      self._current_subject = subject
+      yield
+    finally:
+      self._screen_calibration = None
+      self._current_subject = None
+      subject.Cleanup()
 
   def RunBenchmark(self, benchmark_type, metadata, debug_flags):
     """Run benchmark on subject picked with UseSubject.
@@ -79,6 +81,8 @@ class BenchmarkRunner(object):
       self._progress.Info(subject.name, "Opening and calibrating")
       subject.Open(False)
       return self._CalibrateScreen(subject)
+    except KeyboardInterrupt:
+      raise
     except:
       self._progress.Exception(subject.name,
                                "Caught Exception. Retrying in safe mode.")
@@ -105,6 +109,8 @@ class BenchmarkRunner(object):
         benchmark.ProcessVideo(self.video_processor, debug_flags)
         self._progress.Info(benchmark.name, "Processing trace")
         benchmark.ProcessTrace()
+      except KeyboardInterrupt:
+        raise
       except:
         self._progress.Exception(benchmark.name)
         benchmark.results.error = traceback.format_exc()
