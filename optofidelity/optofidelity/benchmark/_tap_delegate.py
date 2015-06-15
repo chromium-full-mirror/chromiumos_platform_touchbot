@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 """Implementation of TapDelegate."""
 
+import numpy as np
+
 from optofidelity.detection import LEDEvent, ScreenDrawEvent
 
 from ._delegate import BenchmarkDelegate
@@ -44,6 +46,12 @@ class TapDelegate(BenchmarkDelegate):
     return video_reader
 
   def ProcessTrace(self, trace, measurements):
+    if np.min(trace.led) < 0.0 or np.max(trace.led) > 1.0:
+      # An LED turning on will increase trace.led by one and an LED turning off
+      # will decrease it by one. If we ever go below zero or above 1 this means
+      # that the LED detection either missed an LED or it detected a spurious
+      # one.
+      raise Exception("LED detection was inconsistent.")
     measurements.AddSeriesInfo("UpLatency", DrawEventLatencySeries)
     measurements.AddSeriesInfo("DownLatency", DrawEventLatencySeries)
 

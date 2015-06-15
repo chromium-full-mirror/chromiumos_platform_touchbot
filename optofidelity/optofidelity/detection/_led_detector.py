@@ -21,7 +21,7 @@ class LEDDetector(Detector):
 
   NAME = "led"
 
-  LED_SCREEN_MARGIN = 10
+  LED_SCREEN_MARGIN = 50
   """Margin around the screen when blacking out the screen for LED
      detection."""
 
