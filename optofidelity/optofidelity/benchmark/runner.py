@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 from contextlib import contextmanager
 import logging
+import time
 import traceback
 
 from safetynet import Any, Dict, InterfaceMeta, List
@@ -100,6 +101,7 @@ class BenchmarkRunner(object):
     :type benchmark: Benchmark
     :type debug_flags: List[str]
     """
+    start_time = time.time()
     capture = LogCapture()
     with capture:
       try:
@@ -114,6 +116,8 @@ class BenchmarkRunner(object):
       except:
         self._progress.Exception(benchmark.name)
         benchmark.results.error = traceback.format_exc()
+    elapsed_time = time.time() - start_time
+    benchmark.results.metadata["elapsed_time"] =  "%ds" % elapsed_time
     benchmark.log = capture.log
 
   def _CalibrateScreen(self, subject):

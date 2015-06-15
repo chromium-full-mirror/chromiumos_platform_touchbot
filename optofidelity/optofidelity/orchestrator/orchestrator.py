@@ -6,6 +6,7 @@ from datetime import datetime
 from fnmatch import fnmatch
 import logging
 import os
+import time
 
 from safetynet import List, Optional, TypecheckMeta
 import numpy as np
@@ -65,6 +66,7 @@ class Orchestrator(object):
       versions_to_test = versions[:(first_version_idx + 1)]
       self._progress.Info(subject_name,
                           "Versions to test: %s" % (versions_to_test,))
+      start_time = time.time()
       for version in reversed(versions_to_test):
         try:
           self._progress.Info(subject_name,
@@ -76,6 +78,10 @@ class Orchestrator(object):
         except:
           self._progress.Exception(subject.name)
           self._progress.Error(subject.name, "Version %s failed" % version)
+      elapsed_minutes = (time.time() - start_time) / 60
+      self._progress.Info(subject_name, "History total time: %d min" % (
+                                        elapsed_minutes))
+
 
   def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
                              skip_update=False):
@@ -120,6 +126,7 @@ class Orchestrator(object):
     if subject_version:
       metadata["subject_version"] = subject_version
 
+    start_time = time.time()
     with self._runner.UseSubject(subject):
       for benchmark_type in benchmark_types:
         benchmark_name = "%s/%s" % (subject.name, benchmark_type)
@@ -132,8 +139,8 @@ class Orchestrator(object):
         print aggregate
 
         self._progress.Info(benchmark_name, "Generating Aggregate report:")
-        time = datetime.now()
-        results_url, uid = self._FindUniqueResultsURL(time)
+        benchmark_time = datetime.now()
+        results_url, uid = self._FindUniqueResultsURL(benchmark_time)
         self._GenerateAggregateReport(aggregate, results_url)
 
         public_url = self._GetPublicReportUrl(results_url)
@@ -143,6 +150,8 @@ class Orchestrator(object):
         self._progress.Info(benchmark_name, "Reporting results to dashboard")
         self._dashboard.ReportResults(aggregate, subject_version,
             subject.updater.GetVersionUID(subject_version), public_url)
+    elapsed_minutes = (time.time() - start_time) / 60
+    self._progress.Info(subject.name, "Elapsed time: %d min" % elapsed_minutes)
 
   def UpdateSubject(self, subject, forced_version=None):
     """Update subject to latest or custom version.
@@ -249,6 +258,7 @@ class Orchestrator(object):
     :rtype Optional[BenchmarkResults]
     """
     aggregate = AggregateResults(subject.name, benchmark_type, metadata)
+    start_time = time.time()
     while True:
       benchmark = self._SafelyRunBenchmark(subject, benchmark_type, metadata,
                                            debug_flags)
@@ -267,6 +277,8 @@ class Orchestrator(object):
       if not enough_samples:
         self._progress.Info(benchmark.name, "Collecting more samples.")
       else:
+        elapsed_time = time.time() - start_time
+        aggregate.metadata["elapsed_time"] = elapsed_time
         return aggregate
 
   def _SafelyRunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
@@ -280,9 +292,9 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     :rtype Optional[Benchmark]
     """
-    time = datetime.now()
+    benchmark_time = datetime.now()
     benchmark_name = "%s/%s" % (subject.name, benchmark_type)
-    metadata["time"] = time
+    metadata["time"] = benchmark_time
 
     for repetition in range(self.MAX_BENCHMARK_TRIES):
       rep_name = "Benchmark (repetiton=%d)" % repetition
@@ -290,7 +302,7 @@ class Orchestrator(object):
 
       benchmark = self._runner.RunBenchmark(benchmark_type, metadata,
                                             debug_flags)
-      self._StoreBenchmark(benchmark, subject, time)
+      self._StoreBenchmark(benchmark, subject, benchmark_time)
 
       if not len(benchmark.results.error):
         self._progress.Info(benchmark_name, "Results:")
