@@ -34,6 +34,8 @@ class Orchestrator(object):
   MAX_BENCHMARK_TRIES = 3
   """Maximum number of tries to run a benchmark before giving up."""
 
+  FILED_BENCHMARKS_FILE = "failed_benchmarks.log"
+
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
                results_db_url, xkcd=False):
     """
@@ -199,6 +201,12 @@ class Orchestrator(object):
 
     public_url = self._GetPublicReportUrl(results_url)
     self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
+
+    if len(benchmark.results.error):
+      with open(self.FILED_BENCHMARKS_FILE, "a") as error_log:
+        error_log.write("-" * 80 + "\n")
+        error_log.write(str(benchmark.results))
+        error_log.write("\n")
 
     benchmark.results.report_url = public_url
     benchmark.results.uid = uid
