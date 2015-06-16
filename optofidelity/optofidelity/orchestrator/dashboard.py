@@ -63,6 +63,8 @@ class Dashboard(object):
       _log.info("    %s" % line)
 
   def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
+    if version_uid == 0:
+      _log.info("Skipping dashboard upload: version_uid=0.")
     charts = {}
     charts[benchmark_results.benchmark_type] = {}
     msrmnts = benchmark_results.measurements

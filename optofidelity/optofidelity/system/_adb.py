@@ -66,7 +66,20 @@ class ADB(object):
   def PushFile(self, local_file, remote_file):
     self.Execute(["push", local_file, remote_file])
 
-  def Execute(self, sub_command, check_success=False):
+  def StartActivity(self, action=None, component=None, uri=None, category=None):
+    """Start an activity via the adb activity manager.
+
+    The parameters are directly passed to the am start command to specify the
+    intent to start.
+    """
+    cmd = ["am", "start"]
+    for flag, value in [("-a", action), ("-n", component),
+                        ("-d", uri), ("-c", category)]:
+      if value:
+        cmd += [flag, value]
+    self.ExecuteShell(cmd, check_error=True)
+
+  def Execute(self, sub_command, check_success=False, check_error=False):
     """Execute an adb command.
 
     Many ADB commands do not return an error code when failing, so we have
@@ -78,29 +91,27 @@ class ADB(object):
            it was not printed.
     """
     command = self.adb_cmd + sub_command
-    _log.debug("Executing %s", " ".join(command))
+    _log.info("Executing %s", " ".join(command))
     process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
-    lines = []
-    for line in process.stdout.readlines():
-      _log.debug("     %s" % line.strip())
-      lines.append(line.strip())
-    stdout = "\n".join(lines)
+    (stdout, _) = process.communicate()
 
     if process.returncode > 0:
-      print stdout
       raise Exception("'%s' returned with %d" % (" ".join(command),
                                                  process.returncode))
-    if check_success and not "Success" in stdout:
-      print stdout
+    if ((check_success and not "Success" in stdout) or
+        (check_error and "Error" in stdout) or
+        (process.returncode > 0)):
+      for line in stdout.split("\n"):
+        _log.error("     %s" % line.strip())
       raise Exception("'%s' failed" % (" ".join(command)))
     return stdout
 
-  def ExecuteShell(self, shell_command, check_success=False):
+  def ExecuteShell(self, shell_command, check_success=False, check_error=False):
     """Wrapper to execute an adb shell command.
 
     :type shell_command: List[str]
     :param bool check_success: Check for 'success' message, raises Exception if
            it was not printed.
     """
-    return self.Execute(["shell"] + shell_command, check_success)
+    return self.Execute(["shell"] + shell_command, check_success, check_error)

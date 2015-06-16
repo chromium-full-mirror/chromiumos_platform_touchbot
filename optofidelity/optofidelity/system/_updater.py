@@ -37,6 +37,9 @@ class ManualUpdater(Updater):
   def installed_version(self):
     return self._version
 
+  def GetVersionUID(self, version):
+    return 0
+
   def Install(self, version):
     raise NotImplementedError()
 

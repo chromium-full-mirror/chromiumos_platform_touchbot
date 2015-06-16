@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ElementTree
 
 from safetynet import Optional, TypecheckMeta
 
-from ._navigators import ADBNavigator, RobotNavigator
+from ._navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
 from ._phantom import PhantomCamera
 from ._tnt_backend import TnTRobotBackend
 from ._updater import ChromeUpdater, ManualUpdater
@@ -245,8 +245,11 @@ class BenchmarkSystem(object):
     nav_type_name = nav_attrib.get("type", "robot")
     if nav_type_name == "robot":
       return RobotNavigator(dut_backend, nav_attrib["icon"])
-    elif nav_type_name == "adb":
-      return ADBNavigator(dut_attrib["adb"], nav_attrib["component"])
+    elif nav_type_name == "web_adb":
+      return WebADBNavigator(dut_attrib["adb"], nav_attrib["component"])
+    elif nav_type_name == "native_adb":
+      return NativeADBNavigator(dut_attrib["adb"], nav_attrib["apk"],
+                                nav_attrib["package"])
     else:
       raise ValueError("Unknown navigator type name '%s'" % nav_type_name)
 

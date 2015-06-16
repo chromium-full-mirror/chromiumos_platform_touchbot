@@ -108,23 +108,20 @@ class RobotNavigator(Navigator):
     return self._dut_backend.DetectWords(BenchmarkSubject.PAGE_NAMES)
 
 
-class ADBNavigator(Navigator):
+class BaseADBNavigator(Navigator):
   """Navigation backend that uses ADB.
 
-  This backend will use the ADB command line tool to communicate with a device.
-  It will upload the HTML files needed and open them in Chrome.
+  This backend will use the ADB command line tool to communicate with a device
+  to invoke intents to navigate to test pages.
   """
-
   REMOTE_DIR = "/sdcard/crostouch"
-  HTML_DIR = os.path.join(_script_dir, "..", "..", "html")
-  VIEW_ACTION = "android.intent.action.VIEW"
 
-  def __init__(self, adb_device, component):
+  def __init__(self, adb_device, stay_alive=False):
     """
     :param str adb_device: Serial number of the adb device.
     """
     self._adb = ADB(adb_device)
-    self._component = component
+    self._stay_alive = stay_alive
 
   @property
   def state(self):
@@ -135,28 +132,49 @@ class ADBNavigator(Navigator):
     pass
 
   def Open(self, safe):
-    self._adb.PowerOn()
-    self._UploadFiles()
-    self.Reset()
+    if not self._stay_alive:
+      self._adb.PowerOn()
 
   def Close(self):
-    self._adb.PowerOff()
-
-  def OpenPage(self, page_name):
-    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
-    self._OpenFile("%s.html" % page_name.lower())
-    time.sleep(1.0)  # Wait for chrome to load the page
+    if not self._stay_alive:
+      self._adb.PowerOff()
 
   def ClosePage(self):
     self._adb.SendKey("KEYCODE_HOME")
 
   def Reset(self):
     self._adb.SendKey("KEYCODE_HOME")
+    if not self._stay_alive:
+      self._adb.PowerOff()
+
+
+class WebADBNavigator(BaseADBNavigator):
+  """Navigation backend that uses ADB to navigate to websites.
+
+  This backend will use the ADB command line tool to communicate with a device.
+  It will upload the HTML files needed and open them in Chrome.
+  """
+  HTML_DIR = os.path.join(_script_dir, "..", "..", "html")
+  VIEW_ACTION = "android.intent.action.VIEW"
+
+  def __init__(self, adb_device, component, stay_alive=False):
+    """
+    :param str adb_device: Serial number of the adb device.
+    """
+    super(WebADBNavigator, self).__init__(adb_device, stay_alive)
+    self._component = component
+
+  def Open(self, safe):
+    super(WebADBNavigator, self).Open(safe)
     self._UploadFiles()
+
+  def OpenPage(self, page_name):
+    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
+    self._OpenFile("%s.html" % page_name.lower())
+    time.sleep(1.0)  # Wait for chrome to load the page
 
   def _UploadFiles(self):
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
-
     filenames = ["jquery.min.js"]
     filenames += ["%s.html" % page.lower()
                   for page in BenchmarkSubject.PAGE_NAMES]
@@ -168,15 +186,40 @@ class ADBNavigator(Navigator):
   def _OpenFile(self, filename):
     remote_file = os.path.join(self.REMOTE_DIR, filename)
     uri = "file://%s" % remote_file
-    self._StartActivity(self.VIEW_ACTION, component=self._component, uri=uri)
+    self._adb.StartActivity(self.VIEW_ACTION, component=self._component,
+                            uri=uri)
 
-  def _StartActivity(self, action, component=None, uri=None, category=None):
-    cmd = ["am", "start"]
-    for flag, value in [("-a", action), ("-n", component), ("-d", uri),
-                        ("-c", category)]:
-      if value:
-        cmd += [flag, value]
-    response = self._adb.ExecuteShell(cmd)
-    if "Error" in response:
-      print response
-      raise Exception("Failed to open Activity")
+
+class NativeADBNavigator(BaseADBNavigator):
+  """Navigation backend that uses ADB to navigate to websites.
+
+  This backend will use the ADB command line tool to communicate with a device.
+  It will upload the HTML files needed and open them in Chrome.
+  """
+  APK_DIR = os.path.join(_script_dir, "..", "..", "apks")
+
+  PAGE_TO_ACTIVITY_MAP = {
+    "flash": "FlashActivity",
+    "scroll": "ScrollActivity",
+    "tap": "TapActivity"
+  }
+
+  def __init__(self, adb_device, apk_file, package_name, stay_alive=False):
+    """
+    :param str adb_device: Serial number of the adb device.
+    """
+    super(NativeADBNavigator, self).__init__(adb_device, stay_alive)
+    self._apk_file = apk_file
+    self._package_name = package_name
+
+  def Open(self, safe):
+    super(NativeADBNavigator, self).Open(safe)
+    self._adb.InstallAPK(os.path.join(self.APK_DIR, self._apk_file))
+
+  def OpenPage(self, page_name):
+    page_name = page_name.lower()
+
+    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
+    component = self._package_name + "/." + self.PAGE_TO_ACTIVITY_MAP[page_name]
+    self._adb.StartActivity(component=component)
+    time.sleep(1.0)  # Wait for activity to open
