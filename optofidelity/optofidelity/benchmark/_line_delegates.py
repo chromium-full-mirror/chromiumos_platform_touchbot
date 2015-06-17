@@ -7,7 +7,9 @@ from optofidelity.detection import FingerEvent, LineDrawEvent
 from optofidelity.system import BenchmarkSubject
 
 from ._delegate import BenchmarkDelegate
-from .results import DrawEventLatencySeries, DroppedFramesSeries
+from .results import (DrawEventLatencySeries, DroppedFramesSeries,
+                      TimeValueMeasurementSeries)
+
 
 class LineDrawDelegate(BenchmarkDelegate):
   """Contains the logic to perform line draw latency benchmarks."""
@@ -63,6 +65,7 @@ class LineDrawDelegate(BenchmarkDelegate):
   def ProcessTrace(self, trace, measurements):
     measurements.AddSeriesInfo("LineDrawLatency", DrawEventLatencySeries)
     measurements.AddSeriesInfo("DroppedFrameFrequency", DroppedFramesSeries)
+    measurements.AddSeriesInfo("ContinuousLatency", TimeValueMeasurementSeries)
 
     for pass_num, pass_trace in enumerate(trace.SegmentedByLineReset()):
       # Find pause after first movement to calibrate the offset between
@@ -94,6 +97,13 @@ class LineDrawDelegate(BenchmarkDelegate):
                                                      draw_event.time)
         ld_series.AddMeasurement(finger_event, draw_event)
         df_series.AddMeasurement(draw_event)
+
+      cont_series = measurements.AddSeries("ContinuousLatency", pass_num)
+      for time in range(draw_events[0].time, draw_events[-1].time + 1):
+        line_location = pass_trace.line_draw_end[time]
+        finger_event = pass_trace.FindFingerCrossing(line_location, time)
+        cont_series.AddMeasurement(time, time - finger_event.time)
+
 
 class TouchMoveDelegate(LineDrawDelegate):
   """Performs line draw benchmark on the "Move" page."""

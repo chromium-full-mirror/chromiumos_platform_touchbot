@@ -27,9 +27,9 @@ PASS_MARKER_STYLE = {
 COLOR_ROTATION = [
   "#d32f2f",
   "#512da8",
-  "#0288d1",
-  "#388e3c",
   "#fbc02d",
+  "#388e3c",
+  "#0288d1",
   "#795548",
   "#f50057",
   "#536dfe",
@@ -104,10 +104,14 @@ MEASUREMENT_HELPER_STYLE = {
   "linewidth": 1,
   "linestyle" : "solid",
 }
-LATENCY_STYLE = {
-  "linewidth": 1,
-  "linestyle" : "dashed",
+DISCRETE_LATENCY_STYLE = {
+  "linewidth": 2,
+  "linestyle" : "dotted",
   "marker": "o",
+}
+LATENCY_STYLE = {
+  "linewidth": 2,
+  "linestyle" : "solid",
 }
 
 # Histogram styles

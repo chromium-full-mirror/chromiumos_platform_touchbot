@@ -7,7 +7,9 @@ import itertools
 from safetynet import Any, Dict, Optional
 import numpy as np
 
-from optofidelity.benchmark import DrawEventLatencySeries, DroppedFramesSeries
+from optofidelity.benchmark import (DrawEventLatencySeries,
+                                    DroppedFramesSeries,
+                                    TimeValueMeasurementSeries)
 from optofidelity.detection import LEDEvent, ScreenDrawEvent, Trace
 
 from . import _styles
@@ -17,17 +19,18 @@ from ._figures import PrimarySecondaryAxesFigure, TimeSeriesAxes
 class LatencyAxes(TimeSeriesAxes):
   """Time series axes showing latency measurement results."""
 
-  def AddLatencyPlot(self, latencies, label, color):
+  def AddLatencyPlot(self, latencies, label, color, style):
     """Plot latency measurements.
 
     :type latencies: np.ndarray
     :type label: str
     :type color: str
     """
+    style = style or _styles.DISCRETE_LATENCY_STYLE
     times = self._InMS([t for t, l in latencies])
     latencies = self._InMS([l for t, l in latencies])
-    self.mpl_axes.plot(times, latencies, label=label, color=color,
-                       **_styles.LATENCY_STYLE)
+    self.mpl_axes.step(times, latencies, label=label, color=color, where="post",
+                       **style)
 
   def UpdateAxes(self):
     """Update axes format.
@@ -80,7 +83,7 @@ class LocationAxes(MeasurementsAxes):
     if np.all(np.isnan(locations)):
       return
     timestamps = self._InMS(np.arange(len(locations)))
-    self.mpl_axes.plot(timestamps, locations, **style)
+    self.mpl_axes.step(timestamps, locations, where="post", **style)
 
 
 class EventsAxes(MeasurementsAxes):
@@ -95,7 +98,7 @@ class EventsAxes(MeasurementsAxes):
     :type style: Dict[str, Any]
     """
     timestamps = self._InMS(np.arange(len(values)))
-    self.mpl_axes.plot(timestamps, values + offset, **style)
+    self.mpl_axes.step(timestamps, values + offset, where="post", **style)
 
   def UpdateAxes(self):
     """Update axes format."""
@@ -185,6 +188,7 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
       location_pairs = []
       events_pairs = []
       latencies = []
+      latencies_style = _styles.DISCRETE_LATENCY_STYLE
 
       if isinstance(series, DrawEventLatencySeries):
         for measurement in series:
@@ -200,9 +204,13 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
       elif isinstance(series, DroppedFramesSeries):
         for dropped_time in series.dropped_times:
           latencies += [(dropped_time, 30), (np.nan, np.nan)]
+      elif isinstance(series, TimeValueMeasurementSeries):
+        for time, value in series:
+          latencies += [(time, value)]
+        latencies_style = _styles.LATENCY_STYLE
       label = "%s Measurement" % series.series_name
       color = color_iter.next()
-      self.PlotLatencies(np.asarray(latencies), label, color)
+      self.PlotLatencies(np.asarray(latencies), label, color, latencies_style)
       self.PlotEventsMeasurements(events_pairs, label, color)
       self.PlotLocationMeasurements(location_pairs, label, color)
       self.UpdateAxes()
@@ -247,7 +255,7 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
     if self._events_axes:
       self._events_axes.AddEventsPlot(values, offset, style)
 
-  def PlotLatencies(self, latencies, label, color):
+  def PlotLatencies(self, latencies, label, color, style=None):
     """Plot latency measurements.
 
     :type latencies: np.ndarray
@@ -255,7 +263,7 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
     :type color: str
     """
     if self._latency_axes:
-      self._latency_axes.AddLatencyPlot(latencies, label, color)
+      self._latency_axes.AddLatencyPlot(latencies, label, color, style)
 
   def PlotEventsMeasurements(self, measurement_pairs, label, color):
     """Plot measurement pairs into events axes.

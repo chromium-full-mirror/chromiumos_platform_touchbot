@@ -78,6 +78,7 @@ class DrawEventLatencySeries(MeasurementSeries):
     return [float(m.output_event.time - m.input_event.time)  * self.ms_per_frame
             for m in self]
 
+
 class DroppedFramesSeries(MeasurementSeries):
   """Measures the percent of dropped frames assuming a 60Hz refresh rate."""
   DEFAULT_UNITS = "%"
@@ -118,6 +119,30 @@ class DroppedFramesSeries(MeasurementSeries):
     if len(self):
       return [float(len(self.dropped_times)) / float(len(self)) * 100.0]
     return [100.0]
+
+
+class TimeValueMeasurementSeries(MeasurementSeries):
+  """Allows to provide simple (time, value) measurement pairs."""
+  DEFAULT_UNITS = "ms"
+  DEFAULT_MIN_NUM_SAMPLES = 0
+
+  def AddMeasurement(self, time, value):
+    """
+    :type draw_event: Event
+    """
+    self.append((time, float(value)))
+
+  @property
+  def begin_time(self):
+    return min(e[0] for e in self)
+
+  @property
+  def end_time(self):
+    return max(e[0] for e in self)
+
+  @property
+  def values(self):
+    return [e[1] * self.ms_per_frame for e in self]
 
 
 class PassMeasurements(dict):
