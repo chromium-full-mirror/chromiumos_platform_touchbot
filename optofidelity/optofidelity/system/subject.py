@@ -14,74 +14,8 @@ from optofidelity.videoproc import VideoReader
 
 from .backend import DUTBackend
 from .camera import HighSpeedCamera
-
-
-class Updater(object):
-  """Interface for a service to update subjects."""
-  __metaclass__ = InterfaceMeta
-
-  @abstractproperty
-  def available_versions(self):
-    """:returns List[str]: List of versions available for install."""
-
-  @abstractproperty
-  def installed_version(self):
-    """:returns Optional[str]: Currently installed version or None."""
-
-  @abstractmethod
-  def GetVersionUID(self, version):
-    """:returns int: Unique incrementing integer identifying a version."""
-
-  @abstractmethod
-  def Install(self, version):
-    """Install specific app version.
-
-    :type version: str
-    """
-
-  @abstractmethod
-  def Uninstall(self):
-    """Uninstall app."""
-
-
-class Navigator(object):
-  """Backend class to navigate a device to open subjects and pages."""
-  __metaclass__ = InterfaceMeta
-
-  @abstractproperty
-  def state(self):
-    """State information. (e.g. coordinates of detected buttons)"""
-
-  @abstractmethod
-  def Open(self, safe):
-    """Open the subject.
-
-    :param bool safe: True instructs the backend to take extra precautions. At
-           the expense of more time to complete the task.
-    """
-
-  @abstractmethod
-  def Close(self):
-    """Close the subject."""
-
-  @abstractmethod
-  def Reset(self):
-    """Reset the underlying DUT.
-
-    This is a last resort after issues with opening the subject. This 'should'
-    return the DUT into a state where the subject can be opened again.
-    """
-
-  @abstractmethod
-  def OpenPage(self, page_name):
-    """Open page.
-
-    :type page_name: str
-    """
-
-  @abstractmethod
-  def ClosePage(self):
-    """Close previously opened page."""
+from .navigator import Navigator
+from .updater import Updater
 
 
 class BenchmarkSubject(object):

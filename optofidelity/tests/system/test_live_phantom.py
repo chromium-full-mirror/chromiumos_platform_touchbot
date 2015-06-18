@@ -5,7 +5,7 @@
 
 import unittest
 
-from optofidelity.system import PhantomCamera
+from optofidelity.system.camera_phantom import PhantomCamera
 
 
 class PhantomTests(unittest.TestCase):

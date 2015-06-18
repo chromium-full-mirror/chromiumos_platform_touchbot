@@ -7,9 +7,9 @@ from unittest import TestCase
 
 import numpy as np
 
-from optofidelity.system import (BenchmarkSubject, FakeRobotBackend,
-                                 RobotNavigator)
-from optofidelity.system.fake import FakeHighSpeedCamera
+from optofidelity.system import BenchmarkSubject
+from optofidelity.system.fake import FakeHighSpeedCamera, FakeRobotBackend
+from optofidelity.system.navigator import RobotNavigator
 
 
 class SubjectTests(TestCase):

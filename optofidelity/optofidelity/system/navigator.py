@@ -3,18 +3,73 @@
 # found in the LICENSE file.
 """Implementations of the Navigator interface."""
 
+from abc import abstractmethod, abstractproperty
 import os
 import time
 
-from safetynet import Any, Dict
+from safetynet import Any, Dict, InterfaceMeta
 
 from optofidelity.util import const_property
 
 from .adb import ADB
 from .backend import DUTBackend
-from .subject import BenchmarkSubject, Navigator
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
+
+
+class Navigator(object):
+  """Backend class to navigate a device to open subjects and pages."""
+  __metaclass__ = InterfaceMeta
+
+  # todo(denniskempin): configurable pages
+  PAGE_TAP = "Tap"
+  PAGE_MOVE = "Move"
+  PAGE_SCROLL = "Scroll"
+  PAGE_CLICK = "Click"
+  PAGE_FLASH = "Flash"
+
+  PAGE_NAMES = [
+    PAGE_TAP,
+    PAGE_MOVE,
+    PAGE_SCROLL,
+    PAGE_CLICK,
+    PAGE_FLASH
+  ]
+
+  @abstractproperty
+  def state(self):
+    """State information. (e.g. coordinates of detected buttons)"""
+
+  @abstractmethod
+  def Open(self, safe):
+    """Open the subject.
+
+    :param bool safe: True instructs the backend to take extra precautions. At
+           the expense of more time to complete the task.
+    """
+
+  @abstractmethod
+  def Close(self):
+    """Close the subject."""
+
+  @abstractmethod
+  def Reset(self):
+    """Reset the underlying DUT.
+
+    This is a last resort after issues with opening the subject. This 'should'
+    return the DUT into a state where the subject can be opened again.
+    """
+
+  @abstractmethod
+  def OpenPage(self, page_name):
+    """Open page.
+
+    :type page_name: str
+    """
+
+  @abstractmethod
+  def ClosePage(self):
+    """Close previously opened page."""
 
 
 class RobotNavigator(Navigator):
@@ -105,7 +160,7 @@ class RobotNavigator(Navigator):
     return self._dut_backend.DetectIcon(self._app_icon_shape_file)
 
   def _DetectPageButtonCoords(self):
-    return self._dut_backend.DetectWords(BenchmarkSubject.PAGE_NAMES)
+    return self._dut_backend.DetectWords(self.PAGE_NAMES)
 
 
 class BaseADBNavigator(Navigator):
@@ -177,7 +232,7 @@ class WebADBNavigator(BaseADBNavigator):
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
     filenames = ["jquery.min.js"]
     filenames += ["%s.html" % page.lower()
-                  for page in BenchmarkSubject.PAGE_NAMES]
+                  for page in self.PAGE_NAMES]
 
     for filename in filenames:
       self._adb.PushFile(os.path.join(self.HTML_DIR, filename),

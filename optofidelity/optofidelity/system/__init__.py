@@ -14,9 +14,7 @@ object to allow the recording of interactions.
 from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
 from .config import BenchmarkSystemConfig
-from .fake_backend import FakeDUTBackend, FakeRobotBackend
-from .navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
-from .phantom import PhantomCamera
-from .subject import BenchmarkSubject, Updater
+from .navigator import Navigator
+from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
-from .updater import ChromeUpdater
+from .updater import Updater

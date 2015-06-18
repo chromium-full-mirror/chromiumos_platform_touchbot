@@ -1,6 +1,7 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from abc import abstractmethod, abstractproperty
 from datetime import datetime
 from tempfile import NamedTemporaryFile
 import csv
@@ -8,14 +9,42 @@ import logging
 import subprocess
 import urllib2
 
-from safetynet import Optional
+from safetynet import InterfaceMeta, List, Optional
 
 from optofidelity.util import ProgressBar, const_property
 
 from .adb import ADB
-from .subject import Updater
 
 log = logging.getLogger(__name__)
+
+
+class Updater(object):
+  """Interface for a service to update subjects."""
+  __metaclass__ = InterfaceMeta
+
+  @abstractproperty
+  def available_versions(self):
+    """:returns List[str]: List of versions available for install."""
+
+  @abstractproperty
+  def installed_version(self):
+    """:returns Optional[str]: Currently installed version or None."""
+
+  @abstractmethod
+  def GetVersionUID(self, version):
+    """:returns int: Unique incrementing integer identifying a version."""
+
+  @abstractmethod
+  def Install(self, version):
+    """Install specific app version.
+
+    :type version: str
+    """
+
+  @abstractmethod
+  def Uninstall(self):
+    """Uninstall app."""
+
 
 class ManualUpdater(Updater):
   """Updater that returns a constant version.

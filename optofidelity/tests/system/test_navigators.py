@@ -6,7 +6,7 @@
 from unittest import TestCase
 import sys
 
-from optofidelity.system import WebADBNavigator, NativeADBNavigator
+from optofidelity.system.navigator import WebADBNavigator, NativeADBNavigator
 
 
 class AbstractNavBackendTests(TestCase):
