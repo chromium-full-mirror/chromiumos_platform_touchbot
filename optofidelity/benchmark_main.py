@@ -18,7 +18,7 @@ from optofidelity.detection import (MultithreadedVideoProcessor,
                                     ScreenCalibration,
                                     SinglethreadedVideoProcessor)
 from optofidelity.reporting import BenchmarkReport
-from optofidelity.system import BenchmarkSystem
+from optofidelity.system import BenchmarkSystemConfig
 
 
 usage_string = """Benchmark usage examples:
@@ -56,7 +56,9 @@ def ProcessBenchmarkFromFile(path, out_dir, what, debug_flags):
 
 def RunBenchmark(subject_name, benchmark_name, out_dir, save_video,
                  debug_flags):
-  system = BenchmarkSystem(config_file)
+  config = BenchmarkSystemConfig(config_file)
+  system = config.benchmark_system
+
   if os.path.exists(state_file):
     system.LoadState(state_file)
 

@@ -90,35 +90,19 @@ class FakeBenchmarkSystem(BenchmarkSystem):
   If no config file is specified, it will create a single fake subject that
   is available at self.fake_subject.
   """
-  def __init__(self, config_file=None):
-    super(FakeBenchmarkSystem, self).__init__(config_file)
-    if not self._backend:
-      self._backend = self._CreateBackend(dict())
-    if not self.camera:
-      self.camera = self._CreateCamera(dict())
+  def __init__(self):
+    super(FakeBenchmarkSystem, self).__init__()
+    self.backend = FakeRobotBackend()
+    self.camera = FakeHighSpeedCamera()
 
     self.subjects = defaultdict(self._CreateFakeSubject, self.subjects)
     self.fake_subject = None
 
-    if not config_file:
-      self.fake_subject = self._CreateFakeSubject()
-      self.subjects[self.fake_subject.name] = self.fake_subject
-
-  def _CreateCamera(self, attrib):
-    return FakeHighSpeedCamera()
-
-  def _CreateBackend(self, attrib):
-    return FakeRobotBackend()
-
-  def _CreateUpdater(self, updater_attrib, subject_attrib, dut_attrib):
-    return FakeUpdater()
-
-  def _CreateNavigator(self, nav_attrib, subject_attrib, dut_attrib,
-                       dut_backend):
-    return RobotNavigator(dut_backend, nav_attrib["icon"])
+    self.fake_subject = self._CreateFakeSubject()
+    self.subjects[self.fake_subject.name] = self.fake_subject
 
   def _CreateFakeSubject(self):
-    dut_backend = self._backend.GetDUTBackend("fake_dut")
+    dut_backend = self.backend.GetDUTBackend("fake_dut")
     nav_backend = RobotNavigator(dut_backend, "dummy.shp")
     updater = FakeUpdater()
     return FakeBenchmarkSubject("fake_dut", "fake_subject", dut_backend,

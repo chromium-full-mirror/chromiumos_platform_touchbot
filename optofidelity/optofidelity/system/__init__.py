@@ -11,6 +11,7 @@ The main entry point for this package is the BenchmarkSystem class, and a list
 of BenchmarkSubject objects. Each subject has a reference to a HighSpeedCamera
 object to allow the recording of interactions.
 """
-from .system import BenchmarkSystem
-from .subject import BenchmarkSubject
 from .camera import HighSpeedCamera
+from .config import BenchmarkSystemConfig
+from .subject import BenchmarkSubject
+from .system import BenchmarkSystem
