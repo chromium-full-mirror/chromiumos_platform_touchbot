@@ -7,8 +7,8 @@ import logging
 
 from optofidelity.videoproc import FakeVideoReader
 
-from ._fake_backend import FakeRobotBackend
-from ._navigators import RobotNavigator
+from .fake_backend import FakeRobotBackend
+from .navigators import RobotNavigator
 from .camera import HighSpeedCamera
 from .subject import BenchmarkSubject, Updater
 from .system import BenchmarkSystem

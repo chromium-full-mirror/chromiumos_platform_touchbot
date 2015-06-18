@@ -7,7 +7,7 @@ import logging
 
 from optofidelity.videoproc import FakeVideoReader
 
-from ._backend import DUTBackend, RobotBackend
+from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
 
 _log = logging.getLogger(__name__)

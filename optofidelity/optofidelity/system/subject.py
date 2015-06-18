@@ -12,7 +12,7 @@ import numpy as np
 from optofidelity.util import const_property
 from optofidelity.videoproc import VideoReader
 
-from ._backend import DUTBackend
+from .backend import DUTBackend
 from .camera import HighSpeedCamera
 
 

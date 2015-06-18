@@ -10,10 +10,10 @@ import xml.etree.ElementTree as ElementTree
 
 from safetynet import Optional, TypecheckMeta
 
-from ._navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
-from ._phantom import PhantomCamera
-from ._tnt_backend import TnTRobotBackend
-from ._updater import ChromeUpdater, ManualUpdater
+from .navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
+from .phantom import PhantomCamera
+from .tnt_backend import TnTRobotBackend
+from .updater import ChromeUpdater, ManualUpdater
 from .subject import BenchmarkSubject
 from .system import BenchmarkSystem, FingerCalibDelay
 

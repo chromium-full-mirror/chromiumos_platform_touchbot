@@ -5,7 +5,7 @@
 
 import math
 
-from ._backend import DUTBackend, RobotBackend
+from .backend import DUTBackend, RobotBackend
 from .tnt.TnTClient import TnTClient
 
 

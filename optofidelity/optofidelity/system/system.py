@@ -10,10 +10,6 @@ import xml.etree.ElementTree as ElementTree
 
 from safetynet import Optional, TypecheckMeta
 
-from ._navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
-from ._phantom import PhantomCamera
-from ._tnt_backend import TnTRobotBackend
-from ._updater import ChromeUpdater, ManualUpdater
 from .subject import BenchmarkSubject
 
 FingerCalibDelay = namedtuple("FingerCalibDelay", ("down", "up"))

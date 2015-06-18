@@ -12,7 +12,7 @@ from safetynet import Optional
 
 from optofidelity.util import ProgressBar, const_property
 
-from ._adb import ADB
+from .adb import ADB
 from .subject import Updater
 
 log = logging.getLogger(__name__)

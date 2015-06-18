@@ -7,10 +7,10 @@ from unittest import TestCase
 
 import numpy as np
 
-from optofidelity.system._fake_backend import FakeRobotBackend
-from optofidelity.system._navigators import RobotNavigator
+from optofidelity.system import (BenchmarkSubject, FakeRobotBackend,
+                                 RobotNavigator)
 from optofidelity.system.fake import FakeHighSpeedCamera
-from optofidelity.system.subject import BenchmarkSubject
+
 
 class SubjectTests(TestCase):
   def setUp(self):

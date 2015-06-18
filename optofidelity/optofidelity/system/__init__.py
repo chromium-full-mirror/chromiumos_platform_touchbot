@@ -11,7 +11,12 @@ The main entry point for this package is the BenchmarkSystem class, and a list
 of BenchmarkSubject objects. Each subject has a reference to a HighSpeedCamera
 object to allow the recording of interactions.
 """
+from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
 from .config import BenchmarkSystemConfig
-from .subject import BenchmarkSubject
+from .fake_backend import FakeDUTBackend, FakeRobotBackend
+from .navigators import NativeADBNavigator, RobotNavigator, WebADBNavigator
+from .phantom import PhantomCamera
+from .subject import BenchmarkSubject, Updater
 from .system import BenchmarkSystem
+from .updater import ChromeUpdater

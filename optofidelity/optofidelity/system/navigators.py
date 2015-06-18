@@ -10,8 +10,8 @@ from safetynet import Any, Dict
 
 from optofidelity.util import const_property
 
-from ._adb import ADB
-from ._backend import DUTBackend
+from .adb import ADB
+from .backend import DUTBackend
 from .subject import BenchmarkSubject, Navigator
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
