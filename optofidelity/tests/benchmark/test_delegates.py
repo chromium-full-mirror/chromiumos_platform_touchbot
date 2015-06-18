@@ -64,6 +64,8 @@ class AbstractDelegateTests(unittest.TestCase):
     print "Trace file:", trace_file
 
     for series_name in measurements.series_infos:
+      if series_name not in expected_latencies:
+        continue
       latencies = measurements.SummarizeValues(series_name)
       print "Measurement", series_name
       print "Calculated Latencies:", latencies
@@ -75,7 +77,7 @@ class LineDrawDelegateTests(AbstractDelegateTests):
     "line_draw_basic.trace": {
       "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48, 42,
                                      48, 46, 43, 44, 43, 43, 39, 44]) * 3.33,
-      "DroppedFrameFrequency": np.asarray([0.42105263157894735])
+      "DroppedFrameFrequency": np.asarray([42.105263157894735])
     },
     "line_draw_incomplete.trace": {
       "LineDrawLatency": np.asarray([29, 28, 28, 29, 29, 30, 31, 35, 35,

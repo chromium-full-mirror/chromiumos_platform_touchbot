@@ -47,9 +47,7 @@ class BenchmarkRunnerTests(TestCase):
     self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
 
     self.assertIn("Trigger Camera", self.benchmark.log)
-    self.assertIn("Move", self.benchmark.log)
     self.assertIn("Tap", self.benchmark.log)
-    self.assertIn("Processing frame", self.benchmark.log)
 
     root_logger.setLevel(original_level)
 

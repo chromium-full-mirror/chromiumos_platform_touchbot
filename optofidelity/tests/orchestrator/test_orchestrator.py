@@ -7,9 +7,10 @@ import os
 import shutil
 import tempfile
 
-from optofidelity.benchmark import Benchmark, BenchmarkMeasurements
+from optofidelity.benchmark import (Benchmark, BenchmarkMeasurements,
+                                    DrawEventLatencySeries)
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import Orchestrator, Dashboard
+from optofidelity.orchestrator import Dashboard, Orchestrator
 
 from . import test_data
 
@@ -26,8 +27,9 @@ class OrchestratorTests(TestCase):
     dashboard = Dashboard(None)
     db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                dashboard, self.tempdir, db_url)
-    BenchmarkMeasurements.DEFAULT_MIN_NUM_SAMPLES = 0
+                                dashboard, self.tempdir, db_url,
+                                generate_reports=False)
+    DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 0
     return orchestrator
 
   def tearDown(self):
@@ -49,12 +51,12 @@ class OrchestratorTests(TestCase):
 
   def testMinSamples(self):
     orchestrator = self.createOrchestrator()
-    BenchmarkMeasurements.DEFAULT_MIN_NUM_SAMPLES = 20
+    DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 8
     orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
     results = list(orchestrator.QueryResults())
-    # Should repeat test 5 times, with 2 measurement id's each
-    # resulting in 10 entries in the database.
-    self.assertEqual(len(results), 10)
+    # Should repeat test 2 times, with 2 measurement id's each
+    # resulting in 4 entries in the database.
+    self.assertEqual(len(results), 4)
 
   def testResultsPersistence(self):
     orchestrator = self.createOrchestrator()

@@ -49,11 +49,10 @@ class FigureVerificationTests(unittest.TestCase):
       DebugView(title=expected_file_name, created_image=image)
       self.skipTest("Created expected image %s" % expected_file_name)
 
-    expected_image = color.rgb2gray(test_data.LoadImage(expected_file_name))
+    expected_image = test_data.LoadImage(expected_file_name)
     actual_image = color.rgb2gray(image)
-    cross_corr_image = feature.match_template(actual_image, expected_image)
-
-    if np.max(cross_corr_image) < 0.99:
+    mse = np.mean((expected_image - actual_image) ** 2)
+    if mse > 0.01:
       message = "Image not matching expected image: %s" % expected_file_name
       print message
       DebugView(actual_image=actual_image, expected_image=expected_image)

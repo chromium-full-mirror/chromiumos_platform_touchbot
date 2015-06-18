@@ -19,7 +19,7 @@ from optofidelity.videoproc import Canvas, SaveImage, VideoReader
 import matplotlib.pyplot as plt
 
 from ._figures import Figure
-from ._hist_figure import LatencyHistogramFigure, HistogramFigure
+from ._hist_figure import HistogramFigure, LatencyHistogramFigure
 from ._trace_figures import (EventsMeasurementsFigure,
                              LocationMeasurementsFigure, TraceOverviewFigure)
 
@@ -37,7 +37,7 @@ class Report(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, path, filename, xkcd=False):
+  def __init__(self, path, filename, xkcd=False, skip_images=False):
     """
     :param str path: Path to folder in which to store report
     :param str filename: Filename of report html file
@@ -49,6 +49,7 @@ class Report(object):
       os.makedirs(self.data_path)
     self.html_filename = os.path.join(self.path, filename)
     self._xkcd = xkcd
+    self._skip_images = skip_images
 
   def _RenderTemplate(self, filename, variables, results):
     """Generate target html file from template.
@@ -88,6 +89,11 @@ class Report(object):
     :type filename: str
     """
     path = os.path.join(self.data_path, filename)
+    if self._skip_images:
+      open(path + ".png", "w").close()
+      open(path + "_legend.png", "w").close()
+      return
+
     figure.Save(path + ".png", False)
     figure.Save(path + "_legend.png", True)
 
@@ -134,14 +140,6 @@ class BenchmarkReport(Report):
 
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
-
-  def __init__(self, path, filename, xkcd=False):
-    """
-    :param str path: Path to folder in which to store report
-    :param str filename: Filename of report html file
-    :param bool xkcd: Give report more authority
-    """
-    super(BenchmarkReport, self).__init__(path, filename, xkcd=xkcd)
 
   def GenerateReport(self, results, trace, screen_calibration, video):
     """ Generates a full HTML report.
@@ -267,6 +265,10 @@ class BenchmarkReport(Report):
     :type screen_calibration: Optional[ScreenCalibration]
     :type video: VideoReader
     """
+    if self._skip_images:
+      open(filename, "w").close()
+      return
+
     frame = video.FrameAt(time)
     frame = self._ProcessFrame(frame, event, screen_calibration)
     SaveImage(filename, frame)

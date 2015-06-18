@@ -4,16 +4,18 @@
 """Unit tests for both implementations of VideoProcessor."""
 
 from unittest import TestCase, skip
+
 import numpy as np
 
-from optofidelity.detection.st_processor import SinglethreadedVideoProcessor
-from optofidelity.detection.mt_processor import MultithreadedVideoProcessor
+from optofidelity.detection import (MultithreadedVideoProcessor,
+                                    SinglethreadedVideoProcessor, Trace)
+from optofidelity.detection.events import LEDEvent, ScreenDrawEvent
 from optofidelity.detection.fake import FakeVideoProcessor
 from optofidelity.detection.screen_calibration import ScreenCalibration
-from optofidelity.detection.events import LEDEvent, ScreenDrawEvent
 from optofidelity.videoproc import FakeVideoReader
 
 from . import test_data
+
 
 class ProcessorTest(TestCase):
   def setUp(self):
@@ -25,19 +27,6 @@ class ProcessorTest(TestCase):
       return MultithreadedVideoProcessor()
     else:
       return SinglethreadedVideoProcessor()
-
-  def testSingleFrameProcessing(self):
-    for multithreaded in (True, False):
-      frame = test_data.LoadImage("led_1_on.png")
-      prev_frame = test_data.LoadImage("led_1_off.png")
-
-      processor = self.createTestVideoProcessor(multithreaded)
-      processor.EnableDetectors(led=True)
-      events = processor.ProcessFrame(frame, prev_frame, self.calib, [])
-      self.assertEqual(len(events), 1)
-      event = events[0]
-      self.assertEqual(event.time, 0)
-      self.assertEqual(event.state, LEDEvent.STATE_ON)
 
   def testVideoProcessing(self):
     for multithreaded in (True, False):
@@ -65,8 +54,8 @@ class ProcessorTest(TestCase):
         processor.ProcessVideo(video_reader, self.calib, ["all"])
 
   def testFakeProcessor(self):
-    events = [LEDEvent(10, LEDEvent.STATE_ON),
-              LEDEvent(20, LEDEvent.STATE_OFF)]
+    events = Trace([LEDEvent(10, LEDEvent.STATE_ON),
+                    LEDEvent(20, LEDEvent.STATE_OFF)])
     processor = FakeVideoProcessor(events)
     video_reader = FakeVideoReader(50, (1280, 720), 300)
     calib = processor.CreateScreenCalibration(video_reader)

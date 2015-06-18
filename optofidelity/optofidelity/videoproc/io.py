@@ -262,3 +262,8 @@ class FakeVideoReader(VideoReader):
 
   def _ClearPrefetch(self):
     pass
+
+  def Save(self, filename):
+    with open(filename, "w") as file_obj:
+      file_obj.write("FakeVideoReader")
+      file_obj.close()

@@ -38,7 +38,7 @@ class Orchestrator(object):
   FILED_BENCHMARKS_FILE = "failed_benchmarks.log"
 
   def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
-               results_db_url, xkcd=False):
+               results_db_url, generate_reports=True, xkcd=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -46,6 +46,7 @@ class Orchestrator(object):
     :type results_url: str
     :type results_db_url: str
     :param bool xkcd: Give reports more authority
+    :param bool generate_reports: Generate reports for each benchmark
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
@@ -55,6 +56,7 @@ class Orchestrator(object):
     self._results_db = dataset.connect(results_db_url)
     self._results_table = self._results_db["benchmark_results"]
     self._progress = ProgressPrinter(_log)
+    self._generate_reports = generate_reports
     self._xkcd = xkcd
 
   def RunHistoryBenchmarks(self, match, debug_flags, first_version):
@@ -230,6 +232,8 @@ class Orchestrator(object):
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
+    if not self._generate_reports:
+      return
     with GSFolder(report_url) as report_path:
       report = BenchmarkReport(report_path, "report.html", xkcd=self._xkcd)
       report.GenerateReport(benchmark.results, benchmark.trace,
@@ -241,6 +245,8 @@ class Orchestrator(object):
     :param str report_path: path to folder to save the report into.
     :rtype Report
     """
+    if not self._generate_reports:
+      return
     with GSFolder(report_url) as report_path:
       report = AggregateReport(report_path, "report.html", xkcd=self._xkcd)
       report.GenerateReport(aggregate_results)
