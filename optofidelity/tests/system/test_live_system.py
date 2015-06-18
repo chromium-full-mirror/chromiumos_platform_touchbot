@@ -6,7 +6,7 @@
 from tempfile import NamedTemporaryFile
 import unittest
 
-from optofidelity.system import BenchmarkSystem, BenchmarkSystemConfig
+from optofidelity.system import BenchmarkSystem
 
 ROBOT_IP = None
 

@@ -10,14 +10,16 @@ import xml.etree.ElementTree as ElementTree
 
 from safetynet import Optional, TypecheckMeta
 
-from .navigator import NativeADBNavigator, RobotNavigator, WebADBNavigator
-from .camera_phantom import PhantomCamera
-from .backend_tnt import TnTRobotBackend
-from .updater import ChromeUpdater, ManualUpdater
-from .subject import BenchmarkSubject
-from .system import BenchmarkSystem, FingerCalibDelay
+from .system import (BenchmarkSubject, BenchmarkSystem, FingerCalibDelay,
+                     HighSpeedCamera, Navigator, RobotBackend, Updater)
+from .system.backend_tnt import TnTRobotBackend
+from .system.camera_phantom import PhantomCamera
+from .system.navigator import (NativeADBNavigator, RobotNavigator,
+                               WebADBNavigator)
+from .system.updater import ChromeUpdater, ManualUpdater
 
-class BenchmarkSystemConfig(object):
+
+class SystemBuilder(object):
   __metaclass__ = TypecheckMeta
 
   def __init__(self, config_file):

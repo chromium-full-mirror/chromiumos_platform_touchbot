@@ -13,7 +13,6 @@ object to allow the recording of interactions.
 """
 from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
-from .config import BenchmarkSystemConfig
 from .navigator import Navigator
 from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
