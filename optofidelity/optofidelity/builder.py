@@ -4,145 +4,263 @@
 """Implementation of the BenchmarkSystem class."""
 
 from collections import namedtuple
+from copy import deepcopy
 import cPickle as pickle
+import itertools
 import re
 import xml.etree.ElementTree as ElementTree
 
-from safetynet import Optional, TypecheckMeta
+from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
+                       typecheck)
 
-from .system import (BenchmarkSubject, BenchmarkSystem, FingerCalibDelay,
-                     HighSpeedCamera, Navigator, RobotBackend, Updater)
+from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
+                     Navigator, RobotBackend, Updater)
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
+from .system.fake import FakeHighSpeedCamera, FakeRobotBackend, FakeUpdater
 from .system.navigator import (NativeADBNavigator, RobotNavigator,
                                WebADBNavigator)
+from .system.system import FingerCalibDelay
 from .system.updater import ChromeUpdater, ManualUpdater
 
 
+@typecheck
+def GetRequired(parent, element_name):
+  """Returns child element, throws exception if it does not exist.
+
+  :type parent: ElementTree.Element
+  :type element_name: str
+  :rtype: ElementTree.Element
+  """
+  element = parent.find(element_name)
+  if element is None:
+    raise Exception("Config error: %s element is required in %s" %
+                    (element_name, parent.tag))
+  return element
+
+@typecheck
+def MergeElement(base, merging):
+  """Merges the element merging into the element base.
+
+  The merging element will not override any values in the base element, but
+  child elements will be appended with the exception of elements that have a
+  name="" attribute. Those will be merged with the corresponding element with
+  the same name attribute.
+
+  :type base: ElementTree.Element
+  :type merging: ElementTree.Element
+  """
+
+  for k, v in merging.attrib.items():
+    if k not in base.attrib:
+      base.attrib[k] = v
+
+  for child in merging:
+    child_name = child.get("name")
+    existing_child = None
+
+    if child_name:
+      for candidate in base.iter(child.tag):
+        if candidate.get("name") == child_name:
+          existing_child = candidate
+
+    if existing_child is not None:
+      MergeElement(existing_child, child)
+    else:
+      base.append(deepcopy(child))
+
+
 class SystemBuilder(object):
+  """Factory for BenchmarkSystem, Orchestrator, BenchmarkRunner, etc.
+
+  This class uses a config file to allow the components to be configured on
+  creation.
+  """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, config_file):
-    self._subject_types = {}
-    self.benchmark_system = self._ReadConfig()
+  COMPONENTS = {
+    RobotBackend: {
+      "tnt": TnTRobotBackend,
+      "fake": FakeRobotBackend
+    },
+    HighSpeedCamera: {
+      "phantom": PhantomCamera,
+      "fake": FakeHighSpeedCamera
+    },
+    Updater: {
+      "chrome": ChromeUpdater,
+      "manual": ManualUpdater,
+      "fake": FakeUpdater,
+    },
+    Navigator: {
+      "robot": RobotNavigator,
+      "web_adb": WebADBNavigator,
+      "native_adb": NativeADBNavigator
+    }
+  }
 
-  def _ReadConfig(self, config_file):
-    system = BenchmarkSystem()
+  def __init__(self, config_element):
+    """Initialize all components from the configuration in config_element.
 
-    root = ElementTree.parse(config_file).getroot()
+    :type config_element: ElementTree.Element
+    """
+    self._subject_types = self._ReadTypes(config_element, "subject-type")
+    self._dut_types = self._ReadTypes(config_element, "dut-type")
 
-    self._subject_types = {}
-    for type_elem in root.iter("subject-type"):
-      type_name = type_elem.attrib["type-name"]
-      self._subject_types[type_name] = type_elem
+    benchmark_element = GetRequired(config_element, "benchmark-system")
+    self.benchmark_system = self._BuildBenchmarkSystem(benchmark_element)
 
-    finger_calib = root.find("finger-calibration")
+    for dut_elem in config_element.iter("dut"):
+      for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
+        self.benchmark_system.subjects[subject.name] = subject
+
+  @classmethod
+  def FromFile(cls, config_file):
+    """Initialize with config loaded from config_file."""
+    return cls(ElementTree.parse(config_file).getroot())
+
+  @classmethod
+  def FromString(cls, config_string):
+    """Initialize with config from config_string."""
+    return cls(ElementTree.fromstring(config_string))
+
+  def _BuildBenchmarkSystem(self, system_element):
+    """Builds a BenchmarkSystem instance."""
+    backend_element = GetRequired(system_element, "backend")
+    backend = self._CreateComponent(RobotBackend, backend_element, dict())
+
+    camera_element = GetRequired(system_element, "camera")
+    camera = self._CreateComponent(HighSpeedCamera, camera_element, dict())
+
+    system = BenchmarkSystem(backend, camera)
+
+    finger_calib = system_element.find("finger-calibration")
     if finger_calib is not None:
       down = float(finger_calib.get("down-delay", 0.0))
       up = float(finger_calib.get("up-delay", 0.0))
       system.finger_calib_delay = FingerCalibDelay(down, up)
 
-    robot = root.find("robot")
-    camera = root.find("camera")
-
-    system.backend = self._CreateBackend(robot.attrib if robot is not None
-                                                      else {})
-    system.camera = self._CreateCamera(camera.attrib if camera is not None
-                                                     else {})
-
-    calib_elem = root.find("led-calibration-subject")
+    calib_elem = system_element.find("led-calibration-subject")
     if calib_elem is not None:
       backend_name = calib_elem.get("backend-name", "calibration")
       dut_backend = system.backend.GetDUTBackend(backend_name)
       nav_backend = RobotNavigator(dut_backend, "")
       subject = BenchmarkSubject("calibration", "calibration", dut_backend,
-                                 nav_backend, None, self.camera, (0.0, 0.0))
+                                 nav_backend, None, system.camera, (0.0, 0.0))
       system.led_calibration_subject = subject
-
-    for dut_elem in root.iter("dut"):
-      self._ReadDUTConfig(system, dut_elem)
     return system
 
-  def _ReadDUTConfig(self, system, dut_elem):
+  def _BuildDUTSubjects(self, dut_elem, system):
+    """Builds all BenchmarkSubject of a DUT from config."""
+    self._InheritFromType(dut_elem, self._dut_types)
+
     dut_name = dut_elem.attrib["name"]
-    tnt_name = dut_elem.get("backend-name", dut_name)
-    dut_backend = system.backend.GetDUTBackend(tnt_name)
+
+    backend_name = dut_elem.get("backend-name", dut_name)
+    dut_backend = system.backend.GetDUTBackend(backend_name)
 
     for subject_elem in dut_elem.iter("subject"):
-      self._ReadSubjectConfig(system, subject_elem, dut_elem.attrib,
-                              dut_backend)
+      yield self._BuildSubject(subject_elem, dut_elem, dut_backend, system)
 
-  def _ReadSubjectConfig(self, system, subject_elem, dut_attrib, dut_backend):
-    type_name = subject_elem.attrib.get("type", None)
-    subject_type = self._subject_types.get(type_name)
+  def _BuildSubject(self, subject_elem, dut_elem, dut_backend, system):
+    """Builds BenchmarkSubject instance from config."""
+    self._InheritFromType(subject_elem, self._subject_types)
 
-    subject_attrib = self._CollectSubjectAttrib(subject_elem, None)
+    subject_name = subject_elem.attrib["name"]
+    dut_name = dut_elem.attrib["name"]
 
-    nav_attrib = self._CollectSubjectAttrib(subject_elem, "navigator")
-    navigator = self._CreateNavigator(nav_attrib, subject_attrib, dut_attrib,
-                                      dut_backend)
+    additional = dut_elem.attrib.copy()
+    additional.update(subject_elem.attrib)
 
-    updater_attrib = self._CollectSubjectAttrib(subject_elem, "updater")
-    updater = self._CreateUpdater(updater_attrib, subject_attrib, dut_attrib)
+    navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
+                                      additional, dut_backend)
+    updater = self._CreateComponent(Updater, subject_elem.find("updater"),
+                                    additional, dut_backend)
 
-    dut_name = dut_attrib.get("name")
-    subject_name = subject_attrib.get("name")
-    margin = self._ParseCoord(subject_attrib.get("margin"))
+    return BenchmarkSubject(dut_name, subject_name, dut_backend, navigator,
+                            updater, system.camera, (0.0, 0.0))
 
-    subject = BenchmarkSubject(dut_name, subject_name, dut_backend, navigator,
-                               updater, self.camera, margin)
-    system.subjects[subject.name] = subject
+  def _ReadTypes(self, root, element_name):
+    """Puts all elements of element_name in a dict with type-name as a key.
 
-  def _CollectSubjectAttrib(self, subject_elem, child_name):
-    type_name = subject_elem.attrib.get("type", None)
-    subject_type_elem = self._subject_types.get(type_name)
+    :type root: ElementTree.Element
+    :type element_name: str
+    :rtype Dict[str, ElementTree.Element]
+    """
+    type_dict = {}
+    for type_elem in root.iter(element_name):
+      type_name = type_elem.attrib["type-name"]
+      type_dict[type_name] = type_elem
+    return type_dict
 
-    # First find attributes from subject-type definition
-    attrib = {}
-    if subject_type_elem is not None:
-      if child_name:
-        element = subject_type_elem.find(child_name)
-        if element is not None:
-          attrib.update(element.attrib)
+  def _InheritFromType(self, element, types):
+    """Inherit attributes and children from type.
+
+    An element with a type="" attribute will inherit all attributes and children
+    from the matching element in the types dictionary.
+    Inheritance can be hierarchical when the type itself specifies a parent-type
+    attribute.
+
+    :type element: ElementTree.Element
+    :type types: Dict[str, ElementTree.Element]
+    """
+    def BuildTypeHierarchy(type_element, parent_field_name):
+      parent_name = type_element.get(parent_field_name)
+      if parent_name:
+        parent_element = types.get(parent_name)
+        if parent_element is None:
+          raise Exception("Unknown type %s" % parent_name)
+        return [parent_element] + BuildTypeHierarchy(parent_element,
+                                                     "parent-type")
       else:
-        attrib.update(subject_type_elem.attrib)
+        return []
 
-    # Then from subject element itself
-    if child_name:
-      element = subject_elem.find(child_name)
-      if element is not None:
-        attrib.update(element.attrib)
-    else:
-      attrib.update(subject_elem.attrib)
-    return attrib
+    hierarchy = BuildTypeHierarchy(element, "type")
+    for type_element in hierarchy:
+      MergeElement(element, type_element)
 
-  def _CreateCamera(self, attrib):
-    return PhantomCamera(attrib["host"], attrib.get("port"))
+    # Remove attributes used for inheritance
+    remove_keys = ("type", "type-name", "parent-type")
+    element.attrib = dict((k, v) for k, v in element.attrib.items()
+                                 if k not in remove_keys)
 
-  def _CreateBackend(self, attrib):
-    return TnTRobotBackend(attrib["host"], attrib.get("port"))
+  def _GetElementAttribs(self, element, additional):
+    """Collects attributes and children attributes of an element.
 
-  def _CreateNavigator(self, nav_attrib, subject_attrib, dut_attrib,
-                       dut_backend):
-    nav_type_name = nav_attrib.get("type", "robot")
-    if nav_type_name == "robot":
-      return RobotNavigator(dut_backend, nav_attrib["icon"])
-    elif nav_type_name == "web_adb":
-      return WebADBNavigator(dut_attrib["adb"], nav_attrib["component"])
-    elif nav_type_name == "native_adb":
-      return NativeADBNavigator(dut_attrib["adb"], nav_attrib["apk"],
-                                nav_attrib["package"])
-    else:
-      raise ValueError("Unknown navigator type name '%s'" % nav_type_name)
+    :type element: ElementTree.Element
+    :rtype Tuple[Dict[str, str], List[(str, Dict[str, str])]]
+    """
+    attrib = additional.copy() if additional else dict()
+    attrib.update(element.attrib)
+    children = []
+    for child in element:
+      child.append((child.tag, child.attrib))
+    return attrib, children
 
-  def _CreateUpdater(self, updater_attrib, subject_attrib, dut_attrib):
-    updater_type_name = updater_attrib.get("type", "manual")
-    if updater_type_name == "manual":
-      return ManualUpdater(updater_attrib.get("version"))
-    elif updater_type_name == "chrome":
-      return ChromeUpdater(dut_attrib["adb"], updater_attrib["channel"])
-    else:
-      raise ValueError("Unknown updater type name '%s'" % updater_type_name)
+  def _CreateComponent(self, interface_type, element, additional, *extra_args):
+    """Create instance of interface_type with config from element.
+
+    The type attribute specified in the elment will pick the implementation to
+    use from the COMPONENTS dictionary. The implementation will be created via
+    it's FromConfig method.
+
+    :type interface_type: type
+    :type element: ElementTree.Element
+    :param Dict[str, str] additional: Additional attributes
+    :param List[Any] extra_args: Extra arguments passes to FromConfig.
+    """
+    if element is None:
+      return None
+
+    attrib, children = self._GetElementAttribs(element, additional)
+    type_name = attrib["type"]
+
+    available = self.COMPONENTS[interface_type]
+    if type_name not in available:
+      raise Exception("Invalid type '%s' for interface '%s'" %
+                      (type_name, interface_type))
+    impl_type = available[type_name]
+    return impl_type.FromConfig(attrib, children, *extra_args)
 
   def _ParseCoord(self, string):
     if string:

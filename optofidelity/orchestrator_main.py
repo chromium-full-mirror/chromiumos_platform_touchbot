@@ -17,7 +17,7 @@ import sys
 from optofidelity.benchmark import BenchmarkRunner
 from optofidelity.detection import MultithreadedVideoProcessor
 from optofidelity.orchestrator import Dashboard, Orchestrator
-from optofidelity.system import BenchmarkSystemConfig
+from optofidelity.builder import SystemBuilder
 
 from config import (config_file, dashboard_endpoint, results_db_url,
                     results_url, state_file)
@@ -51,7 +51,7 @@ Run tap test on all devices
 
 def RunBenchmarks(match, skip_update, debug_flags, force_version, history,
                   xkcd):
-  config = BenchmarkSystemConfig(config_file)
+  config = SystemBuilder.FromFile(config_file)
   system = config.benchmark_system
   video_processor = MultithreadedVideoProcessor()
   runner = BenchmarkRunner(system, video_processor)

@@ -78,6 +78,10 @@ class TnTRobotBackend(RobotBackend):
   def __init__(self, host, port=None):
     self._client = TnTClient(host, port or 8000)
 
+  @classmethod
+  def FromConfig(cls, attrib, children):
+    return cls(attrib["host"], attrib.get("port"))
+
   def Reset(self):
     robot = self._client.robots().values()[0]
     robot.go_home()

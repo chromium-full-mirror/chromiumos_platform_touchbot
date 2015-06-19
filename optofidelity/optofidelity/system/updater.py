@@ -58,6 +58,10 @@ class ManualUpdater(Updater):
     """
     self._version = version
 
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes["version"])
+
   @property
   def available_versions(self):
     return []
@@ -95,6 +99,10 @@ class ChromeUpdater(Updater):
     elif channel == "beta":
       self._package_name = "com.chrome.beta"
       self._filename = "ChromeBeta.apk"
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes["adb"], attributes["channel"])
 
   def GetVersionUID(self, version):
     for uid_version, uid in self._version_db:

@@ -87,6 +87,10 @@ class RobotNavigator(Navigator):
     self._page_button_coords = {}
     self._app_icon_coords = None
 
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(dut_backend, attributes.get("icon", ""))
+
   @property
   def state(self):
     return {
@@ -178,6 +182,10 @@ class BaseADBNavigator(Navigator):
     self._adb = ADB(adb_device)
     self._stay_alive = stay_alive
 
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes.get("adb"))
+
   @property
   def state(self):
     return {}
@@ -218,6 +226,10 @@ class WebADBNavigator(BaseADBNavigator):
     """
     super(WebADBNavigator, self).__init__(adb_device, stay_alive)
     self._component = component
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes["adb"], attributes["component"])
 
   def Open(self, safe):
     super(WebADBNavigator, self).Open(safe)
@@ -266,6 +278,10 @@ class NativeADBNavigator(BaseADBNavigator):
     super(NativeADBNavigator, self).__init__(adb_device, stay_alive)
     self._apk_file = apk_file
     self._package_name = package_name
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes["adb"], attributes["apk"], attributes["package"])
 
   def Open(self, safe):
     super(NativeADBNavigator, self).Open(safe)

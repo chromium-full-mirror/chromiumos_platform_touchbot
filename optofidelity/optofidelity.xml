@@ -1,47 +1,34 @@
 <optofidelity>
-  <robot host="192.168.0.11" port="8000" />
-  <camera host="192.168.0.4" />
-  <finger-calibration down-delay="-4" up-delay="4" />
-  <led-calibration-subject backend-name="calibration" />
+  <benchmark-system>
+    <backend type="tnt" host="192.168.0.11" port="8000" />
+    <camera type="phantom" host="192.168.0.4" />
+    <finger-calibration down-delay="-4" up-delay="4" />
+    <led-calibration-subject backend-name="calibration" />
+  </benchmark-system>
 
-  <subject-type type-name="clank_tablet" name="clank" margin="(30, 15)">
+  <subject-type type-name="clank_beta">
     <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main" />
     <updater type="chrome" channel="beta" />
   </subject-type>
 
-  <subject-type type-name="clank_phone" name="clank" margin="(20, 15)">
-    <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main" />
-    <updater type="chrome" channel="beta" />
-  </subject-type>
-
-  <subject-type type-name="android_native" name="native" margin="(10, 15)">
+  <subject-type type-name="android_native" margin="(10, 15)">
     <navigator type="native_adb" package="org.chromium.touchlatency" apk="touchlatency.apk" />
     <updater type="manual" version="0.0" />
   </subject-type>
 
-  <dut name="nexus5" adb="08a9896c255d540b" orientation="left">
-    <subject type="clank_phone" />
-    <subject type="android_native" />
-  </dut>
+  <dut-type type-name="nexus_phone">
+    <subject name="clank_beta" type="clank_beta" margin="(20, 15)" />
+    <subject name="native" type="android_native" />
+  </dut-type>
 
-  <dut name="nexus6" adb="NP5A340401" orientation="left">
-    <subject type="clank_phone" />
-    <subject type="android_native" />
-  </dut>
+  <dut-type type-name="nexus_tablet" parent-type="nexus_phone">
+    <subject name="clank_beta" margin="(30, 15)" />
+  </dut-type>
 
-  <dut name="nexus4" adb="04f6cafb8c976e5a" orientation="left">
-    <subject type="clank_phone" />
-    <subject type="android_native" />
-  </dut>
-
-  <dut name="nexus7" adb="071c76bf" orientation="right">
-    <subject type="clank_tablet" />
-    <subject type="android_native" />
-  </dut>
-
-  <dut name="nexus9" adb="HT4AEJT02069" orientation="right">
-    <subject type="clank_tablet" />
-    <subject type="android_native" />
-  </dut>
+  <dut name="nexus4" adb="04f6cafb8c976e5a" type="nexus_phone" />
+  <dut name="nexus5" adb="08a9896c255d540b" type="nexus_phone" />
+  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" />
+  <dut name="nexus7" adb="071c76bf" type="nexus_tablet" />
+  <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" />
 
 </optofidelity>

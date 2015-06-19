@@ -95,6 +95,10 @@ class PhantomCamera(HighSpeedCamera):
     data_port = self._data_sock.getsockname()[1]
     self._SendCommand("attach {port: %d}" % data_port)
 
+  @classmethod
+  def FromConfig(cls, attrib, children):
+    return cls(attrib["host"], attrib.get("port"))
+
   def Prepare(self, duration, fps=None):
     self._fps = fps or self.default_fps
     self._num_frames = duration * self._fps / 1000

@@ -25,7 +25,7 @@ class BenchmarkSystem(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self):
+  def __init__(self, backend, camera):
     """Creates new system from configuration file:
 
     The configuration file should look like this:
@@ -95,8 +95,8 @@ class BenchmarkSystem(object):
     :param Optional[str] config_file: Path to configuration file.
     :param bool fake_backend: Use fake backend for robot and camera for testing.
     """
-    self.backend = None
-    self.camera = None
+    self.backend = backend
+    self.camera = camera
     self.led_calibration_subject = None
     self.finger_calib_delay = FingerCalibDelay(0.0, 0.0)
     self.subjects = {}

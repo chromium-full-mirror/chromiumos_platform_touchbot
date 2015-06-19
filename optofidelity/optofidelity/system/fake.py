@@ -74,6 +74,10 @@ class FakeDUTBackend(DUTBackend):
 
 class FakeRobotBackend(RobotBackend):
   """Fake implementation of RobotBackend."""
+  @classmethod
+  def FromConfig(cls, attributes, children):
+    return cls()
+
   def Reset(self):
     _log.info("Reset")
 
@@ -89,6 +93,10 @@ class FakeHighSpeedCamera(HighSpeedCamera):
     self.frame_size = (1280, 720)
     self.fake_videos = dict()
     self.fake_video = None
+
+  @classmethod
+  def FromConfig(cls, attributes, children):
+    return cls()
 
   def Prepare(self, duration, fps=None):
     self.fps = fps or self.fps
@@ -113,6 +121,10 @@ class FakeUpdater(Updater):
   def __init__(self):
     self._available_versions = []
     self._installed_version = None
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls()
 
   def GetVersionUID(self, version):
     return 0
@@ -156,10 +168,8 @@ class FakeBenchmarkSystem(BenchmarkSystem):
   is available at self.fake_subject.
   """
   def __init__(self):
-    super(FakeBenchmarkSystem, self).__init__()
-    self.backend = FakeRobotBackend()
-    self.camera = FakeHighSpeedCamera()
-
+    super(FakeBenchmarkSystem, self).__init__(FakeRobotBackend(),
+                                              FakeHighSpeedCamera())
     self.subjects = defaultdict(self._CreateFakeSubject, self.subjects)
     self.fake_subject = None
 
