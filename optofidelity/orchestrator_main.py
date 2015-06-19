@@ -55,7 +55,7 @@ def RunBenchmarks(match, skip_update, debug_flags, force_version, history,
   system = config.benchmark_system
   video_processor = MultithreadedVideoProcessor()
   runner = BenchmarkRunner(system, video_processor)
-  dashboard = Dashboard(dashboard_endpoint, fake=False)
+  dashboard = Dashboard(dashboard_endpoint)
   orchestrator = Orchestrator(system, runner, dashboard, results_url,
                               results_db_url, xkcd=xkcd)
 
