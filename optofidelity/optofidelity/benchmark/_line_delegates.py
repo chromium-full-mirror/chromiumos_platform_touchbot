@@ -109,9 +109,9 @@ class TouchMoveDelegate(LineDrawDelegate):
   """Performs line draw benchmark on the "Move" page."""
 
   def ExecuteOnSubject(self, subject):
-    subject.OpenPage("Move")
+    subject.OpenActivity("Move")
     video_reader = self._ExecuteLineDrawOnSubject(subject)
-    subject.ClosePage()
+    subject.CloseActivity()
     return video_reader
 
 
@@ -119,9 +119,9 @@ class ScrollDelegate(LineDrawDelegate):
   """Performs line draw benchmark on the "Scroll" page."""
 
   def ExecuteOnSubject(self, subject):
-    subject.OpenPage("Scroll")
+    subject.OpenActivity("Scroll")
     video_reader = self._ExecuteLineDrawOnSubject(subject)
-    subject.ClosePage()
+    subject.CloseActivity()
     return video_reader
 
 
@@ -192,9 +192,9 @@ class TouchMoveStartDelegate(LineDrawStartDelegate):
   """Performs line draw start benchmark on the "Move" page."""
 
   def ExecuteOnSubject(self, subject):
-    subject.OpenPage("Move")
+    subject.OpenActivity("Move")
     video_reader = self._ExecuteLineDrawStartOnSubject(subject)
-    subject.ClosePage()
+    subject.CloseActivity()
     return video_reader
 
 
@@ -202,7 +202,7 @@ class ScrollStartDelegate(LineDrawStartDelegate):
   """Performs line draw start benchmark on the "Scroll" page."""
 
   def ExecuteOnSubject(self, subject):
-    subject.OpenPage("Scroll")
+    subject.OpenActivity("Scroll")
     video_reader = self._ExecuteLineDrawStartOnSubject(subject)
-    subject.ClosePage()
+    subject.CloseActivity()
     return video_reader

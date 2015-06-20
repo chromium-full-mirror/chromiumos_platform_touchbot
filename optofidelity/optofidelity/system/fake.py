@@ -145,9 +145,9 @@ class FakeUpdater(Updater):
 
 
 class FakeBenchmarkSubject(BenchmarkSubject):
-  def OpenPage(self, page_name):
-    self.camera.fake_video = self.camera.fake_videos.get(page_name, None)
-    return super(FakeBenchmarkSubject, self).OpenPage(page_name)
+  def OpenActivity(self, activity_name):
+    self.camera.fake_video = self.camera.fake_videos.get(activity_name, None)
+    return super(FakeBenchmarkSubject, self).OpenActivity(activity_name)
 
   @property
   def fake_videos(self):

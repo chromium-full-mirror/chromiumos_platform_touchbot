@@ -25,19 +25,19 @@ class AbstractNavBackendTests(TestCase):
     backend.Close()
     self.assertUserAccepts("Verify the subject has been closed.")
 
-  def testOpenClosePageTest(self):
+  def testOpenCloseActivityTest(self):
     backend = self.createBackend()
     backend.Open(False)
-    backend.OpenPage("Flash")
+    backend.OpenActivity("Flash")
     self.assertUserAccepts("Verify the flash page has been opened.")
-    backend.ClosePage()
+    backend.CloseActivity()
     self.assertUserAccepts("Verify the flash page has been closed.")
     backend.Close()
 
   def testReset(self):
     backend = self.createBackend()
     backend.Open(False)
-    backend.OpenPage("Flash")
+    backend.OpenActivity("Flash")
     self.assertUserAccepts("Verify the flash page has been opened.")
     backend.Reset()
     self.assertUserAccepts("Verify the subject has been reset.")

@@ -22,7 +22,7 @@ class BenchmarkSubject(object):
   """A BenchmarkSubject is the robot systems view of an app running on a DUT.
 
   This class provides the functionality to navigate this app, to Open it and
-  to navigate to it's pages.
+  to navigate to it's activities.
 
   It provides a way to perform gestures on this app. All gesture methods have a
   variant that operates on a plane in the X-Axis. This plane will intersect
@@ -95,7 +95,7 @@ class BenchmarkSubject(object):
     self._navigator = navigator
 
     self._is_open = False
-    self._current_page = None
+    self._current_activity = None
 
   @property
   def state(self):
@@ -146,42 +146,39 @@ class BenchmarkSubject(object):
     """Attempt to reset the device back to it's home location."""
     self._navigator.Reset()
     self._is_open = False
-    self._current_page = None
+    self._current_activity = None
 
   def Cleanup(self):
-    if self._current_page:
-      self.ClosePage()
+    if self._current_activity:
+      self.CloseActivity()
     if self._is_open:
       self.Close()
 
-  def OpenPage(self, page_name):
-    """Open a page by it's name.
+  def OpenActivity(self, activity_name):
+    """Open an activity by it's name.
 
-    Just as Open, this will detect the buttons for each page or re-use the
-    coordinates detected previously.
-
-    :param str page_name: Name of the page to open.
+    :param str activity_name: Name of the activity to open.
     """
     if not self._is_open:
-      raise Exception("Can't open page if subject has not been opened.")
-    if self._current_page:
-      raise Exception("Another page is already open.")
-    if page_name not in self.PAGE_NAMES:
-      raise ValueError("Unknown page name '%s'" % page_name)
+      raise Exception("Can't open activity if subject has not been opened.")
+    if self._current_activity:
+      raise Exception("Another activity is already open.")
+    if activity_name not in self.PAGE_NAMES:
+      raise ValueError("Unknown activity name '%s'" % activity_name)
 
-    self._navigator.OpenPage(page_name)
-    self._current_page = page_name
+    self._navigator.OpenActivity(activity_name)
+    self._current_activity = activity_name
 
   def WaitForGesturesToFinish(self):
     """Blocks until all gestures are finished."""
     self._dut_backend.WaitForGesturesToFinish()
 
-  def ClosePage(self):
-    """Close currently opened page."""
-    if not self._current_page:
-      raise Exception("No page open.")
-    self._navigator.ClosePage()
-    self._current_page = None
+  def CloseActivity(self):
+    """Close currently opened activity."""
+    if not self._current_activity:
+      raise Exception("No activity open.")
+    self._navigator.CloseActivity()
+    self._current_activity = None
 
   def Tap(self, x, y, count=1, blocking=True):
     """Tap at location (x, y).
@@ -263,11 +260,11 @@ class BenchmarkSubject(object):
     :returns VideoReader: A video reader containing the calibration video.
     """
     self.camera.Prepare(1000)
-    self.OpenPage(self.PAGE_FLASH)
+    self.OpenActivity(self.PAGE_FLASH)
     self.MoveRobotOutOfCameraView()
     self.camera.Trigger()
     video = self.camera.ReceiveVideo()
-    self.ClosePage()
+    self.CloseActivity()
     return video
 
   def _SavelyMoveToDevice(self, target_x, target_y, target_z):

@@ -100,21 +100,21 @@ class SubjectTests(TestCase):
     subject.Open(safe=False)
     self.resetCommands()
 
-    subject.OpenPage("Tap")
-    subject.ClosePage()
+    subject.OpenActivity("Tap")
+    subject.CloseActivity()
     self.assertSeriesOfTaps(tap_button, back)
     self.assertCommandExecuted("DetectWords")
     self.resetCommands()
 
-    subject.OpenPage("Tap")
-    subject.ClosePage()
+    subject.OpenActivity("Tap")
+    subject.CloseActivity()
     subject.Close()
     self.assertCommandNotExecuted("DetectWords")
     self.resetCommands()
 
     subject.Open(safe=True)
-    subject.OpenPage("Tap")
-    subject.ClosePage()
+    subject.OpenActivity("Tap")
+    subject.CloseActivity()
     self.assertCommandExecuted("DetectWords")
     self.resetCommands()
 
@@ -124,25 +124,25 @@ class SubjectTests(TestCase):
 
     subject = self.createSubject()
     subject.Open(safe=False)
-    self.assertRaises(Exception, lambda: subject.OpenPage("Scroll"))
-    self.assertRaises(Exception, lambda: subject.OpenPage("Tap"))
+    self.assertRaises(Exception, lambda: subject.OpenActivity("Scroll"))
+    self.assertRaises(Exception, lambda: subject.OpenActivity("Tap"))
 
   def testPageOpenCloseState(self):
     subject = self.createSubject()
 
-    self.assertRaises(Exception, lambda: subject.OpenPage())
-    self.assertRaises(Exception, lambda: subject.ClosePage())
+    self.assertRaises(Exception, lambda: subject.OpenActivity())
+    self.assertRaises(Exception, lambda: subject.CloseActivity())
 
     subject.Open(safe=False)
-    subject.OpenPage("Tap")
-    self.assertRaises(Exception, lambda: subject.OpenPage("Scroll"))
-    subject.ClosePage()
-    self.assertRaises(Exception, lambda: subject.ClosePage())
-    subject.OpenPage("Tap")
+    subject.OpenActivity("Tap")
+    self.assertRaises(Exception, lambda: subject.OpenActivity("Scroll"))
+    subject.CloseActivity()
+    self.assertRaises(Exception, lambda: subject.CloseActivity())
+    subject.OpenActivity("Tap")
     subject.Reset()
 
-    self.assertRaises(Exception, lambda: subject.OpenPage())
-    self.assertRaises(Exception, lambda: subject.ClosePage())
+    self.assertRaises(Exception, lambda: subject.OpenActivity())
+    self.assertRaises(Exception, lambda: subject.CloseActivity())
 
   def testPlaneCalculation(self):
     self.dut_backend._orientation = np.pi / 2 + 0.1

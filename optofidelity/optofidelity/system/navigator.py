@@ -61,15 +61,15 @@ class Navigator(object):
     """
 
   @abstractmethod
-  def OpenPage(self, page_name):
-    """Open page.
+  def OpenActivity(self, activity_name):
+    """Open activity.
 
-    :type page_name: str
+    :type activity_name: str
     """
 
   @abstractmethod
-  def ClosePage(self):
-    """Close previously opened page."""
+  def CloseActivity(self):
+    """Close previously opened activity."""
 
 
 class RobotNavigator(Navigator):
@@ -84,7 +84,7 @@ class RobotNavigator(Navigator):
     """
     self._app_icon_shape_file = icon_shape_file
     self._dut_backend = dut_backend
-    self._page_button_coords = {}
+    self._activity_button_coords = {}
     self._app_icon_coords = None
 
   @classmethod
@@ -94,19 +94,19 @@ class RobotNavigator(Navigator):
   @property
   def state(self):
     return {
-      "page_button_coords": self._page_button_coords,
+      "page_button_coords": self._activity_button_coords,
       "app_icon_coords": self._app_icon_coords
     }
 
   @state.setter
   def state(self, value):
-    self._page_button_coords = value["page_button_coords"]
+    self._activity_button_coords = value["page_button_coords"]
     self._app_icon_coords = value["app_icon_coords"]
 
   def Open(self, safe):
     if safe:
       self.Reset()
-      self._page_button_coords = {}
+      self._activity_button_coords = {}
     else:
       self._dut_backend.Tap(*self._home_button_coords)
 
@@ -127,17 +127,17 @@ class RobotNavigator(Navigator):
     self._dut_backend.Tap(*self._back_button_coords)
     self._dut_backend.Tap(*self._home_button_coords)
 
-  def OpenPage(self, page_name):
-    coords = self._page_button_coords.get(page_name, None)
+  def OpenActivity(self, activity_name):
+    coords = self._activity_button_coords.get(activity_name, None)
     if not coords:
-      self._page_button_coords = self._DetectPageButtonCoords()
-      coords = self._page_button_coords[page_name]
+      self._activity_button_coords = self._DetectPageButtonCoords()
+      coords = self._activity_button_coords[activity_name]
     if not coords:
-      raise Exception("Cannot detect page button '%s'" % page_name)
+      raise Exception("Cannot detect activity button '%s'" % activity_name)
 
     self._dut_backend.Tap(*coords)
 
-  def ClosePage(self):
+  def CloseActivity(self):
     self._dut_backend.Tap(*self._back_button_coords)
 
   @const_property
@@ -202,7 +202,7 @@ class BaseADBNavigator(Navigator):
     if not self._stay_alive:
       self._adb.PowerOff()
 
-  def ClosePage(self):
+  def CloseActivity(self):
     self._adb.SendKey("KEYCODE_HOME")
 
   def Reset(self):
@@ -235,9 +235,9 @@ class WebADBNavigator(BaseADBNavigator):
     super(WebADBNavigator, self).Open(safe)
     self._UploadFiles()
 
-  def OpenPage(self, page_name):
+  def OpenActivity(self, activity_name):
     self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
-    self._OpenFile("%s.html" % page_name.lower())
+    self._OpenFile("%s.html" % activity_name.lower())
     time.sleep(1.0)  # Wait for chrome to load the page
 
   def _UploadFiles(self):
@@ -287,10 +287,10 @@ class NativeADBNavigator(BaseADBNavigator):
     super(NativeADBNavigator, self).Open(safe)
     self._adb.InstallAPK(os.path.join(self.APK_DIR, self._apk_file))
 
-  def OpenPage(self, page_name):
-    page_name = page_name.lower()
+  def OpenActivity(self, activity_name):
+    activity_name = activity_name.lower()
 
     self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
-    component = self._package_name + "/." + self.PAGE_TO_ACTIVITY_MAP[page_name]
+    component = self._package_name + "/." + self.PAGE_TO_ACTIVITY_MAP[activity_name]
     self._adb.StartActivity(component=component)
     time.sleep(1.0)  # Wait for activity to open
