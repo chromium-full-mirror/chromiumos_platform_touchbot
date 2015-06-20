@@ -9,7 +9,7 @@ from optofidelity.videoproc import FakeVideoReader
 
 from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
-from .navigator import RobotNavigator
+from .navigator import Navigator
 from .subject import BenchmarkSubject, Updater
 from .system import BenchmarkSystem
 
@@ -158,6 +158,37 @@ class FakeBenchmarkSubject(BenchmarkSubject):
     self.camera.fake_videos = value
 
 
+class FakeNavigator(Navigator):
+  def __init__(self):
+    self._activites = ["fake"]
+
+  @property
+  def activities(self):
+    return self._activites
+
+  @property
+  def state(self):
+    return {}
+
+  def AddActivity(self, activity_name, parameters):
+    self._activites.append(activity_name)
+
+  def Open(self, safe):
+    pass
+
+  def Close(self):
+    pass
+
+  def Reset(self):
+    pass
+
+  def OpenActivity(self, activity_name):
+    pass
+
+  def CloseActivity(self):
+    pass
+
+
 class FakeBenchmarkSystem(BenchmarkSystem):
   """Fake implementation of BenchmarkSystem.
 
@@ -178,7 +209,11 @@ class FakeBenchmarkSystem(BenchmarkSystem):
 
   def _CreateFakeSubject(self):
     dut_backend = self.backend.GetDUTBackend("fake_dut")
-    nav_backend = RobotNavigator(dut_backend, "dummy.shp")
+    nav_backend = FakeNavigator()
+    nav_backend.AddActivity("Tap", dict(text="Tap"))
+    nav_backend.AddActivity("Scroll", dict(text="Scroll"))
+    nav_backend.AddActivity("Move", dict(text="Move"))
+    nav_backend.AddActivity("Flash", dict(text="Flash"))
     updater = FakeUpdater()
     return FakeBenchmarkSubject("fake_dut", "fake_subject", dut_backend,
                                 nav_backend, updater, self.camera, (0.0, 0.0))

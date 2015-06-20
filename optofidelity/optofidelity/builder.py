@@ -7,6 +7,7 @@ from collections import namedtuple
 from copy import deepcopy
 import cPickle as pickle
 import itertools
+import os
 import re
 import xml.etree.ElementTree as ElementTree
 
@@ -99,11 +100,12 @@ class SystemBuilder(object):
     }
   }
 
-  def __init__(self, config_element):
+  def __init__(self, config_element, root_dir):
     """Initialize all components from the configuration in config_element.
 
     :type config_element: ElementTree.Element
     """
+    self._root_dir = root_dir
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
 
@@ -117,12 +119,13 @@ class SystemBuilder(object):
   @classmethod
   def FromFile(cls, config_file):
     """Initialize with config loaded from config_file."""
-    return cls(ElementTree.parse(config_file).getroot())
+    root_dir = os.path.dirname(config_file)
+    return cls(ElementTree.parse(config_file).getroot(), root_dir)
 
   @classmethod
   def FromString(cls, config_string):
     """Initialize with config from config_string."""
-    return cls(ElementTree.fromstring(config_string))
+    return cls(ElementTree.fromstring(config_string), ".")
 
   def _BuildBenchmarkSystem(self, system_element):
     """Builds a BenchmarkSystem instance."""
@@ -234,8 +237,17 @@ class SystemBuilder(object):
     attrib.update(element.attrib)
     children = []
     for child in element:
-      child.append((child.tag, child.attrib))
+      child_attrib = {k: self._ParseValue(v)
+                      for k, v in child.attrib.iteritems()}
+      children.append((child.tag, child_attrib))
+    attrib = {k: self._ParseValue(v) for k, v in attrib.iteritems()}
     return attrib, children
+
+  def _ParseValue(self, value):
+    if value.startswith("file:"):
+      value = value[len("file:"):]
+      return os.path.join(self._root_dir, value)
+    return value
 
   def _CreateComponent(self, interface_type, element, additional, *extra_args):
     """Create instance of interface_type with config from element.

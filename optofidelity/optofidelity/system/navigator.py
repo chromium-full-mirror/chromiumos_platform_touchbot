@@ -7,7 +7,7 @@ from abc import abstractmethod, abstractproperty
 import os
 import time
 
-from safetynet import Any, Dict, InterfaceMeta
+from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.util import const_property
 
@@ -21,24 +21,20 @@ class Navigator(object):
   """Backend class to navigate a device to open subjects and pages."""
   __metaclass__ = InterfaceMeta
 
-  # todo(denniskempin): configurable pages
-  PAGE_TAP = "Tap"
-  PAGE_MOVE = "Move"
-  PAGE_SCROLL = "Scroll"
-  PAGE_CLICK = "Click"
-  PAGE_FLASH = "Flash"
+  @abstractproperty
+  def activities(self):
+    """List of supported activity names.
 
-  PAGE_NAMES = [
-    PAGE_TAP,
-    PAGE_MOVE,
-    PAGE_SCROLL,
-    PAGE_CLICK,
-    PAGE_FLASH
-  ]
+    :rtype List[str]
+    """
 
   @abstractproperty
   def state(self):
     """State information. (e.g. coordinates of detected buttons)"""
+
+  @abstractmethod
+  def AddActivity(self, activity_name, parameters):
+    """Register an activity with sub-class specific parameters."""
 
   @abstractmethod
   def Open(self, safe):
@@ -82,14 +78,23 @@ class RobotNavigator(Navigator):
     :type dut_backend: DUTBackend
     :param str icon_shape_file: path to icon shape file of the subject.
     """
-    self._app_icon_shape_file = icon_shape_file
     self._dut_backend = dut_backend
-    self._activity_button_coords = {}
+    self._app_icon_shape_file = icon_shape_file
     self._app_icon_coords = None
+    self._activity_button_names = {}
+    self._activity_button_coords = {}
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    return cls(dut_backend, attributes.get("icon", ""))
+    self = cls(dut_backend, attributes.get("icon", ""))
+    for child_name, child_attrib in children:
+      if child_name == "activity":
+        self.AddActivity(child_attrib["name"], child_attrib)
+    return self
+
+  @property
+  def activities(self):
+    return self._activity_button_names.keys()
 
   @property
   def state(self):
@@ -103,19 +108,21 @@ class RobotNavigator(Navigator):
     self._activity_button_coords = value["page_button_coords"]
     self._app_icon_coords = value["app_icon_coords"]
 
+  def AddActivity(self, activity_name, parameters):
+    self._activity_button_names[activity_name] = parameters["text"]
+
   def Open(self, safe):
     if safe:
       self.Reset()
-      self._activity_button_coords = {}
     else:
       self._dut_backend.Tap(*self._home_button_coords)
 
     if safe or self._app_icon_coords is None:
       self._app_icon_coords = self._DetectAppIconCoords()
-    if self._app_icon_coords is None:
-      raise Exception("Cannot detect app icon")
 
     self._dut_backend.Tap(*self._app_icon_coords)
+    if safe or not self._activity_button_coords:
+      self._activity_button_coords = self._DetectActivityButtonCoords()
 
   def Close(self):
     self._dut_backend.Tap(*self._back_button_coords)
@@ -128,13 +135,7 @@ class RobotNavigator(Navigator):
     self._dut_backend.Tap(*self._home_button_coords)
 
   def OpenActivity(self, activity_name):
-    coords = self._activity_button_coords.get(activity_name, None)
-    if not coords:
-      self._activity_button_coords = self._DetectPageButtonCoords()
-      coords = self._activity_button_coords[activity_name]
-    if not coords:
-      raise Exception("Cannot detect activity button '%s'" % activity_name)
-
+    coords = self._activity_button_coords[activity_name]
     self._dut_backend.Tap(*coords)
 
   def CloseActivity(self):
@@ -161,10 +162,22 @@ class RobotNavigator(Navigator):
             float(self._dut_backend.height - 3))
 
   def _DetectAppIconCoords(self):
-    return self._dut_backend.DetectIcon(self._app_icon_shape_file)
+    coords = self._dut_backend.DetectIcon(self._app_icon_shape_file)
+    if coords is None:
+      raise Exception("Cannot detect app icon")
+    return coords
 
-  def _DetectPageButtonCoords(self):
-    return self._dut_backend.DetectWords(self.PAGE_NAMES)
+  def _DetectActivityButtonCoords(self):
+    button_names = self._activity_button_names.values()
+    button_coords = self._dut_backend.DetectWords(button_names)
+    activity_coords = dict()
+    for activity_name, button_name in self._activity_button_names.iteritems():
+      coords = button_coords[button_name]
+      if coords is None:
+        raise Exception("Cannot find button '%s' for activity '%s" %
+                        (button_name, activity_name))
+      activity_coords[activity_name] = coords
+    return activity_coords
 
 
 class BaseADBNavigator(Navigator):
@@ -181,6 +194,7 @@ class BaseADBNavigator(Navigator):
     """
     self._adb = ADB(adb_device)
     self._stay_alive = stay_alive
+    self._activity_intents = {}
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
@@ -198,6 +212,12 @@ class BaseADBNavigator(Navigator):
     if not self._stay_alive:
       self._adb.PowerOn()
 
+  def OpenActivity(self, activity_name):
+    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
+    intent_params = self._activity_intents[activity_name]
+    self._adb.StartActivity(**intent_params)
+    time.sleep(1.0)  # Wait for activity to load
+
   def Close(self):
     if not self._stay_alive:
       self._adb.PowerOff()
@@ -210,6 +230,9 @@ class BaseADBNavigator(Navigator):
     if not self._stay_alive:
       self._adb.PowerOff()
 
+  def AddActivity(self, activity_name, parameters):
+    self._activity_intents[activity_name] = parameters
+
 
 class WebADBNavigator(BaseADBNavigator):
   """Navigation backend that uses ADB to navigate to websites.
@@ -217,7 +240,6 @@ class WebADBNavigator(BaseADBNavigator):
   This backend will use the ADB command line tool to communicate with a device.
   It will upload the HTML files needed and open them in Chrome.
   """
-  HTML_DIR = os.path.join(_script_dir, "..", "..", "html")
   VIEW_ACTION = "android.intent.action.VIEW"
 
   def __init__(self, adb_device, component, stay_alive=False):
@@ -226,35 +248,37 @@ class WebADBNavigator(BaseADBNavigator):
     """
     super(WebADBNavigator, self).__init__(adb_device, stay_alive)
     self._component = component
+    self._activity_files = {}
+    self._resources = []
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    return cls(attributes["adb"], attributes["component"])
+    self = cls(attributes["adb"], attributes["component"])
+    for child_name, child_attrib in children:
+      if child_name == "activity":
+        self.AddActivity(child_attrib["name"], child_attrib)
+      if child_name == "resource":
+        self._resources.append(child_attrib["file"])
+    return self
 
   def Open(self, safe):
     super(WebADBNavigator, self).Open(safe)
-    self._UploadFiles()
 
-  def OpenActivity(self, activity_name):
-    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
-    self._OpenFile("%s.html" % activity_name.lower())
-    time.sleep(1.0)  # Wait for chrome to load the page
-
-  def _UploadFiles(self):
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
-    filenames = ["jquery.min.js"]
-    filenames += ["%s.html" % page.lower()
-                  for page in self.PAGE_NAMES]
+    for filename in (self._resources + self._activity_files.values()):
+      basename = os.path.basename(filename)
+      remote_file = os.path.join(self.REMOTE_DIR, basename)
+      self._adb.PushFile(filename, remote_file)
 
-    for filename in filenames:
-      self._adb.PushFile(os.path.join(self.HTML_DIR, filename),
-                         os.path.join(self.REMOTE_DIR, filename))
+  def AddActivity(self, activity_name, parameters):
+    html_file = parameters["file"]
+    self._activity_files[activity_name] = html_file
+    basename = os.path.basename(html_file)
 
-  def _OpenFile(self, filename):
-    remote_file = os.path.join(self.REMOTE_DIR, filename)
+    remote_file = os.path.join(self.REMOTE_DIR, basename)
     uri = "file://%s" % remote_file
-    self._adb.StartActivity(self.VIEW_ACTION, component=self._component,
-                            uri=uri)
+    intent_params = dict(component=self._component, uri=uri)
+    super(WebADBNavigator, self).AddActivity(activity_name, intent_params)
 
 
 class NativeADBNavigator(BaseADBNavigator):
@@ -263,13 +287,6 @@ class NativeADBNavigator(BaseADBNavigator):
   This backend will use the ADB command line tool to communicate with a device.
   It will upload the HTML files needed and open them in Chrome.
   """
-  APK_DIR = os.path.join(_script_dir, "..", "..", "apks")
-
-  PAGE_TO_ACTIVITY_MAP = {
-    "flash": "FlashActivity",
-    "scroll": "ScrollActivity",
-    "tap": "TapActivity"
-  }
 
   def __init__(self, adb_device, apk_file, package_name, stay_alive=False):
     """
@@ -281,16 +298,17 @@ class NativeADBNavigator(BaseADBNavigator):
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    return cls(attributes["adb"], attributes["apk"], attributes["package"])
+    self = cls(attributes["adb"], attributes["apk"], attributes["package"])
+    for child_name, child_attrib in children:
+      if child_name == "activity":
+        self.AddActivity(child_attrib["name"], child_attrib)
+    return self
 
   def Open(self, safe):
     super(NativeADBNavigator, self).Open(safe)
-    self._adb.InstallAPK(os.path.join(self.APK_DIR, self._apk_file))
+    self._adb.InstallAPK(self._apk_file)
 
-  def OpenActivity(self, activity_name):
-    activity_name = activity_name.lower()
-
-    self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
-    component = self._package_name + "/." + self.PAGE_TO_ACTIVITY_MAP[activity_name]
-    self._adb.StartActivity(component=component)
-    time.sleep(1.0)  # Wait for activity to open
+  def AddActivity(self, activity_name, parameters):
+    component = self._package_name + "/." + parameters["intent"]
+    intent_params = dict(component=component)
+    super(NativeADBNavigator, self).AddActivity(activity_name, intent_params)

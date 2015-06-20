@@ -18,6 +18,7 @@ class SubjectTests(TestCase):
     self.dut_backend = self.robot_backend.GetDUTBackend("test")
     self.camera = FakeHighSpeedCamera()
     self.nav_backend = RobotNavigator(self.dut_backend, "test.shp")
+    self.nav_backend.AddActivity("Tap", dict(text="Tap"))
 
   def createSubject(self):
     return BenchmarkSubject("test", "test", self.dut_backend, self.nav_backend,
@@ -98,18 +99,17 @@ class SubjectTests(TestCase):
     self.dut_backend._detect_words_rval = tap_button
 
     subject.Open(safe=False)
-    self.resetCommands()
-
-    subject.OpenActivity("Tap")
-    subject.CloseActivity()
-    self.assertSeriesOfTaps(tap_button, back)
     self.assertCommandExecuted("DetectWords")
     self.resetCommands()
 
     subject.OpenActivity("Tap")
     subject.CloseActivity()
+    self.assertSeriesOfTaps(tap_button, back)
+    self.resetCommands()
+
+    subject.OpenActivity("Tap")
+    subject.CloseActivity()
     subject.Close()
-    self.assertCommandNotExecuted("DetectWords")
     self.resetCommands()
 
     subject.Open(safe=True)
@@ -123,9 +123,8 @@ class SubjectTests(TestCase):
     self.dut_backend._detect_words_rval = None
 
     subject = self.createSubject()
-    subject.Open(safe=False)
-    self.assertRaises(Exception, lambda: subject.OpenActivity("Scroll"))
-    self.assertRaises(Exception, lambda: subject.OpenActivity("Tap"))
+    self.assertRaises(Exception, lambda: subject.Open(safe=False))
+    self.assertRaises(Exception, lambda: subject.Open(safe=True))
 
   def testPageOpenCloseState(self):
     subject = self.createSubject()

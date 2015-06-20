@@ -7,12 +7,22 @@
   </benchmark-system>
 
   <subject-type type-name="clank_beta">
-    <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main" />
+    <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main">
+      <activity name="Flash" file="file:html/flash.html" />
+      <activity name="Scroll" file="file:html/scroll.html" />
+      <activity name="Move" file="file:html/move.html" />
+      <activity name="Tap" file="file:html/tap.html" />
+      <resource file="file:html/jquery.min.js" />
+    </navigator>
     <updater type="chrome" channel="beta" />
   </subject-type>
 
   <subject-type type-name="android_native" margin="(10, 15)">
-    <navigator type="native_adb" package="org.chromium.touchlatency" apk="touchlatency.apk" />
+    <navigator type="native_adb" package="org.chromium.touchlatency" apk="file:apks/touchlatency.apk">
+      <activity name="Flash" intent="FlashActivity" />
+      <activity name="Scroll" intent="ScrollActivity" />
+      <activity name="Tap" intent="TapActivity" />
+    </navigator>
     <updater type="manual" version="0.0" />
   </subject-type>
 
