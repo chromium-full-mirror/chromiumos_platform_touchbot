@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import tempfile
 
-from optofidelity.util import ProgressBar
+from .tools import ProgressBar
 
 _log = logging.getLogger(__name__)
 

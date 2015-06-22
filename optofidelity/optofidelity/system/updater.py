@@ -11,9 +11,7 @@ import urllib2
 
 from safetynet import InterfaceMeta, List, Optional
 
-from optofidelity.util import ProgressBar, const_property
-
-from .adb import ADB
+from optofidelity.util import ADB, ProgressBar, const_property
 
 log = logging.getLogger(__name__)
 

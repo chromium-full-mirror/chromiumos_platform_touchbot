@@ -13,10 +13,10 @@ import numpy as np
 
 from optofidelity.benchmark import (AggregateResults, Benchmark,
                                     BenchmarkResults, BenchmarkRunner)
-from optofidelity.gsutil import GSFindUniqueFilename, GSFolder, GSPathExists
 from optofidelity.reporting import AggregateReport, BenchmarkReport
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
-from optofidelity.util import ProgressPrinter
+from optofidelity.util import (GSFindUniqueFilename, GSFolder, GSPathExists,
+                               ProgressPrinter)
 import dataset
 
 from .dashboard import Dashboard

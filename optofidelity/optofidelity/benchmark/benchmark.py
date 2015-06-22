@@ -12,15 +12,15 @@ from safetynet import Any, Dict, List, Optional, TypecheckMeta
 
 from optofidelity.detection import (LEDEvent, ScreenCalibration, Trace,
                                     VideoProcessor)
-from optofidelity.gsutil import GSFile, GSFolder, GSOpenFile, GSPathExists
 from optofidelity.system import BenchmarkSystem
+from optofidelity.util import GSFile, GSFolder, GSOpenFile, GSPathExists
 from optofidelity.videoproc import FileVideoReader, SaveImage
 
 from ._delegate import BenchmarkDelegate
 from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
                               TouchMoveDelegate, TouchMoveStartDelegate)
 from ._tap_delegate import TapDelegate
-from .results import BenchmarkResults, BenchmarkMeasurements
+from .results import BenchmarkMeasurements, BenchmarkResults
 
 _log = logging.getLogger("benchmark")
 _perf_log = logging.getLogger("perf")

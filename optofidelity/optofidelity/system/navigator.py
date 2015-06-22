@@ -11,7 +11,7 @@ from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.util import const_property
 
-from .adb import ADB
+from optofidelity.util import ADB
 from .backend import DUTBackend
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
