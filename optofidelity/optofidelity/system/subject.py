@@ -92,20 +92,17 @@ class BenchmarkSubject(object):
       raise Exception("DUTs need to be oriented at 90 or 270 degrees.")
 
     self._dut_backend = dut_backend
-    self._navigator = navigator
-
-    self._is_open = False
-    self._current_activity = None
+    self.navigator = navigator
 
   @property
   def state(self):
     return {
-      "navigator": self._navigator.state
+      "navigator": self.navigator.state
     }
 
   @state.setter
   def state(self, value):
-    self._navigator.state = value["navigator"]
+    self.navigator.state = value["navigator"]
 
   @property
   def width(self):
@@ -117,68 +114,9 @@ class BenchmarkSubject(object):
     """Height of the subjects area along the devices Y-Axis."""
     return self.bottom - self.top
 
-  def Open(self, safe):
-    """Instruct robot to open this subject.
-
-    If the subject has not been opened before, it will use the robots
-    integrated camera to detect the application icon. Otherwise it will
-    re-use the icon location last detected.
-
-    :param bool safe: Without the safe flag, this interaction is done pretty
-           much in the blind, without any error checking.
-           Use the safe flag to add additional safety measures and force the
-           icon to location to be re-detected.
-    """
-    if self._is_open:
-      raise Exception("Subject already open.")
-
-    self._navigator.Open(safe)
-    self._is_open = True
-
-  def Close(self):
-    """Closes this subject and returns device to the home screen."""
-    if not self._is_open:
-      raise Exception("Subject has not been opened.")
-    self._navigator.Close()
-    self._is_open = False
-
-  def Reset(self):
-    """Attempt to reset the device back to it's home location."""
-    self._navigator.Reset()
-    self._is_open = False
-    self._current_activity = None
-
-  def Cleanup(self):
-    if self._current_activity:
-      self.CloseActivity()
-    if self._is_open:
-      self.Close()
-
-  def OpenActivity(self, activity_name):
-    """Open an activity by it's name.
-
-    :param str activity_name: Name of the activity to open.
-    """
-    if not self._is_open:
-      raise Exception("Can't open activity if subject has not been opened.")
-    if self._current_activity:
-      raise Exception("Another activity is already open.")
-    if activity_name not in self.PAGE_NAMES:
-      raise ValueError("Unknown activity name '%s'" % activity_name)
-
-    self._navigator.OpenActivity(activity_name)
-    self._current_activity = activity_name
-
   def WaitForGesturesToFinish(self):
     """Blocks until all gestures are finished."""
     self._dut_backend.WaitForGesturesToFinish()
-
-  def CloseActivity(self):
-    """Close currently opened activity."""
-    if not self._current_activity:
-      raise Exception("No activity open.")
-    self._navigator.CloseActivity()
-    self._current_activity = None
 
   def Tap(self, x, y, count=1, blocking=True):
     """Tap at location (x, y).
@@ -260,11 +198,11 @@ class BenchmarkSubject(object):
     :returns VideoReader: A video reader containing the calibration video.
     """
     self.camera.Prepare(1000)
-    self.OpenActivity(self.PAGE_FLASH)
+    self.navigator.OpenActivity(self.PAGE_FLASH)
     self.MoveRobotOutOfCameraView()
     self.camera.Trigger()
     video = self.camera.ReceiveVideo()
-    self.CloseActivity()
+    self.navigator.CloseActivity()
     return video
 
   def _SavelyMoveToDevice(self, target_x, target_y, target_z):

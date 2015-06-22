@@ -51,9 +51,9 @@ class AbstractDelegateTests(unittest.TestCase):
 
   def runExecuteOnSubjectTest(self, delegate):
     subject = self.createTestSubject(self.CONFIG_FILE, self.SUBJECT_NAME)
-    subject.Open(False)
+    subject.navigator.Open(False)
     delegate.ExecuteOnSubject(subject)
-    subject.Close()
+    subject.navigator.Close()
 
   def runTraceProcessingTest(self, delegate, trace_file, expected_latencies):
     trace_path = test_data.Path(trace_file)

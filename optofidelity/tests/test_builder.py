@@ -156,5 +156,5 @@ class SystemBuilderTest(unittest.TestCase):
     self.assertIsNotNone(system.camera)
     subject = system.subjects["test_dut/test_subject"]
     self.assertIsNotNone(subject)
-    self.assertIsNotNone(subject._navigator)
+    self.assertIsNotNone(subject.navigator)
     self.assertIsNotNone(subject.updater)

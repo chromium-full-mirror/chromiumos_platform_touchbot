@@ -21,6 +21,10 @@ class Navigator(object):
   """Backend class to navigate a device to open subjects and pages."""
   __metaclass__ = InterfaceMeta
 
+  def __init__(self):
+    self._is_open = False
+    self._current_activity = None
+
   @abstractproperty
   def activities(self):
     """List of supported activity names.
@@ -36,37 +40,81 @@ class Navigator(object):
   def AddActivity(self, activity_name, parameters):
     """Register an activity with sub-class specific parameters."""
 
-  @abstractmethod
   def Open(self, safe):
     """Open the subject.
 
     :param bool safe: True instructs the backend to take extra precautions. At
            the expense of more time to complete the task.
     """
+    if self._is_open:
+      raise Exception("Subject already open.")
+    self._Open(safe)
+    self._is_open = True
 
-  @abstractmethod
   def Close(self):
     """Close the subject."""
+    if not self._is_open:
+      raise Exception("Subject has not been opened.")
+    self._Close()
+    self._is_open = False
 
-  @abstractmethod
   def Reset(self):
     """Reset the underlying DUT.
 
     This is a last resort after issues with opening the subject. This 'should'
     return the DUT into a state where the subject can be opened again.
     """
+    self._Reset()
+    self._is_open = False
+    self._current_activity = None
 
-  @abstractmethod
+  def Cleanup(self):
+    if self._current_activity:
+      self.CloseActivity()
+    if self._is_open:
+      self.Close()
+
   def OpenActivity(self, activity_name):
     """Open activity.
 
     :type activity_name: str
     """
+    if not self._is_open:
+      raise Exception("Can't open activity if subject has not been opened.")
+    if self._current_activity:
+      raise Exception("Another activity is already open.")
+    if activity_name not in self.activities:
+      raise ValueError("Unknown activity name '%s'" % activity_name)
 
-  @abstractmethod
+    self._OpenActivity(activity_name)
+    self._current_activity = activity_name
+
   def CloseActivity(self):
     """Close previously opened activity."""
+    if not self._current_activity:
+      raise Exception("No activity open.")
+    self._CloseActivity()
+    self._current_activity = None
 
+  @abstractmethod
+  def _Open(safe=False):
+    pass
+
+  @abstractmethod
+  def _Close(self):
+    pass
+
+  @abstractmethod
+  def _Reset(self):
+    pass
+
+  @abstractmethod
+  def _OpenActivity(self):
+    pass
+
+  @abstractmethod
+  def _CloseActivity(self):
+    pass
 
 class RobotNavigator(Navigator):
   """A navigation backend that uses the robot and OCR/Icon Detection.
@@ -78,6 +126,7 @@ class RobotNavigator(Navigator):
     :type dut_backend: DUTBackend
     :param str icon_shape_file: path to icon shape file of the subject.
     """
+    super(RobotNavigator, self).__init__()
     self._dut_backend = dut_backend
     self._app_icon_shape_file = icon_shape_file
     self._app_icon_coords = None
@@ -111,7 +160,7 @@ class RobotNavigator(Navigator):
   def AddActivity(self, activity_name, parameters):
     self._activity_button_names[activity_name] = parameters["text"]
 
-  def Open(self, safe):
+  def _Open(self, safe):
     if safe:
       self.Reset()
     else:
@@ -124,21 +173,21 @@ class RobotNavigator(Navigator):
     if safe or not self._activity_button_coords:
       self._activity_button_coords = self._DetectActivityButtonCoords()
 
-  def Close(self):
+  def _Close(self):
     self._dut_backend.Tap(*self._back_button_coords)
 
-  def Reset(self):
+  def _Reset(self):
     if self._app_icon_coords:
       self._dut_backend.Tap(*self._app_icon_coords)
     self._dut_backend.Tap(*self._back_button_coords)
     self._dut_backend.Tap(*self._back_button_coords)
     self._dut_backend.Tap(*self._home_button_coords)
 
-  def OpenActivity(self, activity_name):
+  def _OpenActivity(self, activity_name):
     coords = self._activity_button_coords[activity_name]
     self._dut_backend.Tap(*coords)
 
-  def CloseActivity(self):
+  def _CloseActivity(self):
     self._dut_backend.Tap(*self._back_button_coords)
 
   @const_property
@@ -192,9 +241,14 @@ class BaseADBNavigator(Navigator):
     """
     :param str adb_device: Serial number of the adb device.
     """
+    super(BaseADBNavigator, self).__init__()
     self._adb = ADB(adb_device)
     self._stay_alive = stay_alive
     self._activity_intents = {}
+
+  @property
+  def activities(self):
+    return self._activity_intents.keys()
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
@@ -208,24 +262,24 @@ class BaseADBNavigator(Navigator):
   def state(self, value):
     pass
 
-  def Open(self, safe):
+  def _Open(self, safe):
     if not self._stay_alive:
       self._adb.PowerOn()
 
-  def OpenActivity(self, activity_name):
+  def _OpenActivity(self, activity_name):
     self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
     intent_params = self._activity_intents[activity_name]
     self._adb.StartActivity(**intent_params)
     time.sleep(1.0)  # Wait for activity to load
 
-  def Close(self):
+  def _Close(self):
     if not self._stay_alive:
       self._adb.PowerOff()
 
-  def CloseActivity(self):
+  def _CloseActivity(self):
     self._adb.SendKey("KEYCODE_HOME")
 
-  def Reset(self):
+  def _Reset(self):
     self._adb.SendKey("KEYCODE_HOME")
     if not self._stay_alive:
       self._adb.PowerOff()
@@ -261,8 +315,8 @@ class WebADBNavigator(BaseADBNavigator):
         self._resources.append(child_attrib["file"])
     return self
 
-  def Open(self, safe):
-    super(WebADBNavigator, self).Open(safe)
+  def _Open(self, safe):
+    super(WebADBNavigator, self)._Open(safe)
 
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
     for filename in (self._resources + self._activity_files.values()):
@@ -304,8 +358,8 @@ class NativeADBNavigator(BaseADBNavigator):
         self.AddActivity(child_attrib["name"], child_attrib)
     return self
 
-  def Open(self, safe):
-    super(NativeADBNavigator, self).Open(safe)
+  def _Open(self, safe):
+    super(NativeADBNavigator, self)._Open(safe)
     self._adb.InstallAPK(self._apk_file)
 
   def AddActivity(self, activity_name, parameters):

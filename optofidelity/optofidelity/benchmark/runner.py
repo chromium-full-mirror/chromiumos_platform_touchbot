@@ -53,7 +53,7 @@ class BenchmarkRunner(object):
     finally:
       self._screen_calibration = None
       self._current_subject = None
-      subject.Cleanup()
+      subject.navigator.Cleanup()
 
   def RunBenchmark(self, benchmark_type, metadata, debug_flags):
     """Run benchmark on subject picked with UseSubject.
@@ -80,7 +80,7 @@ class BenchmarkRunner(object):
     """
     try:
       self._progress.Info(subject.name, "Opening and calibrating")
-      subject.Open(False)
+      subject.navigator.Open(False)
       return self._CalibrateScreen(subject)
     except KeyboardInterrupt:
       raise
@@ -88,8 +88,8 @@ class BenchmarkRunner(object):
       self._progress.Exception(subject.name,
                                "Caught Exception. Retrying in safe mode.")
       # Failed? Re-try using safe-mode Open.
-      subject.Reset()
-      subject.Open(True)
+      subject.navigator.Reset()
+      subject.navigator.Open(True)
       return self._CalibrateScreen(subject)
 
   def _ExecuteBenchmark(self, benchmark, debug_flags):

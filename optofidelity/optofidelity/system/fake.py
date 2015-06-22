@@ -144,22 +144,9 @@ class FakeUpdater(Updater):
     self._installed_version = None
 
 
-class FakeBenchmarkSubject(BenchmarkSubject):
-  def OpenActivity(self, activity_name):
-    self.camera.fake_video = self.camera.fake_videos.get(activity_name, None)
-    return super(FakeBenchmarkSubject, self).OpenActivity(activity_name)
-
-  @property
-  def fake_videos(self):
-    return self.camera.fake_videos
-
-  @fake_videos.setter
-  def set_fake_videos(self, value):
-    self.camera.fake_videos = value
-
-
 class FakeNavigator(Navigator):
   def __init__(self):
+    super(FakeNavigator, self).__init__()
     self._activites = ["fake"]
 
   @property
@@ -173,19 +160,19 @@ class FakeNavigator(Navigator):
   def AddActivity(self, activity_name, parameters):
     self._activites.append(activity_name)
 
-  def Open(self, safe):
+  def _Open(self, safe):
     pass
 
-  def Close(self):
+  def _Close(self):
     pass
 
-  def Reset(self):
+  def _Reset(self):
     pass
 
-  def OpenActivity(self, activity_name):
+  def _OpenActivity(self, activity_name):
     pass
 
-  def CloseActivity(self):
+  def _CloseActivity(self):
     pass
 
 
@@ -215,5 +202,5 @@ class FakeBenchmarkSystem(BenchmarkSystem):
     nav_backend.AddActivity("Move", dict(text="Move"))
     nav_backend.AddActivity("Flash", dict(text="Flash"))
     updater = FakeUpdater()
-    return FakeBenchmarkSubject("fake_dut", "fake_subject", dut_backend,
-                                nav_backend, updater, self.camera, (0.0, 0.0))
+    return BenchmarkSubject("fake_dut", "fake_subject", dut_backend,
+                            nav_backend, updater, self.camera, (0.0, 0.0))

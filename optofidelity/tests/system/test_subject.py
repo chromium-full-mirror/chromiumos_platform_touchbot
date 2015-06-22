@@ -49,21 +49,21 @@ class SubjectTests(TestCase):
     self.dut_backend._detect_icon_rval = app_icon
 
     # Open and close app. Should detect icon.
-    subject.Open(safe=False)
-    subject.Close()
+    subject.navigator.Open(safe=False)
+    subject.navigator.Close()
     self.assertSeriesOfTaps(home, app_icon, back)
     self.assertCommandExecuted("DetectIcon")
     self.resetCommands()
 
     # Open again. Should not detect icon.
-    subject.Open(safe=False)
-    subject.Close()
+    subject.navigator.Open(safe=False)
+    subject.navigator.Close()
     self.assertSeriesOfTaps(home, app_icon, back)
     self.assertCommandNotExecuted("DetectIcon")
     self.resetCommands()
 
     # Open in safe mode. Forces icon detection and reset
-    subject.Open(safe=True)
+    subject.navigator.Open(safe=True)
     self.assertSeriesOfTaps(app_icon, back, back, home, app_icon)
     self.assertCommandExecuted("DetectIcon")
     self.resetCommands()
@@ -72,25 +72,25 @@ class SubjectTests(TestCase):
     subject = self.createSubject()
 
     # Can't close without opening first.
-    self.assertRaises(Exception, lambda: subject.Close())
+    self.assertRaises(Exception, lambda: subject.navigator.Close())
 
-    subject.Open(safe=False)
+    subject.navigator.Open(safe=False)
 
     # Can't open app without closing first.
-    self.assertRaises(Exception, lambda: subject.Open(safe=False))
+    self.assertRaises(Exception, lambda: subject.navigator.Open(safe=False))
 
-    subject.Reset()
+    subject.navigator.Reset()
 
     # Can open again.
-    subject.Open(safe=False)
+    subject.navigator.Open(safe=False)
 
   def testFailingIconDetection(self):
     # Make icon detection fail. Open should fail.
     self.dut_backend._detect_icon_rval = None
 
     subject = self.createSubject()
-    self.assertRaises(Exception, lambda: subject.Open(safe=False))
-    self.assertRaises(Exception, lambda: subject.Open(safe=True))
+    self.assertRaises(Exception, lambda: subject.navigator.Open(safe=False))
+    self.assertRaises(Exception, lambda: subject.navigator.Open(safe=True))
 
   def testPageOpenClose(self):
     subject = self.createSubject()
@@ -98,23 +98,23 @@ class SubjectTests(TestCase):
     tap_button = (1.0, 1.0)
     self.dut_backend._detect_words_rval = tap_button
 
-    subject.Open(safe=False)
+    subject.navigator.Open(safe=False)
     self.assertCommandExecuted("DetectWords")
     self.resetCommands()
 
-    subject.OpenActivity("Tap")
-    subject.CloseActivity()
+    subject.navigator.OpenActivity("Tap")
+    subject.navigator.CloseActivity()
     self.assertSeriesOfTaps(tap_button, back)
     self.resetCommands()
 
-    subject.OpenActivity("Tap")
-    subject.CloseActivity()
-    subject.Close()
+    subject.navigator.OpenActivity("Tap")
+    subject.navigator.CloseActivity()
+    subject.navigator.Close()
     self.resetCommands()
 
-    subject.Open(safe=True)
-    subject.OpenActivity("Tap")
-    subject.CloseActivity()
+    subject.navigator.Open(safe=True)
+    subject.navigator.OpenActivity("Tap")
+    subject.navigator.CloseActivity()
     self.assertCommandExecuted("DetectWords")
     self.resetCommands()
 
@@ -123,25 +123,25 @@ class SubjectTests(TestCase):
     self.dut_backend._detect_words_rval = None
 
     subject = self.createSubject()
-    self.assertRaises(Exception, lambda: subject.Open(safe=False))
-    self.assertRaises(Exception, lambda: subject.Open(safe=True))
+    self.assertRaises(Exception, lambda: subject.navigator.Open(safe=False))
+    self.assertRaises(Exception, lambda: subject.navigator.Open(safe=True))
 
   def testPageOpenCloseState(self):
     subject = self.createSubject()
 
-    self.assertRaises(Exception, lambda: subject.OpenActivity())
-    self.assertRaises(Exception, lambda: subject.CloseActivity())
+    self.assertRaises(Exception, lambda: subject.navigator.OpenActivity())
+    self.assertRaises(Exception, lambda: subject.navigator.CloseActivity())
 
-    subject.Open(safe=False)
-    subject.OpenActivity("Tap")
-    self.assertRaises(Exception, lambda: subject.OpenActivity("Scroll"))
-    subject.CloseActivity()
-    self.assertRaises(Exception, lambda: subject.CloseActivity())
-    subject.OpenActivity("Tap")
-    subject.Reset()
+    subject.navigator.Open(safe=False)
+    subject.navigator.OpenActivity("Tap")
+    self.assertRaises(Exception, lambda: subject.navigator.OpenActivity("Scroll"))
+    subject.navigator.CloseActivity()
+    self.assertRaises(Exception, lambda: subject.navigator.CloseActivity())
+    subject.navigator.OpenActivity("Tap")
+    subject.navigator.Reset()
 
-    self.assertRaises(Exception, lambda: subject.OpenActivity())
-    self.assertRaises(Exception, lambda: subject.CloseActivity())
+    self.assertRaises(Exception, lambda: subject.navigator.OpenActivity())
+    self.assertRaises(Exception, lambda: subject.navigator.CloseActivity())
 
   def testPlaneCalculation(self):
     self.dut_backend._orientation = np.pi / 2 + 0.1

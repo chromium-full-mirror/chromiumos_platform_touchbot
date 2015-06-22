@@ -35,14 +35,14 @@ class TapDelegate(BenchmarkDelegate):
     subject.camera.Prepare(duration, self.CAMERA_FRAMERATE)
     center = subject.height / 2.0
 
-    subject.OpenActivity("Tap")
+    subject.navigator.OpenActivity("Tap")
     subject.MoveOnTestPlane(center, 10.0, blocking=True)
 
     subject.camera.Trigger()
     subject.TapOnTestPlane(center, count=self.NUM_MEASUREMENTS)
 
     video_reader = subject.camera.ReceiveVideo()
-    subject.CloseActivity()
+    subject.navigator.CloseActivity()
     return video_reader
 
   def ProcessTrace(self, trace, measurements):
