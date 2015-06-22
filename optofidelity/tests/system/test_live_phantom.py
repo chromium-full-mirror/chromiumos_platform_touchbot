@@ -6,18 +6,18 @@
 import unittest
 
 from optofidelity.system.camera_phantom import PhantomCamera
+from tests.config import TEST_PHANTOM_IP
 
 
 class PhantomTests(unittest.TestCase):
-  CAMERA_IP = None
   CAMERA_PORT = 7115
 
   def setUp(self):
-    if self.CAMERA_IP is None:
-      self.skipTest("This test requires CAMERA_IP to be set.")
+    if TEST_PHANTOM_IP is None:
+      self.skipTest("This test requires TEST_PHANTOM_IP to be set.")
 
   def test_recording(self):
-    camera = PhantomCamera(self.CAMERA_IP, self.CAMERA_PORT, 300)
+    camera = PhantomCamera(TEST_PHANTOM_IP, self.CAMERA_PORT, 300)
     camera.Prepare(1000, 100)
     camera.Trigger()
     video = camera.ReceiveVideo()

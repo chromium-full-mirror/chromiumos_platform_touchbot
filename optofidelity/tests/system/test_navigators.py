@@ -8,6 +8,7 @@ import os
 import sys
 
 from optofidelity.system.navigator import NativeADBNavigator, WebADBNavigator
+from tests.config import TEST_ADB_DEVICE_ID
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -48,12 +49,11 @@ class AbstractNavBackendTests(TestCase):
 class WebADBNavigatorTests(AbstractNavBackendTests):
   CHROME_COMPONENT = "com.android.chrome/com.google.android.apps.chrome.Main"
   FLASH_FILE = os.path.join(_script_dir, "../../html/flash.html")
-  ADB_DEVICE_ID = None
 
   def createBackend(self):
-    if self.ADB_DEVICE_ID is None:
-        self.skipTest("Specify ADB_DEVICE_ID to test live adb subject.")
-    nav = WebADBNavigator(self.ADB_DEVICE_ID, self.CHROME_COMPONENT,
+    if TEST_ADB_DEVICE_ID is None:
+        self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
+    nav = WebADBNavigator(TEST_ADB_DEVICE_ID, self.CHROME_COMPONENT,
                           stay_alive=True)
     nav.AddActivity("Flash", dict(file=self.FLASH_FILE))
     return nav
@@ -61,12 +61,11 @@ class WebADBNavigatorTests(AbstractNavBackendTests):
 class NativeADBNavigatorTests(AbstractNavBackendTests):
   PACKAGE_NAME = "org.chromium.touchlatency"
   APK_FILE = os.path.join(_script_dir, "../../apks/touchlatency.apk")
-  ADB_DEVICE_ID = None
 
   def createBackend(self):
-    if self.ADB_DEVICE_ID is None:
-        self.skipTest("Specify ADB_DEVICE_ID to test live adb subject.")
-    nav = NativeADBNavigator(self.ADB_DEVICE_ID, self.APK_FILE,
+    if TEST_ADB_DEVICE_ID is None:
+        self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
+    nav = NativeADBNavigator(TEST_ADB_DEVICE_ID, self.APK_FILE,
                              self.PACKAGE_NAME, stay_alive=True)
     nav.AddActivity("Flash", dict(intent="FlashActivity"))
     return nav

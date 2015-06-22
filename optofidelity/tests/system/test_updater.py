@@ -4,17 +4,16 @@
 """Tests for the Orchestrator class."""
 from unittest import TestCase
 from optofidelity.system.updater import ChromeUpdater
-
-ADB_DEVICE_ID = None
+from tests.config import TEST_ADB_DEVICE_ID
 
 class ChromeUpdaterTests(TestCase):
 
   def setUp(self):
-    if ADB_DEVICE_ID is None:
-      self.skipTest("Specify ADB_DEVICE_ID to test live adb subject.")
+    if TEST_ADB_DEVICE_ID is None:
+      self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
 
   def testChromeBetaUpdater(self):
-    updater = ChromeUpdater(ADB_DEVICE_ID, "beta")
+    updater = ChromeUpdater(TEST_ADB_DEVICE_ID, "beta")
 
     # Test uninstall
     if updater.installed_version:
@@ -32,7 +31,7 @@ class ChromeUpdaterTests(TestCase):
     self.assertEqual(updater.installed_version, previous)
 
   def testChromeStableUpdater(self):
-    updater = ChromeUpdater(ADB_DEVICE_ID, "stable")
+    updater = ChromeUpdater(TEST_ADB_DEVICE_ID, "stable")
 
     # Test install of latest version
     latest = updater.available_versions[0]
