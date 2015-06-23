@@ -46,26 +46,22 @@ class BenchmarkSubject(object):
   CALIBRATION_ACTIVITY = "calibration"
   """Name of activity to use for screen calibration."""
 
-  def __init__(self, dut_name, subject_name, dut_backend, navigator, updater,
-               camera, margin):
+  def __init__(self, name, dut_backend, camera):
     """
-    :type dut_name: str
-    :type subject_name: str
+    :type name: str
     :type dut_backend: DUTBackend
-    :type navigator: Navigator
     :type camera: HighSpeedCamera
     :param Tuple[float, float] margin: margin at top and bottom of the device.
     """
-    self.name = "{}/{}".format(dut_name, subject_name)
-    self.dut_name = dut_name
-    self.subject_name = subject_name
+    self.name = name
     self.camera = camera
-    self.updater = updater
+    self.updater = None
+    self.navigator = None
     self.finger_calib_delay = (0.0, 0.0)
 
-    self.top = margin[0]
+    self.top = 0.0
     self.left = 0.0
-    self.bottom = dut_backend.height - margin[1]
+    self.bottom = dut_backend.height
     self.right = dut_backend.width
 
     def is_oriented(orientation, target):
@@ -82,12 +78,24 @@ class BenchmarkSubject(object):
       raise Exception("DUTs need to be oriented at 90 or 270 degrees.")
 
     self._dut_backend = dut_backend
-    self.navigator = navigator
+    self._margin = (0.0, 0.0)
+
+  @property
+  def margin(self):
+    return self._margin
+
+  @margin.setter
+  def set_margin(self, margin):
+    self.top = margin[0]
+    self.left = 0.0
+    self.bottom = self._dut_backend.height - margin[1]
+    self.right = self._dut_backend.width
+    self._margin = margin
 
   @property
   def state(self):
     return {
-      "navigator": self.navigator.state
+      "navigator": self.navigator.state if self.navigator else {}
     }
 
   @state.setter

@@ -147,9 +147,7 @@ class SystemBuilder(object):
     if calib_elem is not None:
       backend_name = calib_elem.get("backend-name", "calibration")
       dut_backend = system.backend.GetDUTBackend(backend_name)
-      nav_backend = RobotNavigator(dut_backend, "")
-      subject = BenchmarkSubject("calibration", "calibration", dut_backend,
-                                 nav_backend, None, system.camera, (0.0, 0.0))
+      subject = BenchmarkSubject("calibration", dut_backend, system.camera)
       system.led_calibration_subject = subject
     return system
 
@@ -179,9 +177,11 @@ class SystemBuilder(object):
                                       additional, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
                                     additional, dut_backend)
-
-    return BenchmarkSubject(dut_name, subject_name, dut_backend, navigator,
-                            updater, system.camera, (0.0, 0.0))
+    name = "%s/%s" % (dut_name, subject_name)
+    subject = BenchmarkSubject(name, dut_backend, system.camera)
+    subject.navigator = navigator
+    subject.updater = updater
+    return subject
 
   def _ReadTypes(self, root, element_name):
     """Puts all elements of element_name in a dict with type-name as a key.

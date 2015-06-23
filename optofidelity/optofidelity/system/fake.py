@@ -22,9 +22,9 @@ class FakeDUTBackend(DUTBackend):
     self.name = name
     self._x, self._y, self._z = 0, 0, 0
     self._commands = []
-    self._width = 500
-    self._height = 100
-    self._orientation = 90
+    self._width = 500.0
+    self._height = 100.0
+    self._orientation = 90.0
     self._detect_icon_rval = (1.0, 1.0)
     self._detect_words_rval = (1.0, 1.0)
 
@@ -196,11 +196,8 @@ class FakeBenchmarkSystem(BenchmarkSystem):
 
   def _CreateFakeSubject(self):
     dut_backend = self.backend.GetDUTBackend("fake_dut")
-    nav_backend = FakeNavigator()
-    nav_backend.AddActivity("Tap", dict(text="Tap"))
-    nav_backend.AddActivity("Scroll", dict(text="Scroll"))
-    nav_backend.AddActivity("Move", dict(text="Move"))
-    nav_backend.AddActivity("Flash", dict(text="Flash"))
-    updater = FakeUpdater()
-    return BenchmarkSubject("fake_dut", "fake_subject", dut_backend,
-                            nav_backend, updater, self.camera, (0.0, 0.0))
+    subject = BenchmarkSubject("fake_dut/fake_subject", dut_backend,
+                               self.camera)
+    subject.navigator = FakeNavigator()
+    subject.updater = FakeUpdater()
+    return subject

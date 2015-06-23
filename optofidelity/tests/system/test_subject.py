@@ -21,8 +21,9 @@ class SubjectTests(TestCase):
     self.nav_backend.AddActivity("Tap", dict(text="Tap"))
 
   def createSubject(self):
-    return BenchmarkSubject("test", "test", self.dut_backend, self.nav_backend,
-                            None, self.camera, (0.0, 0.0))
+    subject = BenchmarkSubject("test/test", self.dut_backend, self.camera)
+    subject.navigator = self.nav_backend
+    return subject
 
   def assertSeriesOfTaps(self, *expected_taps):
     taps = [(args[0], args[1]) for cmd, args in self.dut_backend._commands
