@@ -26,7 +26,7 @@ class LineDrawDelegate(BenchmarkDelegate):
   def InitializeProcessor(self, processor):
     processor.EnableDetectors(line_draw=True, finger_location=True)
 
-  def _ExecuteLineDrawOnSubject(self, subject):
+  def ExecuteOnSubject(self, subject):
     """Executes line draw and records the interaction.
 
     :param BenchmarkSubject subject
@@ -105,26 +105,6 @@ class LineDrawDelegate(BenchmarkDelegate):
         cont_series.AddMeasurement(time, time - finger_event.time)
 
 
-class TouchMoveDelegate(LineDrawDelegate):
-  """Performs line draw benchmark on the "Move" page."""
-
-  def ExecuteOnSubject(self, subject):
-    subject.navigator.OpenActivity("Move")
-    video_reader = self._ExecuteLineDrawOnSubject(subject)
-    subject.navigator.CloseActivity()
-    return video_reader
-
-
-class ScrollDelegate(LineDrawDelegate):
-  """Performs line draw benchmark on the "Scroll" page."""
-
-  def ExecuteOnSubject(self, subject):
-    subject.navigator.OpenActivity("Scroll")
-    video_reader = self._ExecuteLineDrawOnSubject(subject)
-    subject.navigator.CloseActivity()
-    return video_reader
-
-
 class LineDrawStartDelegate(BenchmarkDelegate):
   """Contains the logic to perform line draw start latency benchmarks."""
 
@@ -143,7 +123,7 @@ class LineDrawStartDelegate(BenchmarkDelegate):
   def InitializeProcessor(self, processor):
     processor.EnableDetectors(line_draw=True, finger_location=True, led=True)
 
-  def _ExecuteLineDrawStartOnSubject(self, subject):
+  def ExecuteOnSubject(self, subject):
     """Executes line draw start benchmark and records the interaction.
 
     :param BenchmarkSubject subject
@@ -186,23 +166,3 @@ class LineDrawStartDelegate(BenchmarkDelegate):
 
       finger_moved_event = segmented_trace.Find(FingerEvent, finger_moved_time)
       series.AddMeasurement(finger_moved_event, line_draw)
-
-
-class TouchMoveStartDelegate(LineDrawStartDelegate):
-  """Performs line draw start benchmark on the "Move" page."""
-
-  def ExecuteOnSubject(self, subject):
-    subject.navigator.OpenActivity("Move")
-    video_reader = self._ExecuteLineDrawStartOnSubject(subject)
-    subject.navigator.CloseActivity()
-    return video_reader
-
-
-class ScrollStartDelegate(LineDrawStartDelegate):
-  """Performs line draw start benchmark on the "Scroll" page."""
-
-  def ExecuteOnSubject(self, subject):
-    subject.navigator.OpenActivity("Scroll")
-    video_reader = self._ExecuteLineDrawStartOnSubject(subject)
-    subject.navigator.CloseActivity()
-    return video_reader

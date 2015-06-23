@@ -42,14 +42,19 @@ class FakeBenchmarkRunner(BenchmarkRunner):
   def FromTrace(cls, fake_trace, benchmark_type, metadata):
     runner = FakeBenchmarkRunner(fake_trace=fake_trace)
     with runner.UseSubject(runner.benchmark_system.fake_subject):
-      return runner.RunBenchmark(benchmark_type, metadata, [])
+      benchmark = runner.CreateBenchmark("fake", benchmark_type, "fake", {},
+                                         metadata)
+      runner.RunBenchmark(benchmark, [])
+      return benchmark
 
-  def _RunFakeBenchmarks(self, benchmark_types):
-    for benchmark_type in benchmark_types:
-      yield benchmark_type, self.fake_benchmark
-
-  def RunBenchmark(self, benchmark_type, metadata, debug_flags):
+  def CreateBenchmark(self, name, benchmark_type, activity, parameters,
+                      metadata):
     if self.fake_benchmark:
       return self.fake_benchmark
-    return super(FakeBenchmarkRunner, self).RunBenchmark(benchmark_type,
-        metadata, debug_flags)
+    return super(FakeBenchmarkRunner, self).CreateBenchmark(name,
+        benchmark_type, activity, parameters, metadata)
+
+  def RunBenchmark(self, benchmark, debug_flags):
+    if self.fake_benchmark:
+      return
+    super(FakeBenchmarkRunner, self).RunBenchmark(benchmark, debug_flags)

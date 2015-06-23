@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}{{benchmark_type}} Latency Report{% endblock %}
+{% block title %}{{benchmark_name}} Latency Report{% endblock %}
 
-{% block header %}{{benchmark_type}} Latency Report{% endblock %}
+{% block header %}{{benchmark_name}} Latency Report{% endblock %}
 
 {% block subtitle %}
-  Device: {{subject_name}}
+  Subject: {{metadata.get("subject_name")}}
   {{help_icon("overview", "white-text", True)}}
 {% endblock %}
 
@@ -15,10 +15,7 @@
     <!-- Info and Metadata Section -->
     <ul class="collection" style="margin-top: 1em;">
       <li class="collection-item">
-        <strong>Benchmark Type:</strong> {{benchmark_type}}
-      </li>
-      <li class="collection-item">
-        <strong>Subject:</strong> {{subject_name}}
+        <strong>Benchmark Name:</strong> {{benchmark_name}}
       </li>
       {% for key, value in metadata.items() %}
         <li class="collection-item"><strong>{{key}}:</strong> {{value}}</li>

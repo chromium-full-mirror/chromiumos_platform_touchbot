@@ -32,20 +32,6 @@ class BenchmarkSubject(object):
   recording this device.
   """
   __metaclass__ = TypecheckMeta
-  PAGE_TAP = "Tap"
-  PAGE_MOVE = "Move"
-  PAGE_SCROLL = "Scroll"
-  PAGE_CLICK = "Click"
-  PAGE_FLASH = "Flash"
-
-  PAGE_NAMES = [
-    PAGE_TAP,
-    PAGE_MOVE,
-    PAGE_SCROLL,
-    PAGE_CLICK,
-    PAGE_FLASH
-  ]
-  """Names of supported pages."""
 
   TEST_PLANE_MARGIN = 10.0
   """Margin from the edge to keep for 1D line gestures."""
@@ -56,6 +42,9 @@ class BenchmarkSubject(object):
 
   HOVER_HEIGHT = 10.0
   """Height on the Z-axis at which to hover between gestures."""
+
+  CALIBRATION_ACTIVITY = "calibration"
+  """Name of activity to use for screen calibration."""
 
   def __init__(self, dut_name, subject_name, dut_backend, navigator, updater,
                camera, margin):
@@ -72,6 +61,7 @@ class BenchmarkSubject(object):
     self.subject_name = subject_name
     self.camera = camera
     self.updater = updater
+    self.finger_calib_delay = (0.0, 0.0)
 
     self.top = margin[0]
     self.left = 0.0
@@ -198,7 +188,7 @@ class BenchmarkSubject(object):
     :returns VideoReader: A video reader containing the calibration video.
     """
     self.camera.Prepare(1000)
-    self.navigator.OpenActivity(self.PAGE_FLASH)
+    self.navigator.OpenActivity(self.CALIBRATION_ACTIVITY)
     self.MoveRobotOutOfCameraView()
     self.camera.Trigger()
     video = self.camera.ReceiveVideo()

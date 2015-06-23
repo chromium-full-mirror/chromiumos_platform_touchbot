@@ -120,7 +120,6 @@ class Orchestrator(object):
     """Run benchmarks on a subject and store/report results.
 
     :type subject: BenchmarkSubject
-    :type benchmark_types: List[str]
     :type debug_flags: List[str]
     """
     subject_version = subject.updater.installed_version
@@ -150,7 +149,7 @@ class Orchestrator(object):
                             "Report available at: %s" % public_url)
 
         self._progress.Info(benchmark_name, "Reporting results to dashboard")
-        self._dashboard.ReportResults(aggregate, subject_version,
+        self._dashboard.ReportResults(aggregate, subject.name, subject_version,
             subject.updater.GetVersionUID(subject_version), public_url)
     elapsed_minutes = (time.time() - start_time) / 60
     self._progress.Info(subject.name, "Elapsed time: %d min" % elapsed_minutes)
@@ -208,7 +207,7 @@ class Orchestrator(object):
 
     self._progress.Info(benchmark.name, "Generating Report")
     self._GenerateBenchmarkReport(benchmark, results_url)
-    self._InsertResults(time, uid, subject_version, benchmark.results)
+    self._InsertResults(time, uid, subject, benchmark.results)
 
     public_url = self._GetPublicReportUrl(results_url)
     self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
@@ -258,12 +257,14 @@ class Orchestrator(object):
     Returns None if running one of the benchmarks failed.
 
     :type subject: BenchmarkSubject
-    :type benchmark_type: str
     :type metadata: dict
     :type debug_flags: List[str]
     :rtype Optional[BenchmarkResults]
     """
-    aggregate = AggregateResults(subject.name, benchmark_type, metadata)
+    (type_name, activity_name) = benchmark_type
+    benchmark_name = "%s/%s(%s)" % (subject.name, type_name, activity_name)
+
+    aggregate = AggregateResults(benchmark_name, metadata)
     start_time = time.time()
     while True:
       benchmark = self._SafelyRunBenchmark(subject, benchmark_type, metadata,
@@ -293,7 +294,6 @@ class Orchestrator(object):
     Returns None if the the benchmark failed MAX_BENCHMARK_TRIES times.
 
     :type subject: BenchmarkSubject
-    :type benchmark_type: str
     :type metadata: dict
     :type debug_flags: List[str]
     :rtype Optional[Benchmark]
@@ -306,8 +306,13 @@ class Orchestrator(object):
       rep_name = "Benchmark (repetiton=%d)" % repetition
       self._progress.Info(benchmark_name, "Running %s" % rep_name)
 
-      benchmark = self._runner.RunBenchmark(benchmark_type, metadata,
-                                            debug_flags)
+      (type_name, activity_name) = benchmark_type
+      benchmark_name = "%s/%s(%s)" % (subject.name, type_name, activity_name)
+
+      benchmark = self._runner.CreateBenchmark(benchmark_name, type_name,
+                                               activity_name, {}, metadata)
+      self._runner.RunBenchmark(benchmark, debug_flags)
+
       self._StoreBenchmark(benchmark, subject, benchmark_time)
 
       if not len(benchmark.results.error):
@@ -338,10 +343,16 @@ class Orchestrator(object):
 
     :type match: str
     """
-    type_names = Benchmark.BENCHMARK_TYPES
+    benchmark_types = {
+      "scroll": ("draw_line", "Scroll"),
+      "touch_move": ("draw_line", "Move"),
+      "tap": ("tap", "Tap")
+    }
     subject_names = self._system.subjects.keys()
-    benchmarks = { ("%s/%s" % (s, t)): (s, t) for s in subject_names
-                                              for t in type_names }
+    benchmarks = { ("%s/%s" % (s, t)): (s, d)
+                   for s in subject_names
+                   for t, d in benchmark_types.items() }
+
     match_fn = lambda name: fnmatch(name, match)
     matches = [n for n in benchmarks.iterkeys() if match_fn(n)]
     grouped = defaultdict(list)
@@ -350,7 +361,7 @@ class Orchestrator(object):
       grouped[subject_name].append(benchmark_type)
     return grouped.iteritems()
 
-  def _InsertResults(self, time, uid, subject_version, results):
+  def _InsertResults(self, time, uid, subject, results):
     """Inserts results into database
 
     :type time: datetime
@@ -365,9 +376,9 @@ class Orchestrator(object):
       row_data = dict(
           time=time,
           uid=uid,
-          subject_name=results.subject_name,
-          subject_version=subject_version,
-          benchmark_type=results.benchmark_type,
+          subject_name=subject.name,
+          subject_version=subject.updater.installed_version,
+          benchmark_name=results.benchmark_name,
           error=results.error,
           series_name=series_name,
           mean=np.mean(values),

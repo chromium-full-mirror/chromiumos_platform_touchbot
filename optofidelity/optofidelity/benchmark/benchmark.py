@@ -12,14 +12,11 @@ from safetynet import Any, Dict, List, Optional, TypecheckMeta
 
 from optofidelity.detection import (LEDEvent, ScreenCalibration, Trace,
                                     VideoProcessor)
-from optofidelity.system import BenchmarkSystem
+from optofidelity.system import BenchmarkSubject
 from optofidelity.util import GSFile, GSFolder, GSOpenFile, GSPathExists
 from optofidelity.videoproc import FileVideoReader, SaveImage
 
 from ._delegate import BenchmarkDelegate
-from ._line_delegates import (ScrollDelegate, ScrollStartDelegate,
-                              TouchMoveDelegate, TouchMoveStartDelegate)
-from ._tap_delegate import TapDelegate
 from .results import BenchmarkMeasurements, BenchmarkResults
 
 _log = logging.getLogger("benchmark")
@@ -29,77 +26,45 @@ _perf_log = logging.getLogger("perf")
 class Benchmark(object):
   """Represents a single benchmark that can be executed and serialized.
 
-  A benchmark integrates the robot and video processing and allows benchmarks of
-  the following types to be executed:
-
-  - touch_move: Line draw latency on the 'move' page of the subject.
-  - scroll: Line draw latency on the 'scroll' page of the subject.
-  - touch_move_start: Line draw start latency on the 'move' page of the subject.
-  - scroll_start: Line draw start latency on the 'scroll' page of the subject.
-  - tap: Tap latency
-
-  The line draw latency measurement measures the time between a line draw and
-  when the finger has crossed the location of line draw.
-
-  The line draw start measurement measures the time from when the finger starts
-  moving to the first reaction of the screen.
-
-  The tap latency measurement measures the time between the touch down of the
-  robot finger until the screen flashes.
-
-  For the video processing to work, a benchmark requires a screen calibration,
-  which can either be executed with CalibrateScreen or provided from a previous
-  calibration via UseExistingCalibration.
+  A benchmark integrates the robot and video processing and allows benchmarks to
+  be executed and saved to disk.
 
   The overall process is divided into 3 stages that have to be executed in the
-  right order: ExecuteOnSubject, ProcessVideo and ProcessTrace. All 3 can be
-  executed together using the Run method.
+  right order: ExecuteOnSubject, ProcessVideo and ProcessTrace.
   """
 
   __metaclass__ = TypecheckMeta
 
-  BENCHMARK_TYPES = {
-    "touch_move": TouchMoveDelegate,
-    "scroll": ScrollDelegate,
-    "tap": TapDelegate
-  }
-
-  def __init__(self, subject_name, benchmark_type, metadata, screen_calibration,
-               _delegate=None):
+  def __init__(self, name, delegate, metadata, screen_calibration):
     """Provide information on new benchmark.
 
-    :param str subject_name: Name of the subject this benchmark is going to be
+    :param str name: Name of the subject this benchmark is going to be
            executed on.
-    :param str benchmark_type: One of the types defined in BENCHMARK_TYPES.
+    :param BenchmarkDelegate delegate: Delegate used for executing benchmark.
     :param Dict[str, Any] metadata: Metainformation to be stored along with the
            benchmark.
-    :param Optional[BenchmarkDelegate] _delegate: Overrides the delegate that is
-           used for the benchmark execution. For internal use only.
     """
-    self.benchmark_type = benchmark_type
-    self._delegate = _delegate or self.BENCHMARK_TYPES[benchmark_type]()
-    self.subject_name = subject_name
+    self._delegate = delegate
+    self.name = name
     self.finger_calib_delay = (0.0, 0.0)
-    self.name = "%s/%s" % (subject_name, benchmark_type)
 
     self.screen_calibration = screen_calibration
     self.framerate = None
-    self.results = BenchmarkResults(subject_name, benchmark_type, metadata)
-    self.metadata = metadata
+    self.results = BenchmarkResults(name, metadata)
     self.trace = None
     self.video = None
 
     self.log = ""
 
-  def ExecuteOnSubject(self, benchmark_system):
+  def ExecuteOnSubject(self, subject):
     """Instruct the robot to execute the benchmark.
 
-    :type benchmark_system: Optional[BenchmarkSystem]
+    :type subject: BenchmarkSubject
     """
-    subject = self._GetSubject(benchmark_system)
+    self.results.metadata["subject_name"] = subject.name
     self.video = self._delegate.ExecuteOnSubject(subject)
     self.framerate = self.video.framerate
-    self.finger_calib_delay = benchmark_system.finger_calib_delay
+    self.finger_calib_delay = subject.finger_calib_delay
     self.trace = None
     self.results.measurements = None
     return self.video
@@ -187,7 +152,6 @@ class Benchmark(object):
         file.write(str(data) if data is not None else "")
     DumpProperty("trace")
     DumpProperty("results")
-    DumpProperty("metadata")
     DumpProperty("log")
 
   @classmethod
@@ -205,9 +169,6 @@ class Benchmark(object):
         self.video = FileVideoReader(video_file, self.framerate)
     return self
 
-  def _GetSubject(self, benchmark_system):
-    return benchmark_system.subjects[self.subject_name]
-
   @classmethod
   def _GetPickleFileName(cls, path):
     return os.path.join(path, "benchmark.pickle")
@@ -222,11 +183,8 @@ class Benchmark(object):
     return state
 
   def __setstate__(self, state):
-    subject_name = state.get("subject_name", state.get("_subject_name"))
-    benchmark_type = state.get("benchmark_type", state.get("_benchmark_type"))
-    metadata = state["metadata"]
+    name = state.get("name")
     screen_calibration = state["screen_calibration"]
-    _delegate = state["_delegate"]
-    self.__init__(subject_name, benchmark_type, metadata, screen_calibration,
-                  _delegate)
+    delegate = state["_delegate"]
+    self.__init__(name, delegate, {}, screen_calibration)
     self.__dict__.update(state)

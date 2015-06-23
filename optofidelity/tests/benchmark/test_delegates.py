@@ -8,16 +8,15 @@ recorded traces into measurements.
 """
 import cPickle as pickle
 import os
-
-import numpy as np
 import unittest
 
-from optofidelity.benchmark._line_delegates import (ScrollDelegate,
-                                                    ScrollStartDelegate,
-                                                    TouchMoveDelegate,
-                                                    TouchMoveStartDelegate)
+import numpy as np
+
+from optofidelity.benchmark._line_delegates import (LineDrawDelegate,
+                                                    LineDrawStartDelegate)
 from optofidelity.benchmark._tap_delegate import TapDelegate
-from optofidelity.benchmark.results import BenchmarkMeasurements, BenchmarkResults
+from optofidelity.benchmark.results import (BenchmarkMeasurements,
+                                            BenchmarkResults)
 from optofidelity.system import BenchmarkSystem
 from optofidelity.system.fake import FakeBenchmarkSystem
 
@@ -52,7 +51,9 @@ class AbstractDelegateTests(unittest.TestCase):
   def runExecuteOnSubjectTest(self, delegate):
     subject = self.createTestSubject(self.CONFIG_FILE, self.SUBJECT_NAME)
     subject.navigator.Open(False)
+    subject.navigator.OpenActivity(delegate.activity)
     delegate.ExecuteOnSubject(subject)
+    subject.navigator.CloseActivity()
     subject.navigator.Close()
 
   def runTraceProcessingTest(self, delegate, trace_file, expected_latencies):
@@ -87,12 +88,11 @@ class LineDrawDelegateTests(AbstractDelegateTests):
   }
 
   def testExecuteOnSubject(self):
-    for delegate in (ScrollDelegate(), TouchMoveDelegate()):
-      self.runExecuteOnSubjectTest(delegate)
+    self.runExecuteOnSubjectTest(LineDrawDelegate("fake", {}))
 
   def testTraceProcessing(self):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
-      delegate = ScrollDelegate()
+      delegate = LineDrawDelegate("fake", {})
       self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
 
 
@@ -101,12 +101,11 @@ class LineDrawStartDelegateTests(AbstractDelegateTests):
   }
 
   def testExecuteOnSubject(self):
-    for delegate in (ScrollStartDelegate(), TouchMoveStartDelegate()):
-      self.runExecuteOnSubjectTest(delegate)
+    self.runExecuteOnSubjectTest(LineDrawDelegate("fake", {}))
 
   def testTraceProcessing(self):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
-      delegate = ScrollStartDelegate()
+      delegate = LineDrawDelegate("fake", {})
       self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
 
 
@@ -123,11 +122,11 @@ class TapDelegateTests(AbstractDelegateTests):
   }
 
   def testExecuteOnSubject(self):
-    self.runExecuteOnSubjectTest(TapDelegate())
+    self.runExecuteOnSubjectTest(TapDelegate("fake", {}))
 
   def testTraceProcessing(self):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
-      delegate = TapDelegate()
+      delegate = TapDelegate("fake", {})
       self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
 
 class TestResultsCompability(unittest.TestCase):
@@ -135,9 +134,9 @@ class TestResultsCompability(unittest.TestCase):
     trace_path = test_data.Path("line_draw_basic.trace")
     trace = pickle.load(open(trace_path, "r"))
 
-    results = BenchmarkResults("", "", {})
+    results = BenchmarkResults("", {})
     results.measurements = BenchmarkMeasurements(3.33)
-    delegate = ScrollDelegate()
+    delegate = LineDrawDelegate("fake", {})
     delegate.ProcessTrace(trace, results.measurements)
     return results
 

@@ -291,9 +291,8 @@ class BenchmarkResults(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, subject_name, benchmark_type, metadata):
-    self.subject_name = subject_name
-    self.benchmark_type = benchmark_type
+  def __init__(self, benchmark_name, metadata):
+    self.benchmark_name = benchmark_name
     self.metadata = metadata
 
     self.uid = ""
@@ -312,8 +311,7 @@ class BenchmarkResults(object):
     """
 
   def __setstate__(self, state):
-    self.__init__(state.get("subject_name", ""),
-                  state.get("benchmark_type", ""),
+    self.__init__(state.get("benchmark_name", ""),
                   state.get("metadata", {}))
     old_list = state.get("measurement_list", None)
     if old_list:
@@ -340,8 +338,7 @@ class BenchmarkResults(object):
     def add_field(field_name):
       add_line(1, "%s: %s", field_name, str(getattr(self, field_name)))
 
-    add_line(0, "%s/%s Benchmark Results", self.subject_name,
-             self.benchmark_type)
+    add_line(0, "%s Benchmark Results", self.benchmark_name)
 
     add_line(1, "metadata:")
     for key, value in self.metadata.iteritems():
@@ -357,9 +354,8 @@ class BenchmarkResults(object):
 
 
 class AggregateResults(BenchmarkResults):
-  def __init__(self, subject_name, benchmark_type, metadata):
-    super(AggregateResults, self).__init__(subject_name, benchmark_type,
-                                           metadata)
+  def __init__(self, benchmark_name, metadata):
+    super(AggregateResults, self).__init__(benchmark_name, metadata)
     self.repetitions = []
     self.measurements = AggregateMeasurements()
 

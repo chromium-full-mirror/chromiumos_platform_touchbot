@@ -13,6 +13,8 @@ from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import LogCapture, ProgressPrinter
 
 from .benchmark import Benchmark
+from ._line_delegates import LineDrawDelegate, LineDrawStartDelegate
+from ._tap_delegate import TapDelegate
 
 _log = logging.getLogger(__name__)
 
@@ -28,6 +30,12 @@ class BenchmarkRunner(object):
   """
   __metaclass__ = InterfaceMeta
   MAX_REPETITIONS = 3
+
+  BENCHMARK_TYPES = {
+    "line_draw": LineDrawDelegate,
+    "line_draw_start": LineDrawStartDelegate,
+    "tap": TapDelegate
+  }
 
   def __init__(self, benchmark_system, video_processor):
     """
@@ -55,7 +63,13 @@ class BenchmarkRunner(object):
       self._current_subject = None
       subject.navigator.Cleanup()
 
-  def RunBenchmark(self, benchmark_type, metadata, debug_flags):
+  def CreateBenchmark(self, name, benchmark_type, activity, parameters,
+                      metadata):
+    delegate_type = self.BENCHMARK_TYPES[benchmark_type]
+    delegate = delegate_type(activity, parameters)
+    return Benchmark(name, delegate, metadata, self._screen_calibration)
+
+  def RunBenchmark(self, benchmark, debug_flags):
     """Run benchmark on subject picked with UseSubject.
 
     This method has to be called within the context of UseSubject.
@@ -67,10 +81,7 @@ class BenchmarkRunner(object):
     if not self._current_subject:
       raise Exception("Must be executed within the context of UseSubject.")
 
-    benchmark = Benchmark(self._current_subject.name, benchmark_type, metadata,
-                          self._screen_calibration)
     self._ExecuteBenchmark(benchmark, debug_flags)
-    return benchmark
 
   def _OpenAndCalibrateSubject(self, subject):
     """Open a subject and calibrate screen.
@@ -106,7 +117,7 @@ class BenchmarkRunner(object):
     with capture:
       try:
         self._progress.Info(benchmark.name, "Executing benchmark")
-        benchmark.ExecuteOnSubject(self.benchmark_system)
+        benchmark.ExecuteOnSubject(self._current_subject)
         self._progress.Info(benchmark.name, "Processing video")
         benchmark.ProcessVideo(self.video_processor, debug_flags)
         self._progress.Info(benchmark.name, "Processing trace")

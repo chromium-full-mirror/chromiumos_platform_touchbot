@@ -69,8 +69,7 @@ class Report(object):
     template = env.get_template(filename)
 
     common_variables = {
-      "subject_name": results.subject_name,
-      "benchmark_type": results.benchmark_type,
+      "benchmark_name": results.benchmark_name,
       "metadata": results.metadata,
       "error": results.error,
       "data_dir": "report_data",

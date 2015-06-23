@@ -28,7 +28,7 @@ class ReportTests(TestCase):
     shutil.rmtree(self.tempdir)
 
   def testLineDrawReport(self):
-    self.runReportTest("line_draw_basic.trace", "touch_move")
+    self.runReportTest("line_draw_basic.trace", "line_draw")
 
   def testTapReport(self):
     self.runReportTest("tap_basic.trace", "tap")
@@ -55,7 +55,7 @@ class ReportTests(TestCase):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", metadata)
 
-    aggregateResults = AggregateResults("fake_subject", "tap", metadata)
+    aggregateResults = AggregateResults("fake_subject", metadata)
     for repetition in range(3):
       aggregateResults.AddRepetition(benchmark.results)
 
@@ -67,7 +67,7 @@ class ReportTests(TestCase):
     self.userVerification(report.html_filename)
 
   def testXKCDReport(self):
-    self.runReportTest("line_draw_basic.trace", "touch_move", xkcd=True)
+    self.runReportTest("line_draw_basic.trace", "line_draw", xkcd=True)
 
   def assertReportFilesExist(self, filename):
     with open(filename, "r") as file:

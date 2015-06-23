@@ -19,10 +19,10 @@ class DashboardTests(TestCase):
     self.dashboard = Dashboard(ENDPOINT_URL)
 
   def testDashboardJSON(self):
-    request = self.dashboard._FormatRequest(self.benchmark.results, "1.0", 1,
-                                            "http://fake.com")
+    request = self.dashboard._FormatRequest(self.benchmark.results, "", "1.0",
+                                             1, "http://fake.com")
     print request
 
   def testDashboardReport(self):
-    self.dashboard.ReportResults(self.benchmark.results, "1.0", 1,
+    self.dashboard.ReportResults(self.benchmark.results, "", "1.0", 1,
                                  "http://fake.com")

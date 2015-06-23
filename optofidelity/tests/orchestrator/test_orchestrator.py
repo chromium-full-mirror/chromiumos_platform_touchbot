@@ -17,8 +17,8 @@ from . import test_data
 
 class OrchestratorTests(TestCase):
   def setUp(self):
-    fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.runner = FakeBenchmarkRunner(fake_trace=fake_trace)
+    self.fake_trace = test_data.LoadTrace("tap_basic.trace")
+    self.runner = FakeBenchmarkRunner(fake_trace=self.fake_trace)
     self.subject = self.runner.benchmark_system.fake_subject
     self.subject.updater._available_versions = ["2.0", "1.0"]
     self.tempdir = tempfile.mkdtemp()
@@ -69,8 +69,7 @@ class OrchestratorTests(TestCase):
 
   def testErrorRepetition(self):
     # Create benchmark results and set an error message.
-    with self.runner.UseSubject(self.subject):
-      benchmark = self.runner.RunBenchmark("tap", {}, [])
+    benchmark = FakeBenchmarkRunner.FromTrace(self.fake_trace, "tap", {})
     benchmark.results.error = "Error Message"
     # Return this errornous benchmark with this runner.
     self.runner.fake_benchmark = benchmark

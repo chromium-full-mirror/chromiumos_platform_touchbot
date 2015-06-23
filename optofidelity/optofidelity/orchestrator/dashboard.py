@@ -46,13 +46,14 @@ class Dashboard(object):
     """
     self.endpoint_url = endpoint_url
 
-  def ReportResults(self, benchmark_results, version, version_uid, report_url):
+  def ReportResults(self, benchmark_results, subject_name, version, version_uid,
+                    report_url):
     """Report results of benchmark to dashboard.
 
     :type benchmark_results: BenchmarkResults
     """
-    payload = self._FormatRequest(benchmark_results, version, version_uid,
-                                  report_url)
+    payload = self._FormatRequest(benchmark_results, subject_name, version,
+                                  version_uid, report_url)
     if not self.endpoint_url:
       print json.dumps(payload, indent=2)
     else:
@@ -62,15 +63,16 @@ class Dashboard(object):
     for line in json.dumps(payload, indent=2).split("\n"):
       _log.info("    %s" % line)
 
-  def _FormatRequest(self, benchmark_results, version, version_uid, report_url):
+  def _FormatRequest(self, benchmark_results, subject_name, version,
+                     version_uid, report_url):
     if version_uid == 0:
       _log.info("Skipping dashboard upload: version_uid=0.")
     charts = {}
-    charts[benchmark_results.benchmark_type] = {}
+    charts[benchmark_results.benchmark_name] = {}
     msrmnts = benchmark_results.measurements
     for series_name, series_info in msrmnts.series_infos.iteritems():
       values = msrmnts.SummarizeValues(series_name)
-      charts[benchmark_results.benchmark_type][series_name] = {
+      charts[benchmark_results.benchmark_name][series_name] = {
         "type": "list_of_scalar_values",
         "units": series_info.units,
         "values": [value for value in values]
@@ -83,7 +85,7 @@ class Dashboard(object):
     }
     data = {
       "master": "TouchBot",
-      "bot": benchmark_results.subject_name.replace("/", "."),
+      "bot": subject_name.replace("/", "."),
       "point_id": version_uid,
       "versions": {
         "chrome_version": version

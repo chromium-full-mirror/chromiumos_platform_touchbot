@@ -24,6 +24,9 @@ class BenchmarkDelegate(object):
   """
   __metaclass__ = InterfaceMeta
 
+  def __init__(self, activity, parameters):
+    self.activity = activity
+
   @abstractmethod
   def InitializeProcessor(self, processor):
     """Configure video processor processor.

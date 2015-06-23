@@ -147,7 +147,7 @@ class FakeUpdater(Updater):
 class FakeNavigator(Navigator):
   def __init__(self):
     super(FakeNavigator, self).__init__()
-    self._activites = ["fake"]
+    self._activites = ["fake", "calibration"]
 
   @property
   def activities(self):
