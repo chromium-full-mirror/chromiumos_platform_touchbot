@@ -28,6 +28,10 @@ class SinglethreadedVideoProcessor(VideoProcessor):
   def __init__(self):
     self._detector_types = []
 
+  @classmethod
+  def FromConfig(cls, parameters, children):
+    return cls()
+
   def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
                       screen_draw=False):
     self._detector_types = []

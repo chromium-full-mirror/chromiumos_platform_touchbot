@@ -59,6 +59,13 @@ class Orchestrator(object):
     self._generate_reports = generate_reports
     self._xkcd = xkcd
 
+  @classmethod
+  def FromConfig(cls, parameters, children, system, runner, dashboard):
+    xkcd = parameters.get("xkcd") is not None
+    results = parameters["results"]
+    database = parameters["database"]
+    return cls(system, runner, dashboard, results, database, xkcd=xkcd)
+
   def RunHistoryBenchmarks(self, match, debug_flags, first_version):
     for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
       subject = self._system.subjects[subject_name]

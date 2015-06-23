@@ -14,6 +14,8 @@ import xml.etree.ElementTree as ElementTree
 from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
                        typecheck)
 
+from .detection import (MultithreadedVideoProcessor,
+                        SinglethreadedVideoProcessor, VideoProcessor)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend, Updater)
 from .system.backend_tnt import TnTRobotBackend
@@ -23,7 +25,9 @@ from .system.navigator import (NativeADBNavigator, RobotNavigator,
                                WebADBNavigator)
 from .system.system import FingerCalibDelay
 from .system.updater import ChromeUpdater, ManualUpdater
-
+from .util import const_property
+from .benchmark import BenchmarkRunner
+from .orchestrator import Dashboard, Orchestrator
 
 @typecheck
 def GetRequired(parent, element_name):
@@ -97,6 +101,18 @@ class SystemBuilder(object):
       "robot": RobotNavigator,
       "web_adb": WebADBNavigator,
       "native_adb": NativeADBNavigator
+    },
+    VideoProcessor: {
+      "multithreaded": MultithreadedVideoProcessor,
+      "singlethreaded": SinglethreadedVideoProcessor,
+      "default": MultithreadedVideoProcessor
+    },
+    Dashboard: {
+      "chrome": Dashboard,
+      "default": Dashboard
+    },
+    Orchestrator: {
+      "default": Orchestrator
     }
   }
 
@@ -108,13 +124,37 @@ class SystemBuilder(object):
     self._root_dir = root_dir
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
+    self._config_element = config_element
 
-    benchmark_element = GetRequired(config_element, "benchmark-system")
-    self.benchmark_system = self._BuildBenchmarkSystem(benchmark_element)
+  @const_property
+  def benchmark_system(self):
+    element = GetRequired(self._config_element, "benchmark-system")
+    system = self._BuildBenchmarkSystem(element)
+    for dut_elem in self._config_element.iter("dut"):
+      for subject in self._BuildDUTSubjects(dut_elem, system):
+        system.subjects[subject.name] = subject
+    return system
 
-    for dut_elem in config_element.iter("dut"):
-      for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
-        self.benchmark_system.subjects[subject.name] = subject
+  @const_property
+  def video_processor(self):
+    element = self._config_element.find("video-processor")
+    return self._CreateComponent(VideoProcessor, element, {})
+
+  @const_property
+  def benchmark_runner(self):
+    return BenchmarkRunner(self.benchmark_system, self.video_processor)
+
+  @const_property
+  def dashboard(self):
+    element = self._config_element.find("dashboard")
+    return self._CreateComponent(Dashboard, element, {})
+
+  @const_property
+  def orchestrator(self):
+    element = self._config_element.find("orchestrator")
+    return self._CreateComponent(Orchestrator, element, {},
+                                 self.benchmark_system, self.benchmark_runner,
+                                 self.dashboard)
 
   @classmethod
   def FromFile(cls, config_file):
@@ -247,6 +287,11 @@ class SystemBuilder(object):
     if value.startswith("file:"):
       value = value[len("file:"):]
       return os.path.join(self._root_dir, value)
+    if value.startswith("filecontents:"):
+      filename = value[len("filecontents:"):]
+      path = os.path.join(self._root_dir, filename)
+      with open(path, "r") as file_obj:
+        return file_obj.read()
     return value
 
   def _CreateComponent(self, interface_type, element, additional, *extra_args):
@@ -257,15 +302,18 @@ class SystemBuilder(object):
     it's FromConfig method.
 
     :type interface_type: type
-    :type element: ElementTree.Element
+    :type element: Optional[ElementTree.Element]
     :param Dict[str, str] additional: Additional attributes
     :param List[Any] extra_args: Extra arguments passes to FromConfig.
     """
     if element is None:
-      return None
-
-    attrib, children = self._GetElementAttribs(element, additional)
-    type_name = attrib["type"]
+      if "default" in self.COMPONENTS[interface_type]:
+        attrib, children = {}, []
+      else:
+        return None
+    else:
+      attrib, children = self._GetElementAttribs(element, additional)
+    type_name = attrib.get("type") or "default"
 
     available = self.COMPONENTS[interface_type]
     if type_name not in available:

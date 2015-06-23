@@ -46,6 +46,10 @@ class Dashboard(object):
     """
     self.endpoint_url = endpoint_url
 
+  @classmethod
+  def FromConfig(cls, parameters, children):
+    return Dashboard(parameters["endpoint"])
+
   def ReportResults(self, benchmark_results, subject_name, version, version_uid,
                     report_url):
     """Report results of benchmark to dashboard.

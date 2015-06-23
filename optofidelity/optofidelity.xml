@@ -6,6 +6,10 @@
     <led-calibration-subject backend-name="calibration" />
   </benchmark-system>
 
+  <dashboard type="chrome" endpoint="https://chromeperf.appspot.com/add_point" />
+  <orchestrator results="gs://touchbot/optofidelity/benchmark_results"
+                database="filecontents:results_database.url" />
+
   <subject-type type-name="clank_beta">
     <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main">
       <activity name="Flash" file="file:html/flash.html" />
