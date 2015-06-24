@@ -20,6 +20,7 @@ from optofidelity.util import (GSFindUniqueFilename, GSFolder, GSPathExists,
 import dataset
 
 from .dashboard import Dashboard
+from .orchestrator_subject import OrchestratorSubject
 
 _log = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class Orchestrator(object):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
-    :type dashboard: Dashboard
+    :type dashboard: Optional[Dashboard]
     :type results_url: str
     :type results_db_url: str
     :param bool xkcd: Give reports more authority
@@ -53,11 +54,22 @@ class Orchestrator(object):
     self._dashboard = dashboard
     self._results_url = results_url
 
-    self._results_db = dataset.connect(results_db_url)
-    self._results_table = self._results_db["benchmark_results"]
+    self._results_db = None
+    self._results_table = None
+    if results_db_url:
+      self._results_db = dataset.connect(results_db_url)
+      self._results_table = self._results_db["benchmark_results"]
+
     self._progress = ProgressPrinter(_log)
     self._generate_reports = generate_reports
     self._xkcd = xkcd
+    self._subjects = {}
+
+  def AddSubject(self, subject):
+    """
+    :type subject: OrchestratorSubject
+    """
+    self._subjects[subject.name] = subject
 
   @classmethod
   def FromConfig(cls, parameters, children, system, runner, dashboard):
@@ -107,23 +119,23 @@ class Orchestrator(object):
     :param Optional[str] forced_version: Force version number to benchmark.
     :param bool skip_update: Skip update process and run all benchmarks
     """
-    for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
+    for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
       try:
-        subject = self._system.subjects[subject_name]
-        self._progress.Info(subject_name,
-                            "Running benchmarks: %s" % (benchmark_types,))
+        benchmark_names = [d.name for d in benchmark_defs]
+        self._progress.Info(subject.name,
+                            "Running benchmarks: %s" % (benchmark_names,))
         if not skip_update:
           if not self.UpdateSubject(subject, forced_version):
             self._progress.Info(subject.name, "Skipping benchmarks.")
             continue
-        self.RunSubjectBenchmarks(subject, benchmark_types, debug_flags)
+        self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
       except KeyboardInterrupt:
         raise
       except:
         self._progress.Exception(subject.name)
         self._progress.Error(subject.name, "Subject in bad state")
 
-  def RunSubjectBenchmarks(self, subject, benchmark_types, debug_flags):
+  def RunSubjectBenchmarks(self, subject, benchmark_defs, debug_flags):
     """Run benchmarks on a subject and store/report results.
 
     :type subject: BenchmarkSubject
@@ -136,26 +148,26 @@ class Orchestrator(object):
 
     start_time = time.time()
     with self._runner.UseSubject(subject):
-      for benchmark_type in benchmark_types:
-        benchmark_name = "%s/%s" % (subject.name, benchmark_type)
+      for benchmark_def in benchmark_defs:
+        full_name = "%s/%s" % (subject.name, benchmark_def.name)
 
-        aggregate = self._GatherBenchmarkSamples(subject, benchmark_type,
+        aggregate = self._GatherBenchmarkSamples(subject, benchmark_def,
                                                  metadata, debug_flags)
         if not aggregate:
           continue
-        self._progress.Info(benchmark_name, "Aggregate Results:")
+        self._progress.Info(full_name, "Aggregate Results:")
         print aggregate
 
-        self._progress.Info(benchmark_name, "Generating Aggregate report:")
+        self._progress.Info(full_name, "Generating Aggregate report:")
         benchmark_time = datetime.now()
         results_url, uid = self._FindUniqueResultsURL(benchmark_time)
         self._GenerateAggregateReport(aggregate, results_url)
 
         public_url = self._GetPublicReportUrl(results_url)
-        self._progress.Info(benchmark_name,
+        self._progress.Info(full_name,
                             "Report available at: %s" % public_url)
 
-        self._progress.Info(benchmark_name, "Reporting results to dashboard")
+        self._progress.Info(full_name, "Reporting results to dashboard")
         self._dashboard.ReportResults(aggregate, subject.name, subject_version,
             subject.updater.GetVersionUID(subject_version), public_url)
     elapsed_minutes = (time.time() - start_time) / 60
@@ -257,7 +269,7 @@ class Orchestrator(object):
       report = AggregateReport(report_path, "report.html", xkcd=self._xkcd)
       report.GenerateReport(aggregate_results)
 
-  def _GatherBenchmarkSamples(self, subject, benchmark_type, metadata,
+  def _GatherBenchmarkSamples(self, subject, benchmark_def, metadata,
                               debug_flags):
     """Runs benchmark until enough measurements are collected.
 
@@ -268,13 +280,10 @@ class Orchestrator(object):
     :type debug_flags: List[str]
     :rtype Optional[BenchmarkResults]
     """
-    (type_name, activity_name) = benchmark_type
-    benchmark_name = "%s/%s(%s)" % (subject.name, type_name, activity_name)
-
-    aggregate = AggregateResults(benchmark_name, metadata)
+    aggregate = AggregateResults(benchmark_def.name, metadata)
     start_time = time.time()
     while True:
-      benchmark = self._SafelyRunBenchmark(subject, benchmark_type, metadata,
+      benchmark = self._SafelyRunBenchmark(subject, benchmark_def, metadata,
                                            debug_flags)
       if not benchmark:
         return None
@@ -295,7 +304,7 @@ class Orchestrator(object):
         aggregate.metadata["elapsed_time"] = elapsed_time
         return aggregate
 
-  def _SafelyRunBenchmark(self, subject, benchmark_type, metadata, debug_flags):
+  def _SafelyRunBenchmark(self, subject, benchmark_def, metadata, debug_flags):
     """Run benchmark and retry until successful.
 
     Returns None if the the benchmark failed MAX_BENCHMARK_TRIES times.
@@ -306,24 +315,22 @@ class Orchestrator(object):
     :rtype Optional[Benchmark]
     """
     benchmark_time = datetime.now()
-    benchmark_name = "%s/%s" % (subject.name, benchmark_type)
     metadata["time"] = benchmark_time
 
     for repetition in range(self.MAX_BENCHMARK_TRIES):
+      full_name = "%s/%s" % (subject.name, benchmark_def.name)
       rep_name = "Benchmark (repetiton=%d)" % repetition
-      self._progress.Info(benchmark_name, "Running %s" % rep_name)
+      self._progress.Info(full_name, "Running %s" % rep_name)
 
-      (type_name, activity_name) = benchmark_type
-      benchmark_name = "%s/%s(%s)" % (subject.name, type_name, activity_name)
-
-      benchmark = self._runner.CreateBenchmark(benchmark_name, type_name,
-                                               activity_name, {}, metadata)
+      benchmark = self._runner.CreateBenchmark(full_name,
+          benchmark_def.benchmark_type, benchmark_def.activity,
+          benchmark_def.params, metadata)
       self._runner.RunBenchmark(benchmark, debug_flags)
 
       self._StoreBenchmark(benchmark, subject, benchmark_time)
 
       if not len(benchmark.results.error):
-        self._progress.Info(benchmark_name, "Results:")
+        self._progress.Info(full_name, "Results:")
         print benchmark.results
         return benchmark
 
@@ -346,26 +353,20 @@ class Orchestrator(object):
     return GSFindUniqueFilename(self._results_url, base_name)
 
   def _ListMatchingBenchmarks(self, match):
-    """Lists (subject_name, benchmark_type) for a match string
+    """Lists (subject, benchmark_definition) for a match string
 
     :type match: str
     """
-    benchmark_types = {
-      "scroll": ("draw_line", "Scroll"),
-      "touch_move": ("draw_line", "Move"),
-      "tap": ("tap", "Tap")
-    }
-    subject_names = self._system.subjects.keys()
-    benchmarks = { ("%s/%s" % (s, t)): (s, d)
-                   for s in subject_names
-                   for t, d in benchmark_types.items() }
+    benchmarks = { ("%s/%s" % (s, n)): (s, d)
+                   for s in self._subjects.itervalues()
+                   for n, d in s.benchmark_defs.iteritems() }
 
     match_fn = lambda name: fnmatch(name, match)
     matches = [n for n in benchmarks.iterkeys() if match_fn(n)]
     grouped = defaultdict(list)
     for match in matches:
-      subject_name, benchmark_type = benchmarks[match]
-      grouped[subject_name].append(benchmark_type)
+      subject, definition = benchmarks[match]
+      grouped[subject].append(definition)
     return grouped.iteritems()
 
   def _InsertResults(self, time, uid, subject, results):

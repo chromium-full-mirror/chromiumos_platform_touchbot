@@ -99,7 +99,6 @@ class BenchmarkSystem(object):
     self.camera = camera
     self.led_calibration_subject = None
     self.finger_calib_delay = FingerCalibDelay(0.0, 0.0)
-    self.subjects = {}
 
   def SaveState(self, state_file):
     """Save current state to file.
@@ -131,12 +130,3 @@ class BenchmarkSystem(object):
     open subjects.
     """
     self.backend.Reset()
-
-  def Cleanup(self):
-    """Cleanup after any subjects that might still be open.
-
-    This method should be called any time the program exits unexpectedly.
-    It will try to get all devices back into a neutral state.
-    """
-    for subject in self.subjects.values():
-      subject.Cleanup()

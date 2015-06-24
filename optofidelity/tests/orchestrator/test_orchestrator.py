@@ -10,7 +10,8 @@ import tempfile
 from optofidelity.benchmark import (Benchmark, BenchmarkMeasurements,
                                     DrawEventLatencySeries)
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import Dashboard, Orchestrator
+from optofidelity.orchestrator import (Dashboard, Orchestrator,
+                                       OrchestratorSubject)
 
 from . import test_data
 
@@ -29,6 +30,9 @@ class OrchestratorTests(TestCase):
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
                                 dashboard, self.tempdir, db_url,
                                 generate_reports=False)
+    subject = OrchestratorSubject.FromBenchmarkSubject(self.subject)
+    subject.DefineBenchmark("tap", "tap", "fake", {})
+    orchestrator.AddSubject(subject)
     DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 0
     return orchestrator
 

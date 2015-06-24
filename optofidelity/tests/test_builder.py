@@ -16,6 +16,7 @@ simple_config = """\
     <backend type="fake" />
     <camera type="fake" />
   </benchmark-system>
+  <orchestrator results="" database="" />
 
   <dut name="test_dut">
     <subject name="test_subject">
@@ -32,6 +33,7 @@ subject_type_config = """\
     <backend type="fake" />
     <camera type="fake" />
   </benchmark-system>
+  <orchestrator results="" database="" />
 
   <subject-type type-name="test_subject_type">
     <updater type="fake" />
@@ -51,6 +53,7 @@ inheritance_config = """\
     <backend type="fake" />
     <camera type="fake" />
   </benchmark-system>
+  <orchestrator results="" database="" />
 
   <subject-type type-name="test_subject_base">
     <navigator type="robot" />
@@ -72,6 +75,7 @@ dut_type_config = """\
     <backend type="fake" />
     <camera type="fake" />
   </benchmark-system>
+  <orchestrator results="" database="" />
 
   <dut-type type-name="test_dut_type">
     <subject name="test_subject">
@@ -90,6 +94,7 @@ dut_attrib_inheritance_config = """\
     <backend type="fake" />
     <camera type="fake" />
   </benchmark-system>
+  <orchestrator results="" database="" />
 
   <dut name="test_dut" version="42.0">
     <subject name="test_subject">
@@ -131,30 +136,33 @@ class SystemBuilderTest(unittest.TestCase):
 
   def testSimpleConfig(self):
     builder = SystemBuilder.FromString(simple_config)
-    self.assertSimpleConfig(builder.benchmark_system)
+    self.assertSimpleConfig(builder)
 
   def testSubjectTypeConfig(self):
     builder = SystemBuilder.FromString(subject_type_config)
-    self.assertSimpleConfig(builder.benchmark_system)
+    self.assertSimpleConfig(builder)
 
   def testInheritanceConfig(self):
     builder = SystemBuilder.FromString(inheritance_config)
-    self.assertSimpleConfig(builder.benchmark_system)
+    self.assertSimpleConfig(builder)
 
   def testDUTTypeConfig(self):
     builder = SystemBuilder.FromString(dut_type_config)
-    self.assertSimpleConfig(builder.benchmark_system)
+    self.assertSimpleConfig(builder)
 
   def testDUTInheritanceConfig(self):
     builder = SystemBuilder.FromString(dut_attrib_inheritance_config)
-    self.assertSimpleConfig(builder.benchmark_system)
-    updater = builder.benchmark_system.subjects.values()[0].updater
+    self.assertSimpleConfig(builder)
+    subjects = builder.orchestrator._subjects
+    updater = subjects.values()[0].updater
     self.assertEqual(updater.installed_version, "42.0")
 
-  def assertSimpleConfig(self, system):
+  def assertSimpleConfig(self, builder):
+    system = builder.benchmark_system
     self.assertIsNotNone(system.backend)
     self.assertIsNotNone(system.camera)
-    subject = system.subjects["test_dut/test_subject"]
+
+    subject = builder.orchestrator._subjects["test_dut/test_subject"]
     self.assertIsNotNone(subject)
     self.assertIsNotNone(subject.navigator)
     self.assertIsNotNone(subject.updater)

@@ -8,3 +8,4 @@ running benchmarks.
 """
 from .dashboard import Dashboard
 from .orchestrator import Orchestrator
+from .orchestrator_subject import OrchestratorSubject

@@ -10,22 +10,28 @@
   <orchestrator results="gs://touchbot/optofidelity/benchmark_results"
                 database="filecontents:results_database.url" />
 
-  <subject-type type-name="clank_beta">
+  <subject-type type-name="base">
+    <benchmark name="tap" type="tap" activity="tap" />
+    <benchmark name="scroll" type="line_draw" activity="scroll" />
+    <benchmark name="touch_move" type="line_draw" activity="touch_move" />
+  </subject-type>
+
+  <subject-type type-name="clank_beta" parent-type="base">
     <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main">
-      <activity name="Flash" file="file:html/flash.html" />
-      <activity name="Scroll" file="file:html/scroll.html" />
-      <activity name="Move" file="file:html/move.html" />
-      <activity name="Tap" file="file:html/tap.html" />
+      <activity name="calibration" file="file:html/flash.html" />
+      <activity name="scroll" file="file:html/scroll.html" />
+      <activity name="touch_move" file="file:html/move.html" />
+      <activity name="tap" file="file:html/tap.html" />
       <resource file="file:html/jquery.min.js" />
     </navigator>
     <updater type="chrome" channel="beta" />
   </subject-type>
 
-  <subject-type type-name="android_native" margin="(10, 15)">
+  <subject-type type-name="android_native" margin="(10, 15)" parent-type="base">
     <navigator type="native_adb" package="org.chromium.touchlatency" apk="file:apks/touchlatency.apk">
-      <activity name="Flash" intent="FlashActivity" />
-      <activity name="Scroll" intent="ScrollActivity" />
-      <activity name="Tap" intent="TapActivity" />
+      <activity name="calibration" intent="FlashActivity" />
+      <activity name="scroll" intent="ScrollActivity" />
+      <activity name="tap" intent="TapActivity" />
     </navigator>
     <updater type="manual" version="0.0" />
   </subject-type>

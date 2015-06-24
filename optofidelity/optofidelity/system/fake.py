@@ -188,11 +188,7 @@ class FakeBenchmarkSystem(BenchmarkSystem):
   def __init__(self):
     super(FakeBenchmarkSystem, self).__init__(FakeRobotBackend(),
                                               FakeHighSpeedCamera())
-    self.subjects = defaultdict(self._CreateFakeSubject, self.subjects)
-    self.fake_subject = None
-
     self.fake_subject = self._CreateFakeSubject()
-    self.subjects[self.fake_subject.name] = self.fake_subject
 
   def _CreateFakeSubject(self):
     dut_backend = self.backend.GetDUTBackend("fake_dut")

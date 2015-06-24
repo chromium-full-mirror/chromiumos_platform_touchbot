@@ -27,7 +27,7 @@ from .system.system import FingerCalibDelay
 from .system.updater import ChromeUpdater, ManualUpdater
 from .util import const_property
 from .benchmark import BenchmarkRunner
-from .orchestrator import Dashboard, Orchestrator
+from .orchestrator import Dashboard, Orchestrator, OrchestratorSubject
 
 @typecheck
 def GetRequired(parent, element_name):
@@ -108,8 +108,7 @@ class SystemBuilder(object):
       "default": MultithreadedVideoProcessor
     },
     Dashboard: {
-      "chrome": Dashboard,
-      "default": Dashboard
+      "chrome": Dashboard
     },
     Orchestrator: {
       "default": Orchestrator
@@ -129,11 +128,7 @@ class SystemBuilder(object):
   @const_property
   def benchmark_system(self):
     element = GetRequired(self._config_element, "benchmark-system")
-    system = self._BuildBenchmarkSystem(element)
-    for dut_elem in self._config_element.iter("dut"):
-      for subject in self._BuildDUTSubjects(dut_elem, system):
-        system.subjects[subject.name] = subject
-    return system
+    return self._BuildBenchmarkSystem(element)
 
   @const_property
   def video_processor(self):
@@ -152,9 +147,12 @@ class SystemBuilder(object):
   @const_property
   def orchestrator(self):
     element = self._config_element.find("orchestrator")
-    return self._CreateComponent(Orchestrator, element, {},
-                                 self.benchmark_system, self.benchmark_runner,
-                                 self.dashboard)
+    orchestrator = self._CreateComponent(Orchestrator, element, {},
+        self.benchmark_system, self.benchmark_runner, self.dashboard)
+    for dut_elem in self._config_element.iter("dut"):
+      for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
+        orchestrator.AddSubject(subject)
+    return orchestrator
 
   @classmethod
   def FromFile(cls, config_file):
@@ -217,10 +215,15 @@ class SystemBuilder(object):
                                       additional, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
                                     additional, dut_backend)
+
     name = "%s/%s" % (dut_name, subject_name)
-    subject = BenchmarkSubject(name, dut_backend, system.camera)
+    subject = OrchestratorSubject(name, dut_backend, system.camera)
     subject.navigator = navigator
     subject.updater = updater
+    for benchmark_elem in subject_elem.iter("benchmark"):
+      attrib, children = self._GetElementAttribs(benchmark_elem, {})
+      subject.DefineBenchmark(attrib["name"], attrib["type"],
+                              attrib["activity"], attrib)
     return subject
 
   def _ReadTypes(self, root, element_name):
