@@ -41,10 +41,14 @@ Run tap test on all devices
 """
 
 
-def RunBenchmarks(match, skip_update, debug_flags, force_version, history):
+def RunBenchmarks(match, skip_update, debug_flags, force_version, history,
+                 list):
   builder = SystemBuilder.FromFile("optofidelity.xml")
-
-  if history:
+  if list:
+    print "Available benchmarks:"
+    for name in sorted(builder.orchestrator.benchmark_names):
+      print "  ", name
+  elif history:
     builder.orchestrator.RunHistoryBenchmarks(match, debug_flags, history)
   else:
     builder.orchestrator.UpdateAndRunBenchmarks(match, debug_flags, force_version,
@@ -63,11 +67,14 @@ def Main():
   parser.add_option("--history",
                     dest="history", default=None,
                     help="Benchmark all versions since specified version.")
+  parser.add_option("--list", "-l",
+                    dest="list", default=False, action="store_true",
+                    help="List all available benchmarks.")
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
   RunBenchmarks(match, not options.update, [], options.force_version,
-                options.history)
+                options.history, options.list)
 
 
 if __name__ == "__main__":

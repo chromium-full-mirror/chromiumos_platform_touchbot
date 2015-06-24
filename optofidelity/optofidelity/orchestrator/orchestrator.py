@@ -65,6 +65,11 @@ class Orchestrator(object):
     self._xkcd = xkcd
     self._subjects = {}
 
+  @property
+  def benchmark_names(self):
+    return [ "%s/%s" % (s.name, n) for s in self._subjects.itervalues()
+                                   for n in s.benchmark_defs ]
+
   def AddSubject(self, subject):
     """
     :type subject: OrchestratorSubject
@@ -359,7 +364,7 @@ class Orchestrator(object):
 
     :type match: str
     """
-    benchmarks = { ("%s/%s" % (s, n)): (s, d)
+    benchmarks = { ("%s/%s" % (s.name, n)): (s, d)
                    for s in self._subjects.itervalues()
                    for n, d in s.benchmark_defs.iteritems() }
 
