@@ -16,4 +16,3 @@ from .camera import HighSpeedCamera
 from .navigator import Navigator
 from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
-from .updater import Updater

@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """Tests for the Orchestrator class."""
 from unittest import TestCase
-from optofidelity.system.updater import ChromeUpdater
+from optofidelity.orchestrator import ChromeUpdater
 from tests.config import TEST_ADB_DEVICE_ID
 
 class ChromeUpdaterTests(TestCase):

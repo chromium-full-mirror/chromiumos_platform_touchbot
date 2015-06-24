@@ -13,6 +13,7 @@ class OrchestratorSubject(BenchmarkSubject):
   def __init__(self, name, dut_backend, camera):
     super(OrchestratorSubject, self).__init__(name, dut_backend, camera)
     self.benchmark_defs = {}
+    self.updater = None
 
   @classmethod
   def FromBenchmarkSubject(cls, other):

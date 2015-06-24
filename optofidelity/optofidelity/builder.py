@@ -14,20 +14,22 @@ import xml.etree.ElementTree as ElementTree
 from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
                        typecheck)
 
+from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
+from .orchestrator import (ChromeUpdater, Dashboard, FakeUpdater,
+                           ManualUpdater, Orchestrator, OrchestratorSubject,
+                           Updater)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
-                     Navigator, RobotBackend, Updater)
+                     Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
-from .system.fake import FakeHighSpeedCamera, FakeRobotBackend, FakeUpdater
+from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
 from .system.navigator import (NativeADBNavigator, RobotNavigator,
                                WebADBNavigator)
 from .system.system import FingerCalibDelay
-from .system.updater import ChromeUpdater, ManualUpdater
 from .util import const_property
-from .benchmark import BenchmarkRunner
-from .orchestrator import Dashboard, Orchestrator, OrchestratorSubject
+
 
 @typecheck
 def GetRequired(parent, element_name):

@@ -163,3 +163,35 @@ class ChromeUpdater(Updater):
     if process.returncode > 0:
       raise Exception("'%s' returned with %d" % (" ".join(command),
                                                  process.returncode))
+
+
+class FakeUpdater(Updater):
+  """Updater that returns a constant version.
+
+  This updater is to be used for devices and subjects that require manual
+  updating.
+  """
+  def __init__(self):
+    self._available_versions = []
+    self._installed_version = None
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls()
+
+  def GetVersionUID(self, version):
+    return 0
+
+  @property
+  def available_versions(self):
+    return self._available_versions
+
+  @property
+  def installed_version(self):
+    return self._installed_version
+
+  def Install(self, version):
+    self._installed_version = version
+
+  def Uninstall(self):
+    self._installed_version = None

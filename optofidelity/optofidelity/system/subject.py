@@ -15,7 +15,6 @@ from optofidelity.videoproc import VideoReader
 from .backend import DUTBackend
 from .camera import HighSpeedCamera
 from .navigator import Navigator
-from .updater import Updater
 
 
 class BenchmarkSubject(object):
@@ -55,7 +54,6 @@ class BenchmarkSubject(object):
     """
     self.name = name
     self.camera = camera
-    self.updater = None
     self.navigator = None
     self.finger_calib_delay = (0.0, 0.0)
 

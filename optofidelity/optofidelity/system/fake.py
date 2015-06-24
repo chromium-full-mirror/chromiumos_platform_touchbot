@@ -10,7 +10,7 @@ from optofidelity.videoproc import FakeVideoReader
 from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
 from .navigator import Navigator
-from .subject import BenchmarkSubject, Updater
+from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
 
 _log = logging.getLogger(__name__)
@@ -112,38 +112,6 @@ class FakeHighSpeedCamera(HighSpeedCamera):
     return FakeVideoReader(self.num_frames, self.frame_size, self.fps)
 
 
-class FakeUpdater(Updater):
-  """Updater that returns a constant version.
-
-  This updater is to be used for devices and subjects that require manual
-  updating.
-  """
-  def __init__(self):
-    self._available_versions = []
-    self._installed_version = None
-
-  @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
-    return cls()
-
-  def GetVersionUID(self, version):
-    return 0
-
-  @property
-  def available_versions(self):
-    return self._available_versions
-
-  @property
-  def installed_version(self):
-    return self._installed_version
-
-  def Install(self, version):
-    self._installed_version = version
-
-  def Uninstall(self):
-    self._installed_version = None
-
-
 class FakeNavigator(Navigator):
   def __init__(self):
     super(FakeNavigator, self).__init__()
@@ -195,5 +163,4 @@ class FakeBenchmarkSystem(BenchmarkSystem):
     subject = BenchmarkSubject("fake_dut/fake_subject", dut_backend,
                                self.camera)
     subject.navigator = FakeNavigator()
-    subject.updater = FakeUpdater()
     return subject

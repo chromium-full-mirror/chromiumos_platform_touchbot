@@ -9,3 +9,4 @@ running benchmarks.
 from .dashboard import Dashboard
 from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject
+from .updater import ChromeUpdater, FakeUpdater, ManualUpdater, Updater
