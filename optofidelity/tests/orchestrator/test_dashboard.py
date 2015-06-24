@@ -5,7 +5,7 @@
 from unittest import TestCase
 
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import Dashboard
+from optofidelity.orchestrator import ChromePerfDashboard
 
 from . import test_data
 
@@ -16,13 +16,13 @@ class DashboardTests(TestCase):
   def setUp(self):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
-    self.dashboard = Dashboard(ENDPOINT_URL)
+    self.dashboard = ChromePerfDashboard("", ENDPOINT_URL)
 
   def testDashboardJSON(self):
-    request = self.dashboard._FormatRequest(self.benchmark.results, "", "1.0",
+    request = self.dashboard._FormatRequest(self.benchmark.results, "1.0",
                                              1, "http://fake.com")
     print request
 
   def testDashboardReport(self):
-    self.dashboard.ReportResults(self.benchmark.results, "", "1.0", 1,
+    self.dashboard.ReportResults(self.benchmark.results, "1.0", 1,
                                  "http://fake.com")

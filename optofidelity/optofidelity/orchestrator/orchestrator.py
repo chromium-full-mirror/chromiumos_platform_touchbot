@@ -167,9 +167,11 @@ class Orchestrator(object):
         self._progress.Info(full_name,
                             "Report available at: %s" % public_url)
 
-        self._progress.Info(full_name, "Reporting results to dashboard")
-        self._dashboard.ReportResults(aggregate, subject.name, subject_version,
-            subject.updater.GetVersionUID(subject_version), public_url)
+        if subject.dashboard:
+          self._progress.Info(full_name, "Reporting results to dashboard")
+          version_uid = subject.updater.GetVersionUID(subject_version)
+          subject.dashboard.ReportResults(aggregate, subject_version,
+                                          version_uid, public_url)
     elapsed_minutes = (time.time() - start_time) / 60
     self._progress.Info(subject.name, "Elapsed time: %d min" % elapsed_minutes)
 

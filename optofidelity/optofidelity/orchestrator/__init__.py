@@ -6,7 +6,7 @@
 This module is responsible for managing multiple devices, updating them and
 running benchmarks.
 """
-from .dashboard import Dashboard
+from .dashboard import ChromePerfDashboard, Dashboard
 from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject
 from .updater import ChromeUpdater, FakeUpdater, ManualUpdater, Updater

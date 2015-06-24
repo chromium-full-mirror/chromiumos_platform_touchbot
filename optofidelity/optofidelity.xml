@@ -6,7 +6,6 @@
     <led-calibration-subject backend-name="calibration" />
   </benchmark-system>
 
-  <dashboard type="chrome" endpoint="https://chromeperf.appspot.com/add_point" />
   <orchestrator results="gs://touchbot/optofidelity/benchmark_results"
                 database="filecontents:results_database.url" />
 
@@ -25,6 +24,7 @@
       <resource file="file:html/jquery.min.js" />
     </navigator>
     <updater type="chrome" channel="beta" />
+    <dashboard type="chromeperf" endpoint="https://chromeperf.appspot.com/add_point" />
   </subject-type>
 
   <subject-type type-name="android_native" margin="(10, 15)" parent-type="base">

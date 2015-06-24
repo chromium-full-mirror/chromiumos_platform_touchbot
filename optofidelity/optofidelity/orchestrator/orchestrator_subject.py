@@ -14,6 +14,7 @@ class OrchestratorSubject(BenchmarkSubject):
     super(OrchestratorSubject, self).__init__(name, dut_backend, camera)
     self.benchmark_defs = {}
     self.updater = None
+    self.dashboard = None
 
   @classmethod
   def FromBenchmarkSubject(cls, other):

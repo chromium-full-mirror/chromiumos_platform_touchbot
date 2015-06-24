@@ -17,9 +17,9 @@ from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
 from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ChromeUpdater, Dashboard, FakeUpdater,
-                           ManualUpdater, Orchestrator, OrchestratorSubject,
-                           Updater)
+from .orchestrator import (ChromePerfDashboard, ChromeUpdater, Dashboard,
+                           FakeUpdater, ManualUpdater, Orchestrator,
+                           OrchestratorSubject, Updater)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
@@ -110,7 +110,7 @@ class SystemBuilder(object):
       "default": MultithreadedVideoProcessor
     },
     Dashboard: {
-      "chrome": Dashboard
+      "chromeperf": ChromePerfDashboard
     },
     Orchestrator: {
       "default": Orchestrator
@@ -217,11 +217,13 @@ class SystemBuilder(object):
                                       additional, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
                                     additional, dut_backend)
-
+    dashboard = self._CreateComponent(Dashboard, subject_elem.find("dashboard"),
+                                      additional, subject_name)
     name = "%s/%s" % (dut_name, subject_name)
     subject = OrchestratorSubject(name, dut_backend, system.camera)
     subject.navigator = navigator
     subject.updater = updater
+    subject.dashboard = dashboard
     for benchmark_elem in subject_elem.iter("benchmark"):
       attrib, children = self._GetElementAttribs(benchmark_elem, {})
       subject.DefineBenchmark(attrib["name"], attrib["type"],

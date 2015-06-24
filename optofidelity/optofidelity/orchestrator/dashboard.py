@@ -1,18 +1,32 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from abc import abstractmethod
 from StringIO import StringIO
 from urllib import urlencode
-import logging
 import json
+import logging
 
-from safetynet import Optional, TypecheckMeta
+from safetynet import Optional, InterfaceMeta
 
 from optofidelity.benchmark import BenchmarkResults
 import pycurl
 
-
 _log = logging.getLogger(__name__)
+
+class Dashboard(object):
+  __metaclass__ = InterfaceMeta
+
+  def __init__(self, subject_name):
+    self.subject_name = subject_name
+
+  @abstractmethod
+  def ReportResults(self, benchmark_results, version, version_uid,
+                    report_url):
+    """Report results of benchmark to dashboard.
+
+    :type benchmark_results: BenchmarkResults
+    """
 
 
 def HTTPPost(url, data):
@@ -35,28 +49,23 @@ def HTTPPost(url, data):
   return buffer.getvalue()
 
 
-class Dashboard(object):
-  __metaclass__ = TypecheckMeta
-
-  def __init__(self, endpoint_url):
+class ChromePerfDashboard(Dashboard):
+  def __init__(self, subject_name, endpoint_url):
     """
     :param Optional[str] endpoint_url: URL of dashboard endpoint to post results
            to, will dump JSON requests instead of posting them to the URL if
            this parameter is None.
     """
+    super(ChromePerfDashboard, self).__init__(subject_name)
     self.endpoint_url = endpoint_url
 
   @classmethod
-  def FromConfig(cls, parameters, children):
-    return Dashboard(parameters["endpoint"])
+  def FromConfig(cls, parameters, children, subject_name):
+    return cls(subject_name, parameters["endpoint"])
 
-  def ReportResults(self, benchmark_results, subject_name, version, version_uid,
+  def ReportResults(self, benchmark_results, version, version_uid,
                     report_url):
-    """Report results of benchmark to dashboard.
-
-    :type benchmark_results: BenchmarkResults
-    """
-    payload = self._FormatRequest(benchmark_results, subject_name, version,
+    payload = self._FormatRequest(benchmark_results, version,
                                   version_uid, report_url)
     if not self.endpoint_url:
       print json.dumps(payload, indent=2)
@@ -67,7 +76,7 @@ class Dashboard(object):
     for line in json.dumps(payload, indent=2).split("\n"):
       _log.info("    %s" % line)
 
-  def _FormatRequest(self, benchmark_results, subject_name, version,
+  def _FormatRequest(self, benchmark_results, version,
                      version_uid, report_url):
     if version_uid == 0:
       _log.info("Skipping dashboard upload: version_uid=0.")
@@ -89,7 +98,7 @@ class Dashboard(object):
     }
     data = {
       "master": "TouchBot",
-      "bot": subject_name.replace("/", "."),
+      "bot": self.subject_name.replace("/", "."),
       "point_id": version_uid,
       "versions": {
         "chrome_version": version
