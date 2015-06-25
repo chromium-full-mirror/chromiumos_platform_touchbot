@@ -5,9 +5,11 @@ import logging
 import sys
 
 from safetynet import List, Optional
+import cv2
 import numpy as np
+import skimage
 
-from optofidelity.videoproc import VideoReader, InteractiveVideoViewer
+from optofidelity.videoproc import InteractiveVideoViewer, VideoReader
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import DetectorDebugger
@@ -25,12 +27,13 @@ _log = logging.getLogger(__name__)
 class SinglethreadedVideoProcessor(VideoProcessor):
   """Processes video and accumulates generated events."""
 
-  def __init__(self):
+  def __init__(self, debug_video_file=None):
     self._detector_types = []
+    self._debug_video_file = debug_video_file
 
   @classmethod
   def FromConfig(cls, parameters, children):
-    return cls()
+    return cls(parameters.get("debug-video"))
 
   def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
                       screen_draw=False):
@@ -52,12 +55,18 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     all_events = []
     prev_frame = None
     viewer = None
+    debug_video = None
 
-    if len(debug_flags) > 0:
+    if "viewer" in debug_flags:
       viewer = InteractiveVideoViewer()
       generator = viewer.YieldFrames(video_reader)
     else:
       generator = video_reader.Frames()
+
+    if self._debug_video_file is not None:
+      debug_video = cv2.VideoWriter(self._debug_video_file,
+                                    cv2.cv.CV_FOURCC(*"mp4v"),
+                                    30, video_reader.frame_shape)
 
     for i, frame in generator:
       msg = "Processing frame %d/%d" % (i + 1, video_reader.num_frames)
@@ -68,9 +77,16 @@ class SinglethreadedVideoProcessor(VideoProcessor):
       events, debug_frame = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
                                                debug_flags)
       all_events.extend(events)
-      if debug_frame is not None and viewer is not None:
-        viewer.DisplayFrame(debug_frame)
+      if debug_frame is not None:
+        if viewer is not None:
+          viewer.DisplayFrame(debug_frame)
+        if debug_video is not None:
+          debug_frame = skimage.img_as_ubyte(debug_frame)
+          debug_video.write(debug_frame)
       prev_frame = frame
+
+    if debug_video is not None:
+      debug_video.release()
 
     print
     return Trace(all_events, video_reader.ms_per_frame)
