@@ -35,6 +35,8 @@ class HistogramFigure(SingleAxesFigure):
     :param int pass_num: Pass number of measurement
     :param List[float] value_list: List of measurement values
     """
+    if not len(value_list):
+        return
     label = "Pass %d" % pass_num
     color = self.GetRotationColor(pass_num)
     self.PlotPrimary(np.asarray(value_list), label, color)
@@ -71,6 +73,8 @@ class HistogramFigure(SingleAxesFigure):
     :param str label: Label of this plot for the legend.
     :param str color: Color of plot.
     """
+    if not len(values):
+      return
     self._PlotHistogram(values, _styles.HISTOGRAM_STYLE)
     self._PlotPDF(values, label + " PDF", color, _styles.MAIN_PDF_STYLE)
 
@@ -81,6 +85,8 @@ class HistogramFigure(SingleAxesFigure):
     :param str label: Label of this plot for the legend.
     :param str color: Color of plot.
     """
+    if not len(values):
+      return
     self._PlotPDF(values, label, color, _styles.SECONDARY_PDF_STYLE)
 
   def _PlotHistogram(self, values, style):
