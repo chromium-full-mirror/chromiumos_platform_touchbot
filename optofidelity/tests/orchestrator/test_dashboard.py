@@ -6,6 +6,7 @@ from unittest import TestCase
 
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.orchestrator import ChromePerfDashboard
+from optofidelity.orchestrator.omaha import GetLatestChromeVersions
 
 from . import test_data
 
@@ -19,10 +20,12 @@ class DashboardTests(TestCase):
     self.dashboard = ChromePerfDashboard("", ENDPOINT_URL)
 
   def testDashboardJSON(self):
-    request = self.dashboard._FormatRequest(self.benchmark.results, "1.0",
-                                             1, "http://fake.com")
+    version = GetLatestChromeVersions("beta")[0]
+    request = self.dashboard._FormatRequest(self.benchmark.results, version,
+                                            "http://fake.com")
     print request
 
   def testDashboardReport(self):
-    self.dashboard.ReportResults(self.benchmark.results, "1.0", 1,
-                                 "http://fake.com")
+    for version in GetLatestChromeVersions("beta"):
+      self.dashboard.ReportResults(self.benchmark.results, version,
+                                   "http://fake.com")

@@ -28,10 +28,9 @@ class OrchestratorTests(TestCase):
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
-    dashboard = Dashboard(None)
     db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
     orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                dashboard, self.tempdir, db_url,
+                                self.tempdir, db_url,
                                 generate_reports=False)
     orchestrator.AddSubject(self.subject)
     DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 0

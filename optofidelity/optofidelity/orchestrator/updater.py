@@ -13,6 +13,8 @@ from safetynet import InterfaceMeta, List, Optional
 
 from optofidelity.util import ADB, ProgressBar, const_property
 
+from .omaha import GetLatestChromeVersions
+
 log = logging.getLogger(__name__)
 
 
@@ -27,10 +29,6 @@ class Updater(object):
   @abstractproperty
   def installed_version(self):
     """:returns Optional[str]: Currently installed version or None."""
-
-  @abstractmethod
-  def GetVersionUID(self, version):
-    """:returns int: Unique incrementing integer identifying a version."""
 
   @abstractmethod
   def Install(self, version):
@@ -68,9 +66,6 @@ class ManualUpdater(Updater):
   def installed_version(self):
     return self._version
 
-  def GetVersionUID(self, version):
-    return 0
-
   def Install(self, version):
     raise NotImplementedError()
 
@@ -102,35 +97,13 @@ class ChromeUpdater(Updater):
   def FromConfig(cls, attributes, children, dut_backend):
     return cls(attributes["adb"], attributes["channel"])
 
-  def GetVersionUID(self, version):
-    for uid_version, uid in self._version_db:
-      if uid_version == version:
-        print version, uid
-        return uid
-    raise Exception("Unknown version %s" % version)
-
   @property
   def installed_version(self):
     return self._adb.GetPackageVersion(self._package_name)
 
-  @const_property
-  def _version_db(self):
-    url = ("https://omahaproxy.appspot.com/history?os=android&channel=%s" %
-           self._channel)
-    request = urllib2.urlopen(url)
-    reader = csv.reader(request)
-    versions = []
-    for row in reader:
-      if row[0] == "os":
-        continue
-      release_date = datetime.strptime(row[3], "%Y-%m-%d %H:%M:%S.%f")
-      timestamp = (release_date - datetime.utcfromtimestamp(0)).total_seconds()
-      versions.append((row[2], int(timestamp)))
-    return sorted(versions, reverse=True)
-
   @property
   def available_versions(self):
-    return [version for version, uid in self._version_db]
+    return GetLatestChromeVersions(self._channel)
 
   def Uninstall(self):
     msg = "Uninstalling %s" % self._package_name
@@ -178,9 +151,6 @@ class FakeUpdater(Updater):
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
     return cls()
-
-  def GetVersionUID(self, version):
-    return 0
 
   @property
   def available_versions(self):

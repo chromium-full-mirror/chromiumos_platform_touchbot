@@ -7,10 +7,12 @@ from urllib import urlencode
 import json
 import logging
 
-from safetynet import Optional, InterfaceMeta
+from safetynet import InterfaceMeta, Optional
 
 from optofidelity.benchmark import BenchmarkResults
 import pycurl
+
+from .omaha import GetChromeBuildTimestamp
 
 _log = logging.getLogger(__name__)
 
@@ -21,8 +23,7 @@ class Dashboard(object):
     self.subject_name = subject_name
 
   @abstractmethod
-  def ReportResults(self, benchmark_results, version, version_uid,
-                    report_url):
+  def ReportResults(self, benchmark_results, version, report_url):
     """Report results of benchmark to dashboard.
 
     :type benchmark_results: BenchmarkResults
@@ -63,23 +64,20 @@ class ChromePerfDashboard(Dashboard):
   def FromConfig(cls, parameters, children, subject_name):
     return cls(subject_name, parameters["endpoint"])
 
-  def ReportResults(self, benchmark_results, version, version_uid,
-                    report_url):
-    payload = self._FormatRequest(benchmark_results, version,
-                                  version_uid, report_url)
+  def ReportResults(self, benchmark_results, version, report_url):
+    payload = self._FormatRequest(benchmark_results, version, report_url)
     if not self.endpoint_url:
       print json.dumps(payload, indent=2)
     else:
       params = dict(data=json.dumps(payload))
-      print HTTPPost(self.endpoint_url, params)
+      HTTPPost(self.endpoint_url, params)
 
     for line in json.dumps(payload, indent=2).split("\n"):
       _log.info("    %s" % line)
 
-  def _FormatRequest(self, benchmark_results, version,
-                     version_uid, report_url):
-    if version_uid == 0:
-      _log.info("Skipping dashboard upload: version_uid=0.")
+  def _FormatRequest(self, benchmark_results, version, report_url):
+    point_id = GetChromeBuildTimestamp(version)
+
     charts = {}
     charts[benchmark_results.benchmark_name] = {}
     msrmnts = benchmark_results.measurements
@@ -99,7 +97,7 @@ class ChromePerfDashboard(Dashboard):
     data = {
       "master": "TouchBot",
       "bot": self.subject_name.replace("/", "."),
-      "point_id": version_uid,
+      "point_id": point_id,
       "versions": {
         "chrome_version": version
       },

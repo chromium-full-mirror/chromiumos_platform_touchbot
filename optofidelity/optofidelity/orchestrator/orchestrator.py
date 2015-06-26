@@ -7,6 +7,7 @@ from fnmatch import fnmatch
 import logging
 import os
 import time
+import traceback
 
 from safetynet import List, Optional, TypecheckMeta
 import numpy as np
@@ -38,12 +39,11 @@ class Orchestrator(object):
 
   FILED_BENCHMARKS_FILE = "failed_benchmarks.log"
 
-  def __init__(self, benchmark_system, benchmark_runner, dashboard, results_url,
+  def __init__(self, benchmark_system, benchmark_runner, results_url,
                results_db_url, generate_reports=True, xkcd=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
-    :type dashboard: Optional[Dashboard]
     :type results_url: str
     :type results_db_url: str
     :param bool xkcd: Give reports more authority
@@ -51,7 +51,6 @@ class Orchestrator(object):
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
-    self._dashboard = dashboard
     self._results_url = results_url
 
     self._results_db = None
@@ -77,11 +76,11 @@ class Orchestrator(object):
     self._subjects[subject.name] = subject
 
   @classmethod
-  def FromConfig(cls, parameters, children, system, runner, dashboard):
+  def FromConfig(cls, parameters, children, system, runner):
     xkcd = parameters.get("xkcd") is not None
     results = parameters["results"]
     database = parameters["database"]
-    return cls(system, runner, dashboard, results, database, xkcd=xkcd)
+    return cls(system, runner, results, database, xkcd=xkcd)
 
   def RunHistoryBenchmarks(self, match, debug_flags, first_version):
     for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
@@ -174,9 +173,8 @@ class Orchestrator(object):
 
         if subject.dashboard:
           self._progress.Info(full_name, "Reporting results to dashboard")
-          version_uid = subject.updater.GetVersionUID(subject_version)
           subject.dashboard.ReportResults(aggregate, subject_version,
-                                          version_uid, public_url)
+                                          public_url)
     elapsed_minutes = (time.time() - start_time) / 60
     self._progress.Info(subject.name, "Elapsed time: %d min" % elapsed_minutes)
 
@@ -327,21 +325,27 @@ class Orchestrator(object):
     for repetition in range(self.MAX_BENCHMARK_TRIES):
       full_name = "%s/%s" % (subject.name, benchmark_def.name)
       rep_name = "Benchmark (repetiton=%d)" % repetition
-      self._progress.Info(full_name, "Running %s" % rep_name)
+      try:
+        self._progress.Info(full_name, "Running %s" % rep_name)
 
-      benchmark = self._runner.CreateBenchmark(full_name,
-          benchmark_def.benchmark_type, benchmark_def.activity,
-          benchmark_def.params, metadata)
-      self._runner.RunBenchmark(benchmark, debug_flags)
+        benchmark = self._runner.CreateBenchmark(full_name,
+            benchmark_def.benchmark_type, benchmark_def.activity,
+            benchmark_def.params, metadata)
+        self._runner.RunBenchmark(benchmark, debug_flags)
 
-      self._StoreBenchmark(benchmark, subject, benchmark_time)
+        self._StoreBenchmark(benchmark, subject, benchmark_time)
 
-      if not len(benchmark.results.error):
-        self._progress.Info(full_name, "Results:")
-        print benchmark.results
-        return benchmark
+        if not len(benchmark.results.error):
+          self._progress.Info(full_name, "Results:")
+          print benchmark.results
+          return benchmark
 
-      self._progress.Error(benchmark.name, "%s failed." % rep_name)
+        self._progress.Error(benchmark.name, "%s failed." % rep_name)
+      except KeyboardInterrupt:
+        raise
+      except:
+        self._progress.Error(full_name, "%s failed." % rep_name)
+        self._progress.Exception(full_name)
 
     self._progress.Error(benchmark.name, "All repetitions failed. Giving up!")
     return None

@@ -142,15 +142,10 @@ class SystemBuilder(object):
     return BenchmarkRunner(self.benchmark_system, self.video_processor)
 
   @const_property
-  def dashboard(self):
-    element = self._config_element.find("dashboard")
-    return self._CreateComponent(Dashboard, element, {})
-
-  @const_property
   def orchestrator(self):
     element = self._config_element.find("orchestrator")
     orchestrator = self._CreateComponent(Orchestrator, element, {},
-        self.benchmark_system, self.benchmark_runner, self.dashboard)
+        self.benchmark_system, self.benchmark_runner)
     for dut_elem in self._config_element.iter("dut"):
       for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
         orchestrator.AddSubject(subject)
