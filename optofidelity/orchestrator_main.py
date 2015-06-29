@@ -14,6 +14,7 @@ from optparse import OptionParser
 import sys
 
 from optofidelity.builder import SystemBuilder
+from optofidelity.util import SingleInstanceLock
 
 usage_string = """Orchestrator usage examples:
 
@@ -78,4 +79,5 @@ def Main():
 
 
 if __name__ == "__main__":
-  Main()
+  with SingleInstanceLock("optofidelity"):
+    Main()

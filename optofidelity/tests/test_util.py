@@ -7,7 +7,7 @@ from unittest import TestCase
 import os
 
 from optofidelity.util import (GSFile, GSFindUniqueFilename, GSFolder,
-                               GSOpenFile, GSTouch)
+                               GSOpenFile, GSTouch, SingleInstanceLock)
 
 GS_URL = None
 GS_FILE_URL = os.path.join(GS_URL, "test.txt") if GS_URL else None
@@ -53,3 +53,16 @@ class GSUtilTests(TestCase):
     with GSFolder(GS_URL, download=True, upload=False) as folder:
       with open(os.path.join(folder, "test.txt")) as file_obj:
         self.assertEqual(file_obj.read(), "42")
+
+
+class SingleInstanceLockTests(TestCase):
+  def testSingleInstanceSuccess(self):
+    with SingleInstanceLock("test"):
+      print "Hello"
+
+  def testSingleInstanceFailure(self):
+    def ThisShouldFail():
+      with SingleInstanceLock("test"):
+        print "Hello"
+    with SingleInstanceLock("test"):
+      self.assertRaises(Exception, ThisShouldFail)

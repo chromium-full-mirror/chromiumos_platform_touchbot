@@ -4,4 +4,5 @@
 from .adb import ADB
 from .gsutil import (GSFile, GSFindUniqueFilename, GSFolder, GSOpenFile,
                      GSPathExists, GSTouch)
-from .tools import LogCapture, ProgressBar, ProgressPrinter, const_property
+from .tools import (LogCapture, ProgressBar, ProgressPrinter,
+                    SingleInstanceLock, const_property)

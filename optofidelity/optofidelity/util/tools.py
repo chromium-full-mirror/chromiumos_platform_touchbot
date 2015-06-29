@@ -5,9 +5,13 @@
 
 This module provides globally available python utilities.
 """
+from contextlib import contextmanager
 from StringIO import StringIO
+import fcntl
 import logging
+import os
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -133,3 +137,16 @@ class ProgressPrinter(object):
     log_line = pretty_format % (color, header, message)
     self._log.log(level, log_line)
     print log_line
+
+@contextmanager
+def SingleInstanceLock(lock_name):
+  lockfile = os.path.join(tempfile.gettempdir(), "%s.lock" % lock_name)
+  # race condition exists here, but is highly improbable in our use case.
+  if os.path.exists(lockfile):
+    raise Exception("Another instance is already running. If that is not " +
+                    "the case, delete: %s" % lockfile)
+  open(lockfile, 'w').close()
+  try:
+    yield
+  finally:
+    os.unlink(lockfile)
