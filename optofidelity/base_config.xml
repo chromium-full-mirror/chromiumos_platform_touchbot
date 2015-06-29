@@ -15,40 +15,44 @@
     <benchmark name="touch_move" type="line_draw" activity="touch_move" />
   </subject-type>
 
-  <subject-type type-name="clank_beta" parent-type="base">
-    <navigator type="web_adb" component="com.chrome.beta/com.google.android.apps.chrome.Main">
+  <subject-type type-name="clank_base" parent-type="base">
+    <navigator type="web_adb" adb="{adb}">
       <activity name="calibration" file="file:html/flash.html" />
       <activity name="scroll" file="file:html/scroll.html" />
       <activity name="touch_move" file="file:html/move.html" />
       <activity name="tap" file="file:html/tap.html" />
       <resource file="file:html/jquery.min.js" />
     </navigator>
-    <updater type="chrome" channel="beta" />
-    <dashboard type="chromeperf" endpoint="https://chromeperf.appspot.com/add_point" />
+    <updater type="chrome" adb="{adb}"/>
+    <dashboard type="chromeperf" master="{master}"
+               endpoint="https://chromeperf.appspot.com/add_point" />
+  </subject-type>
+
+  <subject-type type-name="clank_stable" parent-type="clank_base">
+    <navigator type="web_adb" component="com.android.chrome/.Main" />
+    <updater type="chrome" channel="stable"/>
+  </subject-type>
+
+  <subject-type type-name="clank_beta" parent-type="clank_base">
+    <navigator type="web_adb"
+               component="com.chrome.beta/com.google.android.apps.chrome.Main" />
+    <updater type="chrome" channel="beta"/>
+  </subject-type>
+
+  <subject-type type-name="clank_dev" parent-type="clank_base">
+    <navigator type="web_adb"
+               component="com.chrome.dev/com.google.android.apps.chrome.Main" />
+    <updater type="chrome" channel="dev"/>
   </subject-type>
 
   <subject-type type-name="android_native" margin="(10, 15)" parent-type="base">
-    <navigator type="native_adb" package="org.chromium.touchlatency" apk="file:apks/touchlatency.apk">
+    <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
+               apk="file:apks/touchlatency.apk">
       <activity name="calibration" intent="FlashActivity" />
       <activity name="scroll" intent="ScrollActivity" />
       <activity name="tap" intent="TapActivity" />
     </navigator>
     <updater type="manual" version="0.0" />
   </subject-type>
-
-  <dut-type type-name="nexus_phone">
-    <subject name="clank_beta" type="clank_beta" margin="(20, 15)" />
-    <subject name="native" type="android_native" />
-  </dut-type>
-
-  <dut-type type-name="nexus_tablet" parent-type="nexus_phone">
-    <subject name="clank_beta" margin="(30, 15)" />
-  </dut-type>
-
-  <dut name="nexus4" adb="04f6cafb8c976e5a" type="nexus_phone" />
-  <dut name="nexus5" adb="08a9896c255d540b" type="nexus_phone" />
-  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" />
-  <dut name="nexus7" adb="071c76bf" type="nexus_tablet" />
-  <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" />
 
 </optofidelity>

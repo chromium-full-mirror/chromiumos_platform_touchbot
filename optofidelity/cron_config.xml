@@ -1,0 +1,21 @@
+<optofidelity>
+  <include file="base_config.xml" />
+
+  <dut-type type-name="nexus_phone" master="touchbot">
+    <subject name="clank_stable" type="clank_stable" margin="(20, 15)">
+      <dashboard master="touchbot" />
+    </subject>
+    <subject name="clank_dev" type="clank_dev" margin="(20, 15)">
+      <dashboard master="touchbot" />
+    </subject>
+  </dut-type>
+
+  <dut-type type-name="nexus_tablet" parent-type="nexus_phone">
+    <subject name="clank_stable" margin="(30, 15)" />
+    <subject name="clank_dev" margin="(30, 15)" />
+  </dut-type>
+
+  <dut name="nexus5" adb="08a9896c255d540b" type="nexus_phone" />
+  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" />
+
+</optofidelity>

@@ -17,7 +17,7 @@ class DashboardTests(TestCase):
   def setUp(self):
     fake_trace = test_data.LoadTrace("tap_basic.trace")
     self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
-    self.dashboard = ChromePerfDashboard("", ENDPOINT_URL)
+    self.dashboard = ChromePerfDashboard("subject_name", "touchbot.dev", ENDPOINT_URL)
 
   def testDashboardJSON(self):
     version = GetLatestChromeVersions("beta")[0]

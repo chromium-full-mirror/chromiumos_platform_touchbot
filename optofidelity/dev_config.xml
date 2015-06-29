@@ -1,0 +1,19 @@
+<optofidelity>
+  <include file="base_config.xml" />
+
+  <dut-type type-name="nexus_phone" master="touchbot.dev">
+    <subject name="clank_beta" type="clank_beta" margin="(20, 15)" />
+    <subject name="native" type="android_native" />
+  </dut-type>
+
+  <dut-type type-name="nexus_tablet" parent-type="nexus_phone">
+    <subject name="clank_beta" margin="(30, 15)" />
+  </dut-type>
+
+  <dut name="nexus4" adb="04f6cafb8c976e5a" type="nexus_phone" />
+  <dut name="nexus5" adb="08a9896c255d540b" type="nexus_phone" />
+  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" />
+  <dut name="nexus7" adb="071c76bf" type="nexus_tablet" />
+  <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" />
+
+</optofidelity>

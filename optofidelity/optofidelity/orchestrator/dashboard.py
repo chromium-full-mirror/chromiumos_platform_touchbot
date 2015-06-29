@@ -51,7 +51,7 @@ def HTTPPost(url, data):
 
 
 class ChromePerfDashboard(Dashboard):
-  def __init__(self, subject_name, endpoint_url):
+  def __init__(self, subject_name, master_name, endpoint_url):
     """
     :param Optional[str] endpoint_url: URL of dashboard endpoint to post results
            to, will dump JSON requests instead of posting them to the URL if
@@ -59,10 +59,11 @@ class ChromePerfDashboard(Dashboard):
     """
     super(ChromePerfDashboard, self).__init__(subject_name)
     self.endpoint_url = endpoint_url
+    self.master_name = master_name
 
   @classmethod
   def FromConfig(cls, parameters, children, subject_name):
-    return cls(subject_name, parameters["endpoint"])
+    return cls(subject_name, parameters["master"], parameters["endpoint"])
 
   def ReportResults(self, benchmark_results, version, report_url):
     payload = self._FormatRequest(benchmark_results, version, report_url)
@@ -77,13 +78,14 @@ class ChromePerfDashboard(Dashboard):
 
   def _FormatRequest(self, benchmark_results, version, report_url):
     point_id = GetChromeBuildTimestamp(version)
+    type_name = benchmark_results.benchmark_name.split("/")[-1]
 
     charts = {}
-    charts[benchmark_results.benchmark_name] = {}
+    charts[type_name] = {}
     msrmnts = benchmark_results.measurements
     for series_name, series_info in msrmnts.series_infos.iteritems():
       values = msrmnts.SummarizeValues(series_name)
-      charts[benchmark_results.benchmark_name][series_name] = {
+      charts[type_name][series_name] = {
         "type": "list_of_scalar_values",
         "units": series_info.units,
         "values": [value for value in values]
@@ -95,7 +97,7 @@ class ChromePerfDashboard(Dashboard):
       "charts": charts
     }
     data = {
-      "master": "TouchBot",
+      "master": self.master_name,
       "bot": self.subject_name.replace("/", "."),
       "point_id": point_id,
       "versions": {

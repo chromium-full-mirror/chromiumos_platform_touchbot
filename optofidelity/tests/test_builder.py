@@ -99,8 +99,31 @@ dut_attrib_inheritance_config = """\
   <dut name="test_dut" version="42.0">
     <subject name="test_subject">
       <navigator type="robot" />
-      <updater type="manual" />
+      <updater type="manual" version="{version}" />
     </subject>
+  </dut>
+</config>
+"""
+
+attrib_inheritance_config = """\
+<config>
+  <benchmark-system>
+    <backend type="fake" />
+    <camera type="fake" />
+  </benchmark-system>
+  <orchestrator results="" database="" />
+
+  <subject-type type-name="test_subject_base">
+    <navigator type="robot" />
+    <updater type="manual" />
+  </subject-type>
+
+  <subject-type type-name="test_subject_type" parent-type="test_subject_base">
+    <updater version="42.0" />
+  </subject-type>
+
+  <dut name="test_dut">
+    <subject name="test_subject" type="test_subject_type" />
   </dut>
 </config>
 """
@@ -152,6 +175,13 @@ class SystemBuilderTest(unittest.TestCase):
 
   def testDUTInheritanceConfig(self):
     builder = SystemBuilder.FromString(dut_attrib_inheritance_config)
+    self.assertSimpleConfig(builder)
+    subjects = builder.orchestrator._subjects
+    updater = subjects.values()[0].updater
+    self.assertEqual(updater.installed_version, "42.0")
+
+  def testAttribInheritanceConfig(self):
+    builder = SystemBuilder.FromString(attrib_inheritance_config)
     self.assertSimpleConfig(builder)
     subjects = builder.orchestrator._subjects
     updater = subjects.values()[0].updater

@@ -46,7 +46,7 @@ def GetRequired(parent, element_name):
   return element
 
 @typecheck
-def MergeElement(base, merging):
+def MergeElement(base, merging, merge_tags=[]):
   """Merges the element merging into the element base.
 
   The merging element will not override any values in the base element, but
@@ -66,13 +66,14 @@ def MergeElement(base, merging):
     child_name = child.get("name")
     existing_child = None
 
-    if child_name:
+    if child_name or child.tag in merge_tags:
       for candidate in base.iter(child.tag):
-        if candidate.get("name") == child_name:
+        if candidate.get("name") == child_name or child.tag in merge_tags:
           existing_child = candidate
+          break
 
     if existing_child is not None:
-      MergeElement(existing_child, child)
+      MergeElement(existing_child, child, merge_tags)
     else:
       base.append(deepcopy(child))
 
@@ -123,6 +124,7 @@ class SystemBuilder(object):
     :type config_element: ElementTree.Element
     """
     self._root_dir = root_dir
+    self._ParseIncludes(config_element)
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
     self._config_element = config_element
@@ -161,6 +163,16 @@ class SystemBuilder(object):
   def FromString(cls, config_string):
     """Initialize with config from config_string."""
     return cls(ElementTree.fromstring(config_string), ".")
+
+  def _ParseIncludes(self, config_element):
+    for index, child in enumerate(list(config_element)):
+      if child.tag != "include":
+        continue
+      filename = os.path.join(self._root_dir, child.attrib["file"])
+      included = ElementTree.parse(filename).getroot()
+      self._ParseIncludes(included)
+      for included_element in included:
+        config_element.append(included_element)
 
   def _BuildBenchmarkSystem(self, system_element):
     """Builds a BenchmarkSystem instance."""
@@ -263,30 +275,30 @@ class SystemBuilder(object):
 
     hierarchy = BuildTypeHierarchy(element, "type")
     for type_element in hierarchy:
-      MergeElement(element, type_element)
+      MergeElement(element, type_element, ["navigator", "updater", "dashboard"])
 
     # Remove attributes used for inheritance
     remove_keys = ("type", "type-name", "parent-type")
     element.attrib = dict((k, v) for k, v in element.attrib.items()
                                  if k not in remove_keys)
 
-  def _GetElementAttribs(self, element, additional):
+  def _GetElementAttribs(self, element, context):
     """Collects attributes and children attributes of an element.
 
     :type element: ElementTree.Element
     :rtype Tuple[Dict[str, str], List[(str, Dict[str, str])]]
     """
-    attrib = additional.copy() if additional else dict()
+    attrib = dict()
     attrib.update(element.attrib)
     children = []
     for child in element:
       child_attrib = {k: self._ParseValue(v)
                       for k, v in child.attrib.iteritems()}
       children.append((child.tag, child_attrib))
-    attrib = {k: self._ParseValue(v) for k, v in attrib.iteritems()}
+    attrib = {k: self._ParseValue(v, context) for k, v in attrib.iteritems()}
     return attrib, children
 
-  def _ParseValue(self, value):
+  def _ParseValue(self, value, context=dict()):
     if value.startswith("file:"):
       value = value[len("file:"):]
       return os.path.join(self._root_dir, value)
@@ -295,9 +307,12 @@ class SystemBuilder(object):
       path = os.path.join(self._root_dir, filename)
       with open(path, "r") as file_obj:
         return file_obj.read()
+    if "{" in value and "}" in value:
+      for key, context_value in context.iteritems():
+        value = value.replace("{%s}" % key, context_value)
     return value
 
-  def _CreateComponent(self, interface_type, element, additional, *extra_args):
+  def _CreateComponent(self, interface_type, element, context, *extra_args):
     """Create instance of interface_type with config from element.
 
     The type attribute specified in the elment will pick the implementation to
@@ -306,7 +321,7 @@ class SystemBuilder(object):
 
     :type interface_type: type
     :type element: Optional[ElementTree.Element]
-    :param Dict[str, str] additional: Additional attributes
+    :param Dict[str, str] context: Additional attributes
     :param List[Any] extra_args: Extra arguments passes to FromConfig.
     """
     if element is None:
@@ -315,7 +330,7 @@ class SystemBuilder(object):
       else:
         return None
     else:
-      attrib, children = self._GetElementAttribs(element, additional)
+      attrib, children = self._GetElementAttribs(element, context)
     type_name = attrib.get("type") or "default"
 
     available = self.COMPONENTS[interface_type]

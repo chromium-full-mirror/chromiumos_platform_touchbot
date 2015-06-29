@@ -81,7 +81,7 @@ class ChromeUpdater(Updater):
     :param str adb_device: USB serial of the device under test.
     :param str channel: stable or beta.
     """
-    if channel not in ("stable", "beta"):
+    if channel not in ("stable", "beta", "dev"):
       raise ValueError("No such channel '%s'" % channel)
 
     self._adb = ADB(adb_device)
@@ -92,6 +92,9 @@ class ChromeUpdater(Updater):
     elif channel == "beta":
       self._package_name = "com.chrome.beta"
       self._filename = "ChromeBeta.apk"
+    elif channel == "dev":
+      self._package_name = "com.chrome.dev"
+      self._filename = "ChromeDev.apk"
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
