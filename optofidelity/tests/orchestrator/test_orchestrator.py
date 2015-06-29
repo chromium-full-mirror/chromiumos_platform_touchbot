@@ -24,7 +24,7 @@ class OrchestratorTests(TestCase):
     self.subject = OrchestratorSubject.FromBenchmarkSubject(subject)
     self.subject.DefineBenchmark("tap", "tap", "fake", {})
     self.subject.updater = FakeUpdater()
-    self.subject.updater._available_versions = ["2.0", "1.0"]
+    self.subject.updater._available_versions = ["1.0", "2.0"]
     self.tempdir = tempfile.mkdtemp()
 
   def createOrchestrator(self):
@@ -41,7 +41,7 @@ class OrchestratorTests(TestCase):
 
   def testResultsDatabase(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 2)
     for result in results:
@@ -56,7 +56,7 @@ class OrchestratorTests(TestCase):
   def testMinSamples(self):
     orchestrator = self.createOrchestrator()
     DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 8
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
     results = list(orchestrator.QueryResults())
     # Should repeat test 2 times, with 2 measurement id's each
     # resulting in 4 entries in the database.
@@ -64,7 +64,7 @@ class OrchestratorTests(TestCase):
 
   def testResultsPersistence(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
 
     # Create new instance to test if data is stored persistently
     orchestrator = self.createOrchestrator()
@@ -79,7 +79,7 @@ class OrchestratorTests(TestCase):
     self.runner.fake_benchmark = benchmark
 
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 6)
     for result in results:
@@ -89,11 +89,11 @@ class OrchestratorTests(TestCase):
     orchestrator = self.createOrchestrator()
 
     # The subject should be updated to 2.0 then have tests run
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [])
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "2.0")
     self.assertEqual(self.subject.updater.installed_version, "2.0")
 
     # Force test run with version 1.0
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], forced_version="1.0")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "1.0")
     self.assertEqual(self.subject.updater.installed_version, "1.0")
 
     results = list(orchestrator.QueryResults())
@@ -122,22 +122,16 @@ class OrchestratorTests(TestCase):
     self.assertEqual(ret, False)
     self.assertEqual(self.subject.updater.installed_version, "2.0")
 
-  def testOnlineOrchestrator(self):
-    DB = ""
-    GS = ""
+  def testVersionParsing(self):
+    orchestrator = self.createOrchestrator()
+    available = ["1.0", "1.1", "1.2", "2.0", "2.2", "3.0"]
+    installed = "1.1"
 
-    if not DB or not GS:
-      self.skipTest("Define DB and GS to run online test.")
-
-    orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                GS, DB)
-
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], skip_update=True)
-    results = list(orchestrator.QueryResults())
-    db_result = results[-1]
-
-    benchmark = Benchmark.Load(os.path.join(GS, db_result["uid"]))
-    bench_result = benchmark.results
-
-    self.assertEqual(bench_result.subject_name, db_result["subject_name"])
-    self.assertEqual(bench_result.benchmark_type, db_result["benchmark_type"])
+    def Parse(string):
+        return orchestrator._ParseVersionRange(string, installed, available)
+    self.assertEqual(Parse("installed"), ["1.1"])
+    self.assertEqual(Parse("installed:"), ["1.1", "1.2", "2.0", "2.2", "3.0"])
+    self.assertEqual(Parse("1-:1"), ["1.0", "1.1", "1.2"])
+    self.assertEqual(Parse("2-:3"), ["2.0", "2.2", "3.0"])
+    self.assertEqual(Parse("latest"), ["3.0"])
+    self.assertEqual(Parse("2.0:latest"), ["2.0", "2.2", "3.0"])

@@ -82,62 +82,48 @@ class Orchestrator(object):
     database = parameters["database"]
     return cls(system, runner, results, database, xkcd=xkcd)
 
-  def RunHistoryBenchmarks(self, match, debug_flags, first_version):
-    for subject_name, benchmark_types in self._ListMatchingBenchmarks(match):
-      subject = self._system.subjects[subject_name]
+  def UpdateAndRunBenchmarks(self, match, debug_flags, versions):
+    """Runs updates and benchmarks on all devices matching 'match'
 
-      versions = subject.updater.available_versions
-      first_version_idx = versions.index(first_version)
-      versions_to_test = versions[:(first_version_idx + 1)]
-      self._progress.Info(subject_name,
+    Per default it will run the benchmarks on all new versions since the
+    currently installed one.
+
+    Alternatively you can specify which versions to run in the following format:
+      "40.0.2214.36" run only on a single specific version.
+      "40" run on first version that starts with 40.
+      "latest" run only on latest version
+      "installed" run only on currently installed version.
+      "40+" run on all available version from the specified (partial) version.
+      "40:43" run on all versions starting with the first version that starts
+              with 40 until the last version that starts with 43.
+    """
+    for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
+      available_versions = subject.updater.available_versions
+      installed_version = subject.updater.installed_version
+      versions_to_test = self._ParseVersionRange(versions, installed_version,
+                                                  available_versions)
+      if len(versions_to_test) > 1 and versions_to_test[0] == installed_version:
+        versions_to_test = versions_to_test[1:]
+
+      self._progress.Info(subject.name,
                           "Versions to test: %s" % (versions_to_test,))
       start_time = time.time()
-      for version in reversed(versions_to_test):
+      for version in versions_to_test:
         try:
-          self._progress.Info(subject_name,
-                              "Running benchmarks: %s" % (benchmark_types,))
-          self.UpdateSubject(subject, version)
-          self.RunSubjectBenchmarks(subject, benchmark_types, debug_flags)
+          benchmark_names = [d.name for d in benchmark_defs]
+          self._progress.Info(subject.name,
+                              "Running benchmarks: %s" % (benchmark_names,))
+          if version != subject.updater.installed_version:
+            self.UpdateSubject(subject, version)
+          self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
         except KeyboardInterrupt:
           raise
         except:
           self._progress.Exception(subject.name)
           self._progress.Error(subject.name, "Version %s failed" % version)
       elapsed_minutes = (time.time() - start_time) / 60
-      self._progress.Info(subject_name, "History total time: %d min" % (
+      self._progress.Info(subject.name, "History total time: %d min" % (
                                         elapsed_minutes))
-
-
-  def UpdateAndRunBenchmarks(self, match, debug_flags, forced_version=None,
-                             skip_update=False):
-    """Update, then run all benchmarks matching 'match' and save results.
-
-    This will update all subjects and executes benchmarks if they have been
-    updated.
-
-    :param str match: One of the following:
-           - The full name of a benchmark
-           - The beginning of the name of a benchmark
-           - A unix glob
-    :type debug_flags: List[str]
-    :param Optional[str] forced_version: Force version number to benchmark.
-    :param bool skip_update: Skip update process and run all benchmarks
-    """
-    for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
-      try:
-        benchmark_names = [d.name for d in benchmark_defs]
-        self._progress.Info(subject.name,
-                            "Running benchmarks: %s" % (benchmark_names,))
-        if not skip_update:
-          if not self.UpdateSubject(subject, forced_version):
-            self._progress.Info(subject.name, "Skipping benchmarks.")
-            continue
-        self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
-      except KeyboardInterrupt:
-        raise
-      except:
-        self._progress.Exception(subject.name)
-        self._progress.Error(subject.name, "Subject in bad state")
 
   def RunSubjectBenchmarks(self, subject, benchmark_defs, debug_flags):
     """Run benchmarks on a subject and store/report results.
@@ -198,7 +184,7 @@ class Orchestrator(object):
       if not target_version:
         raise ValueError("Version %s is not available" % forced_version)
     else:
-      target_version = available[0]
+      target_version = available[-1]
       self._progress.Info(subject.name, "Latest version is %s" % target_version)
       if target_version == subject.updater.installed_version:
         self._progress.Info(subject.name, "Already installed")
@@ -379,6 +365,55 @@ class Orchestrator(object):
       subject, definition = benchmarks[match]
       grouped[subject].append(definition)
     return grouped.iteritems()
+
+  def _ParseVersion(self, string, installed_version, available_versions):
+    string = string.strip()
+    if string == "installed":
+      return installed_version
+    if string == "latest":
+      return available_versions[-1]
+    else:
+      return_last_match = True
+      if string.endswith("-"):
+        string = string[:-1]
+        return_last_match = False
+      last_match = None
+      for version in available_versions:
+        if version.startswith(string):
+          if return_last_match:
+            last_match = version
+          else:
+            return version
+      if last_match:
+        return last_match
+      raise Exception("No such version '%s'" % string)
+
+  def _ParseVersionRange(self, string, installed_version, available_versions):
+    segments = string.split(":")
+    if len(segments) == 1:
+      return [self._ParseVersion(string, installed_version, available_versions)]
+    elif len(segments) == 2:
+      from_version = self._ParseVersion(segments[0], installed_version,
+                                        available_versions)
+      to_version = self._ParseVersion(segments[1], installed_version,
+                                      available_versions)
+    else:
+      raise Exception("Invalid version syntax '%s'" % string)
+
+    version_list = []
+    in_range = False
+    out_range = False
+    for version in available_versions:
+      if not in_range and version.startswith(from_version):
+          in_range = True
+
+      if in_range:
+        if version.startswith(to_version):
+          out_range = True
+        elif out_range:
+          break
+        version_list.append(version)
+    return version_list
 
   def _InsertResults(self, time, uid, subject, results):
     """Inserts results into database

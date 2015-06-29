@@ -208,13 +208,14 @@ class SystemBuilder(object):
     additional = dut_elem.attrib.copy()
     additional.update(subject_elem.attrib)
 
+    name = "%s/%s" % (dut_name, subject_name)
     navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
                                       additional, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
                                     additional, dut_backend)
     dashboard = self._CreateComponent(Dashboard, subject_elem.find("dashboard"),
-                                      additional, subject_name)
-    name = "%s/%s" % (dut_name, subject_name)
+                                      additional, name)
+
     subject = OrchestratorSubject(name, dut_backend, system.camera)
     subject.navigator = navigator
     subject.updater = updater

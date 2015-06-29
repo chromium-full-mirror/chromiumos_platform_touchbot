@@ -44,7 +44,7 @@ class ADB(object):
     version_regex = re.compile("versionName=(.+)")
     match = version_regex.search(info)
     if match:
-      return match.group(1)
+      return match.group(1).strip()
     return None
 
   def PowerOn(self):

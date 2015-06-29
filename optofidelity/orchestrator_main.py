@@ -18,19 +18,27 @@ from optofidelity.util import SingleInstanceLock
 
 usage_string = """Orchestrator usage examples:
 
-The orchestrator runs tests and updates multiple devices. All results
-are stored in the local benchmark_results folder, with a database file
-containing a summary of all results.
+The orchestrator runs tests and updates multiple devices.
 
 $ %s *
 Run all tests on all devices in current state.
 
-$ %s --update *
-Update all devices to the latest chrome version, then run tests on updated
-devices.
+$ %s * -v version[:end_version]
+Run benchmarks on single or range of versions. The versions can have the
+following format:
 
-$ %s --update *
-Update all devices to the specifiedchrome version, then run tests.
+  "-v 42" Last version that starts with 42.
+  "-v 42-" First version that starts with 42.
+  "-v installed" Currently installed version.
+  "-v latest" Latest version.
+
+You can also specify ranges of versions by separating the first and last version
+to run with a colon. If nothing is specified on either side, the first or last
+version is implied.
+
+  "-v 42-:42" Every version that starts with 42.
+  "-v installed:" All versions since the currently installed one.
+  "-v :42" All versions until and including the last one that starts with 42.
 
 The wildcard * can be replaced with any glob such as:
 
@@ -42,40 +50,32 @@ Run tap test on all devices
 """
 
 
-def RunBenchmarks(match, skip_update, debug_flags, force_version, history,
-                 list):
+def RunBenchmarks(match, debug_flags, versions, list, prepare):
   builder = SystemBuilder.FromFile("optofidelity.xml")
   if list:
     print "Available benchmarks:"
     for name in sorted(builder.orchestrator.benchmark_names):
       print "  ", name
-  elif history:
-    builder.orchestrator.RunHistoryBenchmarks(match, debug_flags, history)
   else:
-    builder.orchestrator.UpdateAndRunBenchmarks(match, debug_flags, force_version,
-                                        skip_update=skip_update)
+    builder.orchestrator.UpdateAndRunBenchmarks(match, debug_flags, versions)
 
 
 def Main():
-  usage = usage_string % ((sys.argv[0],) * 5)
+  usage = usage_string % ((sys.argv[0],) * 6)
   parser = OptionParser(usage=usage)
   parser.add_option("--update", "-u",
                     dest="update", default=False, action="store_true",
                     help="Update devices before running tests.")
-  parser.add_option("--force-version", "-f",
-                    dest="force_version", default=None,
-                    help="Force update to specific version.")
-  parser.add_option("--history",
-                    dest="history", default=None,
-                    help="Benchmark all versions since specified version.")
+  parser.add_option("--versions", "-v",
+                    dest="versions", default="installed",
+                    help="Specify versions to test.")
   parser.add_option("--list", "-l",
                     dest="list", default=False, action="store_true",
                     help="List all available benchmarks.")
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
-  RunBenchmarks(match, not options.update, [], options.force_version,
-                options.history, options.list)
+  RunBenchmarks(match, [], options.versions, options.list, options.prepare)
 
 
 if __name__ == "__main__":
