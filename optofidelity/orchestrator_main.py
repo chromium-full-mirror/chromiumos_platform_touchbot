@@ -50,7 +50,7 @@ Run tap test on all devices
 """
 
 
-def RunBenchmarks(config, match, versions, list):
+def RunBenchmarks(config, match, versions, list, skip_installed):
   builder = SystemBuilder.FromFile(config)
 
   if list:
@@ -58,15 +58,16 @@ def RunBenchmarks(config, match, versions, list):
     for name in sorted(builder.orchestrator.benchmark_names):
       print "  ", name
   else:
-    builder.orchestrator.UpdateAndRunBenchmarks(match, [], versions)
+    builder.orchestrator.UpdateAndRunBenchmarks(match, [], versions,
+                                                skip_installed)
 
 
 def Main():
   usage = usage_string % ((sys.argv[0],) * 6)
   parser = OptionParser(usage=usage)
-  parser.add_option("--update", "-u",
-                    dest="update", default=False, action="store_true",
-                    help="Update devices before running tests.")
+  parser.add_option("--skip-installed", "-s",
+                    dest="skip_installed", default=False, action="store_true",
+                    help="Skip tests on already installed versions.")
   parser.add_option("--versions", "-v",
                     dest="versions", default="installed",
                     help="Specify versions to test.")
@@ -76,10 +77,12 @@ def Main():
   parser.add_option("--config", "-c",
                     dest="config", default="dev_config.xml",
                     help="Specify config file to use.")
+
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
-  RunBenchmarks(options.config, match, options.versions, options.list)
+  RunBenchmarks(options.config, match, options.versions, options.list,
+                options.skip_installed)
 
 
 if __name__ == "__main__":

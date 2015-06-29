@@ -82,7 +82,8 @@ class Orchestrator(object):
     database = parameters["database"]
     return cls(system, runner, results, database, xkcd=xkcd)
 
-  def UpdateAndRunBenchmarks(self, match, debug_flags, versions):
+  def UpdateAndRunBenchmarks(self, match, debug_flags, versions,
+                             skip_installed=False):
     """Runs updates and benchmarks on all devices matching 'match'
 
     Per default it will run the benchmarks on all new versions since the
@@ -100,10 +101,19 @@ class Orchestrator(object):
     for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
       available_versions = subject.updater.available_versions
       installed_version = subject.updater.installed_version
-      versions_to_test = self._ParseVersionRange(versions, installed_version,
-                                                  available_versions)
-      if len(versions_to_test) > 1 and versions_to_test[0] == installed_version:
-        versions_to_test = versions_to_test[1:]
+      if available_versions:
+        versions_to_test = self._ParseVersionString(versions, installed_version,
+                                                    available_versions)
+        if skip_installed and versions_to_test[0] == installed_version:
+            versions_to_test = versions_to_test[1:]
+      elif not skip_installed:
+        versions_to_test = [installed_version]
+      else:
+        versions_to_test = []
+
+      if not versions_to_test:
+        self._progress.Info(subject.name, "No versions to test.")
+        continue
 
       self._progress.Info(subject.name,
                           "Versions to test: %s" % (versions_to_test,))
@@ -113,8 +123,7 @@ class Orchestrator(object):
           benchmark_names = [d.name for d in benchmark_defs]
           self._progress.Info(subject.name,
                               "Running benchmarks: %s" % (benchmark_names,))
-          if version != subject.updater.installed_version:
-            self.UpdateSubject(subject, version)
+          self.UpdateSubject(subject, version)
           self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
         except KeyboardInterrupt:
           raise
