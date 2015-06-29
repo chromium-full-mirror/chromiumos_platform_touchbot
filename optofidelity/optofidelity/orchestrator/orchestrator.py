@@ -99,40 +99,43 @@ class Orchestrator(object):
               with 40 until the last version that starts with 43.
     """
     for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
-      available_versions = subject.updater.available_versions
-      installed_version = subject.updater.installed_version
-      if available_versions:
-        versions_to_test = self._ParseVersionString(versions, installed_version,
-                                                    available_versions)
-        if skip_installed and versions_to_test[0] == installed_version:
-            versions_to_test = versions_to_test[1:]
-      elif not skip_installed:
-        versions_to_test = [installed_version]
-      else:
-        versions_to_test = []
+      try:
+        available_versions = subject.updater.available_versions
+        installed_version = subject.updater.installed_version
+        if available_versions:
+          versions_to_test = self._ParseVersionString(versions, installed_version,
+                                                      available_versions)
+          if skip_installed and versions_to_test[0] == installed_version:
+              versions_to_test = versions_to_test[1:]
+        elif not skip_installed:
+          versions_to_test = [installed_version]
+        else:
+          versions_to_test = []
 
-      if not versions_to_test:
-        self._progress.Info(subject.name, "No versions to test.")
-        continue
+        if not versions_to_test:
+          self._progress.Info(subject.name, "No versions to test.")
+          continue
 
-      self._progress.Info(subject.name,
-                          "Versions to test: %s" % (versions_to_test,))
-      start_time = time.time()
-      for version in versions_to_test:
-        try:
-          benchmark_names = [d.name for d in benchmark_defs]
-          self._progress.Info(subject.name,
-                              "Running benchmarks: %s" % (benchmark_names,))
-          self.UpdateSubject(subject, version)
-          self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
-        except KeyboardInterrupt:
-          raise
-        except:
-          self._progress.Exception(subject.name)
-          self._progress.Error(subject.name, "Version %s failed" % version)
-      elapsed_minutes = (time.time() - start_time) / 60
-      self._progress.Info(subject.name, "History total time: %d min" % (
-                                        elapsed_minutes))
+        self._progress.Info(subject.name,
+                            "Versions to test: %s" % (versions_to_test,))
+        start_time = time.time()
+        for version in versions_to_test:
+          try:
+            benchmark_names = [d.name for d in benchmark_defs]
+            self._progress.Info(subject.name,
+                                "Running benchmarks: %s" % (benchmark_names,))
+            self.UpdateSubject(subject, version)
+            self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
+          except KeyboardInterrupt:
+            raise
+          except:
+            self._progress.Exception(subject.name)
+            self._progress.Error(subject.name, "Version %s failed" % version)
+        elapsed_minutes = (time.time() - start_time) / 60
+        self._progress.Info(subject.name, "History total time: %d min" % (
+                                          elapsed_minutes))
+      except:
+        self._progress.Exception(subject.name)
 
   def RunSubjectBenchmarks(self, subject, benchmark_defs, debug_flags):
     """Run benchmarks on a subject and store/report results.

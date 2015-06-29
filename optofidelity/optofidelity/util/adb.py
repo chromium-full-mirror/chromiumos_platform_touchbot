@@ -4,7 +4,10 @@
 import logging
 import re
 import subprocess
+import threading
+import time
 
+from .tools import TimeoutCommunicate
 
 _log = logging.getLogger(__name__)
 
@@ -25,14 +28,15 @@ class ADB(object):
 
     :type package_name: str
     """
-    self.ExecuteShell(["pm", "uninstall", package_name], check_success=True)
+    self.ExecuteShell(["pm", "uninstall", package_name], check_success=True,
+                      timeout=60)
 
   def InstallAPK(self, apk):
     """Install local apk file onto device
 
     :param str apk: path to apk file
     """
-    self.Execute(["install", "-r", "-d", apk], check_success=True)
+    self.Execute(["install", "-r", "-d", apk], check_success=True, timeout=120)
 
   def GetPackageVersion(self, package_name):
     """Returns the version name of an installed package or None
@@ -40,7 +44,7 @@ class ADB(object):
     :type package_name: str
     :returns Optional[str]: version name of package if it is installed
     """
-    info = self.ExecuteShell(["pm", "dump", package_name])
+    info = self.ExecuteShell(["pm", "dump", package_name], timeout=5)
     version_regex = re.compile("versionName=(.+)")
     match = version_regex.search(info)
     if match:
@@ -57,14 +61,14 @@ class ADB(object):
       self.SendKey(self.KEY_POWER)
 
   def IsAwake(self):
-    power_dump = self.ExecuteShell(["dumpsys", "power"])
+    power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=5)
     return "mWakefulness=Awake" in power_dump
 
   def SendKey(self, key_name):
-    self.ExecuteShell(["input", "keyevent", key_name])
+    self.ExecuteShell(["input", "keyevent", key_name], timeout=5)
 
   def PushFile(self, local_file, remote_file):
-    self.Execute(["push", local_file, remote_file])
+    self.Execute(["push", local_file, remote_file], timeout=240)
 
   def StartActivity(self, action=None, component=None, uri=None, category=None):
     """Start an activity via the adb activity manager.
@@ -77,9 +81,10 @@ class ADB(object):
                         ("-d", uri), ("-c", category)]:
       if value:
         cmd += [flag, value]
-    self.ExecuteShell(cmd, check_error=True)
+    self.ExecuteShell(cmd, check_error=True, timeout=10)
 
-  def Execute(self, sub_command, check_success=False, check_error=False):
+  def Execute(self, sub_command, check_success=False, check_error=False,
+              timeout=False):
     """Execute an adb command.
 
     Many ADB commands do not return an error code when failing, so we have
@@ -94,8 +99,9 @@ class ADB(object):
     _log.info("Executing %s", " ".join(command))
     process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT)
-    (stdout, _) = process.communicate()
-
+    stdout = TimeoutCommunicate(process, timeout)
+    if stdout is False:
+      raise Exception("'%s' timed out." % (" ".join(command),))
     if process.returncode > 0:
       raise Exception("'%s' returned with %d" % (" ".join(command),
                                                  process.returncode))
@@ -107,11 +113,13 @@ class ADB(object):
       raise Exception("'%s' failed" % (" ".join(command)))
     return stdout
 
-  def ExecuteShell(self, shell_command, check_success=False, check_error=False):
+  def ExecuteShell(self, shell_command, check_success=False, check_error=False,
+                   timeout=False):
     """Wrapper to execute an adb shell command.
 
     :type shell_command: List[str]
     :param bool check_success: Check for 'success' message, raises Exception if
            it was not printed.
     """
-    return self.Execute(["shell"] + shell_command, check_success, check_error)
+    return self.Execute(["shell"] + shell_command, check_success, check_error,
+                        timeout)

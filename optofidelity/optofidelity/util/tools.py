@@ -113,6 +113,28 @@ class LogCapture(object):
   def log(self):
     return self._log_stream.getvalue()
 
+
+def TimeoutCommunicate(process, timeout=None):
+  if not timeout:
+    return process.communicate()[0]
+
+  def CommunicateThread(return_values):
+    return_values.append(process.communicate())
+
+  return_values = []
+  thread = threading.Thread(target=CommunicateThread, args=(return_values,))
+  thread.start()
+  thread.join(timeout)
+  if thread.is_alive():
+    process.terminate()
+    thread.join(5)
+    if thread.is_alive():
+      process.kill()
+      thread.join()
+    return False
+  return return_values[0][0]
+
+
 class ProgressPrinter(object):
   def __init__(self, log):
     self._log = log
