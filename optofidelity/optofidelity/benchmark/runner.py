@@ -45,6 +45,8 @@ class BenchmarkRunner(object):
     self.benchmark_system = benchmark_system
     self.video_processor = video_processor
     self._progress = ProgressPrinter(_log)
+    self._screen_calibration = None
+    self._current_subject = None
 
   @contextmanager
   def UseSubject(self, subject):
@@ -55,12 +57,20 @@ class BenchmarkRunner(object):
     :type subject: BenchmarkSubject
     """
     try:
-      self._screen_calibration = self._OpenAndCalibrateSubject(subject)
-      self._current_subject = subject
+      self.OpenAndCalibrateSubject(subject)
       yield
     finally:
-      self._screen_calibration = None
-      self._current_subject = None
+      self.CloseSubject()
+
+  def OpenAndCalibrateSubject(self, subject):
+    self._screen_calibration = self._OpenAndCalibrateSubject(subject)
+    self._current_subject = subject
+
+  def CloseSubject(self):
+    subject = self._current_subject
+    self._screen_calibration = None
+    self._current_subject = None
+    if subject:
       subject.navigator.Cleanup()
 
   def CreateBenchmark(self, name, benchmark_type, activity, parameters,
@@ -69,19 +79,16 @@ class BenchmarkRunner(object):
     delegate = delegate_type(activity, parameters)
     return Benchmark(name, delegate, metadata, self._screen_calibration)
 
-  def RunBenchmark(self, benchmark, debug_flags):
+  def RunBenchmark(self, benchmark):
     """Run benchmark on subject picked with UseSubject.
 
     This method has to be called within the context of UseSubject.
-    :type benchmark_type: str
-    :type metadata: Dict[str, Any]
-    :type debug_flags: List[str]
-    :rtype Benchmark
+    :type benchmark: Benchmark
     """
     if not self._current_subject:
       raise Exception("Must be executed within the context of UseSubject.")
 
-    self._ExecuteBenchmark(benchmark, debug_flags)
+    self._ExecuteBenchmark(benchmark)
 
   def _OpenAndCalibrateSubject(self, subject):
     """Open a subject and calibrate screen.
@@ -103,24 +110,20 @@ class BenchmarkRunner(object):
       subject.navigator.Open(True)
       return self._CalibrateScreen(subject)
 
-  def _ExecuteBenchmark(self, benchmark, debug_flags):
+  def _ExecuteBenchmark(self, benchmark):
     """Execute all steps of benchmark processing.
 
     All log output is captured, so are exceptions. They are available in
     benchmark.log and benchmark.error.
 
     :type benchmark: Benchmark
-    :type debug_flags: List[str]
     """
     start_time = time.time()
     capture = LogCapture()
     with capture:
       try:
-        self._progress.Info(benchmark.name, "Executing benchmark")
         benchmark.ExecuteOnSubject(self._current_subject)
-        self._progress.Info(benchmark.name, "Processing video")
-        benchmark.ProcessVideo(self.video_processor, debug_flags)
-        self._progress.Info(benchmark.name, "Processing trace")
+        benchmark.ProcessVideo(self.video_processor, [])
         benchmark.ProcessTrace()
       except KeyboardInterrupt:
         raise

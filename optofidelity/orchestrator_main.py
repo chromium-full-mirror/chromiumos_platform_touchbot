@@ -5,16 +5,22 @@
 """Main module for command line interface to optofidelity latency tests."""
 import logging
 logging.basicConfig(filename="orchestrator.log", level=logging.WARN)
-logging.getLogger("optofidelity").setLevel(level=logging.INFO)
-logging.getLogger("optofidelity.detection").setLevel(level=logging.DEBUG)
-logging.getLogger("optofidelity.system.tnt").setLevel(level=logging.DEBUG)
-logging.captureWarnings(True)
 
 from optparse import OptionParser
+import logging
 import sys
 
 from optofidelity.builder import SystemBuilder
 from optofidelity.util import SingleInstanceLock
+
+
+logging.getLogger("optofidelity").setLevel(level=logging.INFO)
+logging.getLogger("optofidelity.failure").addHandler(
+    logging.FileHandler("failures.log"))
+logging.getLogger("optofidelity.perf").addHandler(
+    logging.FileHandler("perf.log"))
+logging.captureWarnings(True)
+
 
 usage_string = """Orchestrator usage examples:
 
@@ -46,7 +52,11 @@ $ %s nexus5/*
 Run all tests on nexus5
 
 $ %s */tap
-Run tap test on all devices
+Run tap benchmark on all devices
+
+Whereas the names of benchmarks are put together in the following format:
+  dut_name/subject_name/benchmark_name
+
 """
 
 
@@ -58,12 +68,11 @@ def RunBenchmarks(config, match, versions, list, skip_installed):
     for name in sorted(builder.orchestrator.benchmark_names):
       print "  ", name
   else:
-    builder.orchestrator.UpdateAndRunBenchmarks(match, [], versions,
-                                                skip_installed)
+    builder.orchestrator.UpdateAndRunBenchmarks(match, versions, skip_installed)
 
 
 def Main():
-  usage = usage_string % ((sys.argv[0],) * 6)
+  usage = usage_string % ((sys.argv[0],) * 4)
   parser = OptionParser(usage=usage)
   parser.add_option("--skip-installed", "-s",
                     dest="skip_installed", default=False, action="store_true",

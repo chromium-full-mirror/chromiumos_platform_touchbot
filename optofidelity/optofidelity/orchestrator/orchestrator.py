@@ -7,21 +7,20 @@ from fnmatch import fnmatch
 import logging
 import os
 import time
-import traceback
 
-from safetynet import List, Optional, TypecheckMeta
+from safetynet import Any, Dict, List, Optional, TypecheckMeta
 import numpy as np
 
 from optofidelity.benchmark import (AggregateResults, Benchmark,
                                     BenchmarkResults, BenchmarkRunner)
 from optofidelity.reporting import AggregateReport, BenchmarkReport
-from optofidelity.system import BenchmarkSubject, BenchmarkSystem
+from optofidelity.system import BenchmarkSystem
 from optofidelity.util import (GSFindUniqueFilename, GSFolder, GSPathExists,
                                ProgressPrinter)
 import dataset
 
 from .dashboard import Dashboard
-from .orchestrator_subject import OrchestratorSubject
+from .orchestrator_subject import BenchmarkDefinition, OrchestratorSubject
 
 _log = logging.getLogger(__name__)
 
@@ -46,8 +45,8 @@ class Orchestrator(object):
     :type benchmark_runner: BenchmarkRunner
     :type results_url: str
     :type results_db_url: str
-    :param bool xkcd: Give reports more authority
     :param bool generate_reports: Generate reports for each benchmark
+    :param bool xkcd: Give reports more authority
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
@@ -64,8 +63,25 @@ class Orchestrator(object):
     self._xkcd = xkcd
     self._subjects = {}
 
+  @classmethod
+  def FromConfig(cls, parameters, children, system, runner):
+    """
+    :type parameters: Dict[str, str]
+    :type children: List[Dict[str, str]]
+    :type system: BenchmarkSystem
+    :type runner: BenchmarkRunner
+    """
+    xkcd = parameters.get("xkcd") is not None
+    results = parameters["results"]
+    database = parameters["database"]
+    return cls(system, runner, results, database, xkcd=xkcd)
+
   @property
   def benchmark_names(self):
+    """List of names of all benchmarks that this Orchestrator can run.
+
+    :rtype: List[str]
+    """
     return [ "%s/%s" % (s.name, n) for s in self._subjects.itervalues()
                                    for n in s.benchmark_defs ]
 
@@ -75,278 +91,231 @@ class Orchestrator(object):
     """
     self._subjects[subject.name] = subject
 
-  @classmethod
-  def FromConfig(cls, parameters, children, system, runner):
-    xkcd = parameters.get("xkcd") is not None
-    results = parameters["results"]
-    database = parameters["database"]
-    return cls(system, runner, results, database, xkcd=xkcd)
+  def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
+    """Runs updates and benchmarks on all bencharks matching 'match'
 
-  def UpdateAndRunBenchmarks(self, match, debug_flags, versions,
-                             skip_installed=False):
-    """Runs updates and benchmarks on all devices matching 'match'
+    This method should never throw Exceptions except for KeyboardInterrupts.
 
-    Per default it will run the benchmarks on all new versions since the
-    currently installed one.
-
-    Alternatively you can specify which versions to run in the following format:
-      "40.0.2214.36" run only on a single specific version.
-      "40" run on first version that starts with 40.
-      "latest" run only on latest version
-      "installed" run only on currently installed version.
-      "40+" run on all available version from the specified (partial) version.
-      "40:43" run on all versions starting with the first version that starts
-              with 40 until the last version that starts with 43.
+    :param match: A glob on benchmark names
+    :param str versions: Specifies which versions to run:
+           "40.0.2214.36" run only on a single specific version.
+           "40" run on latest version that starts with 40.
+           "40-" run on first version that starts with 40.
+           "latest" run only on latest version
+           "installed" run only on currently installed version.
+           "40:43" run on range of versions between the specified matches.
+    :param bool skip_installed: Don't run on the currently installed version.
     """
     for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
-      try:
-        available_versions = subject.updater.available_versions
-        installed_version = subject.updater.installed_version
-        if available_versions:
-          versions_to_test = self._ParseVersionString(versions, installed_version,
-                                                      available_versions)
-          if skip_installed and versions_to_test[0] == installed_version:
-              versions_to_test = versions_to_test[1:]
-        elif not skip_installed:
-          versions_to_test = [installed_version]
-        else:
-          versions_to_test = []
+      with self._progress.LogExceptions(subject.name, "Fatal Exception"):
+        self.RunSubject(subject, benchmark_defs, versions, skip_installed)
 
-        if not versions_to_test:
-          self._progress.Info(subject.name, "No versions to test.")
-          continue
+  def RunSubject(self, subject, benchmark_defs, versions, skip_installed):
+    """Run all benchmarks and versions on a single subject.
 
+    This method should never throw Exceptions except for KeyboardInterrupts.
+
+    :type subject: OrchestratorSubject
+    :type benchmark_defs: List[BenchmarkDefinition]
+    :type versions: str
+    :type skip_installed: bool
+    """
+    if not subject.Verify():
+      self._progress.Error(subject.name, "Subject in bad state.")
+      return
+
+    versions_to_test = subject.GetMatchingVersions(versions, skip_installed)
+    if not versions_to_test:
+      self._progress.Info(subject.name, "No versions to test.")
+      return
+
+    self._progress.Info(subject.name,
+                        "Versions to test: %s" % (versions_to_test,))
+    for version in versions_to_test:
+      with self._progress.LogExceptions(subject.name, "Fatal Exception"):
+        benchmark_names = [d.name for d in benchmark_defs]
         self._progress.Info(subject.name,
-                            "Versions to test: %s" % (versions_to_test,))
-        start_time = time.time()
-        for version in versions_to_test:
-          try:
-            benchmark_names = [d.name for d in benchmark_defs]
-            self._progress.Info(subject.name,
-                                "Running benchmarks: %s" % (benchmark_names,))
-            self.UpdateSubject(subject, version)
-            self.RunSubjectBenchmarks(subject, benchmark_defs, debug_flags)
-          except KeyboardInterrupt:
-            raise
-          except:
-            self._progress.Exception(subject.name)
-            self._progress.Error(subject.name, "Version %s failed" % version)
-        elapsed_minutes = (time.time() - start_time) / 60
-        self._progress.Info(subject.name, "History total time: %d min" % (
-                                          elapsed_minutes))
-      except:
-        self._progress.Exception(subject.name)
+                            "Running benchmarks: %s" % (benchmark_names,))
+        self.RunSubjectVersion(subject, benchmark_defs, version)
+      if not subject.Verify():
+        self._progress.Error(subject.name, "Subject in bad state.")
+        return
 
-  def RunSubjectBenchmarks(self, subject, benchmark_defs, debug_flags):
-    """Run benchmarks on a subject and store/report results.
+  def RunSubjectVersion(self, subject, benchmark_defs, version):
+    """Run all benchmarks on a single version/subject.
 
-    :type subject: BenchmarkSubject
-    :type debug_flags: List[str]
+    This method should never throw Exceptions except for KeyboardInterrupts.
+
+    :type subject: OrchestratorSubject
+    :type benchmark_defs: List[BenchmarkDefinition]
+    :type version: str
     """
-    subject_version = subject.updater.installed_version
-    metadata = dict()
-    if subject_version:
-      metadata["subject_version"] = subject_version
+    try:
+      if not subject.Update(version):
+        self._progress.Error(subject.name, "Update failed.")
+        return
+      if not self.OpenAndCalibrateSubject(subject):
+        self._progress.Error(subject.name, "Cannot open subject.")
+        return
 
-    start_time = time.time()
-    with self._runner.UseSubject(subject):
-      for benchmark_def in benchmark_defs:
-        full_name = "%s/%s" % (subject.name, benchmark_def.name)
+      with self._progress.LogPerf(subject.name):
+        for benchmark_def in benchmark_defs:
+          with self._progress.LogExceptions(subject.name, "Fatal Exception"):
+            self.RunSubjectVersionBenchmark(subject, benchmark_def, version)
+    finally:
+      with self._progress.LogExceptions(subject.name, "Subject closing"):
+        self._runner.CloseSubject()
 
-        aggregate = self._GatherBenchmarkSamples(subject, benchmark_def,
-                                                 metadata, debug_flags)
-        if not aggregate:
-          continue
-        self._progress.Info(full_name, "Aggregate Results:")
-        print aggregate
+  def RunSubjectVersionBenchmark(self, subject, benchmark_def, version):
+    """Run single benchmark on a subject/version.
 
-        self._progress.Info(full_name, "Generating Aggregate report:")
-        benchmark_time = datetime.now()
-        results_url, uid = self._FindUniqueResultsURL(benchmark_time)
-        self._GenerateAggregateReport(aggregate, results_url)
+    The benchmark is repeated multiple times to collect enough samples for
+    statistically stable results.
 
-        public_url = self._GetPublicReportUrl(results_url)
-        self._progress.Info(full_name,
-                            "Report available at: %s" % public_url)
+    This method should never throw Exceptions except for KeyboardInterrupts.
 
-        if subject.dashboard:
-          self._progress.Info(full_name, "Reporting results to dashboard")
-          subject.dashboard.ReportResults(aggregate, subject_version,
-                                          public_url)
-    elapsed_minutes = (time.time() - start_time) / 60
-    self._progress.Info(subject.name, "Elapsed time: %d min" % elapsed_minutes)
-
-  def UpdateSubject(self, subject, forced_version=None):
-    """Update subject to latest or custom version.
-
-    :type subject: BenchmarkSubject
-    :param Optional[str] forced_version: Force version number install
-    :returns bool: True if the subject has been updated.
+    :type subject: OrchestratorSubject
+    :type benchmark_def: BenchmarkDefinition
+    :type version: str
     """
-    available = subject.updater.available_versions
+    metadata = dict(subject_version=version)
+    full_name = "%s/%s" % (subject.name, benchmark_def.name)
 
-    target_version = None
-    if forced_version:
-      for version in available:
-        if fnmatch(version, forced_version):
-          target_version = version
-          break
-      self._progress.Info(subject.name, "Forcing update to version %s" %
-                          target_version)
-      if not target_version:
-        raise ValueError("Version %s is not available" % forced_version)
-    else:
-      target_version = available[-1]
-      self._progress.Info(subject.name, "Latest version is %s" % target_version)
-      if target_version == subject.updater.installed_version:
-        self._progress.Info(subject.name, "Already installed")
-        return False
-    self._progress.Info(subject.name, "Installing %s" % target_version)
-    subject.updater.Install(target_version)
-    return True
-
-  def QueryResults(self):
-    """Return iterator over all results in database."""
-    return self._results_table.all()
-
-  def _StoreBenchmark(self, benchmark, subject, time):
-    """Store benchmark to results folder and register in database.
-
-    :type benchmark: Benchmark
-    :type subject: BenchmarkSubject
-    :type time: datetime
-    """
-    subject_version = subject.updater.installed_version
-    metadata = dict(time=time)
-    if subject_version:
-      metadata["subject_version"] = subject_version
-
-    results_url, uid = self._FindUniqueResultsURL(time)
-
-    self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
-    save_video = bool(len(benchmark.results.error))
-    benchmark.Save(results_url, debug_info=True, video=save_video)
-
-    self._progress.Info(benchmark.name, "Generating Report")
-    self._GenerateBenchmarkReport(benchmark, results_url)
-    self._InsertResults(time, uid, subject, benchmark.results)
-
-    public_url = self._GetPublicReportUrl(results_url)
-    self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
-
-    if len(benchmark.results.error):
-      with open(self.FILED_BENCHMARKS_FILE, "a") as error_log:
-        error_log.write("-" * 80 + "\n")
-        error_log.write(str(benchmark.results))
-        error_log.write("\n")
-
-    benchmark.results.report_url = public_url
-    benchmark.results.uid = uid
-
-  def _GetPublicReportUrl(self, url):
-    public_url = url.replace("gs://", "http://storage.googleapis.com/")
-    return os.path.join(public_url, "report.html")
-
-  def _GenerateBenchmarkReport(self, benchmark, report_url):
-    """Generate benchmark report into folder.
-
-    :param str report_path: path to folder to save the report into.
-    :rtype Report
-    """
-    if not self._generate_reports:
-      return
-    with GSFolder(report_url) as report_path:
-      report = BenchmarkReport(report_path, "report.html", xkcd=self._xkcd)
-      report.GenerateReport(benchmark.results, benchmark.trace,
-                            benchmark.screen_calibration, benchmark.video)
-
-  def _GenerateAggregateReport(self, aggregate_results, report_url):
-    """Generate aggregate report into folder
-
-    :param str report_path: path to folder to save the report into.
-    :rtype Report
-    """
-    if not self._generate_reports:
-      return
-    with GSFolder(report_url) as report_path:
-      report = AggregateReport(report_path, "report.html", xkcd=self._xkcd)
-      report.GenerateReport(aggregate_results)
-
-  def _GatherBenchmarkSamples(self, subject, benchmark_def, metadata,
-                              debug_flags):
-    """Runs benchmark until enough measurements are collected.
-
-    Returns None if running one of the benchmarks failed.
-
-    :type subject: BenchmarkSubject
-    :type metadata: dict
-    :type debug_flags: List[str]
-    :rtype Optional[BenchmarkResults]
-    """
-    aggregate = AggregateResults(benchmark_def.name, metadata)
+    aggregate = AggregateResults(full_name, metadata)
     start_time = time.time()
     while True:
-      benchmark = self._SafelyRunBenchmark(subject, benchmark_def, metadata,
-                                           debug_flags)
+      benchmark = self.RunSubjectVersionBenchmarkRepetition(subject,
+          benchmark_def, metadata)
       if not benchmark:
-        return None
+        self._progress.Error(full_name, "All repetitions failed!")
+        return
       aggregate.AddRepetition(benchmark.results)
 
-      enough_samples = True
-      msrmnts = aggregate.measurements
-      for series_name, series_info in msrmnts.series_infos.iteritems():
-        series_values = msrmnts.SummarizeValues(series_name)
-        self._progress.Info(benchmark.name, "Collected %d samples for %s." %
-                                             (len(series_values), series_name))
-        if len(series_values) < series_info.min_num_samples:
-          enough_samples = False
-      if not enough_samples:
-        self._progress.Info(benchmark.name, "Collecting more samples.")
+      if not aggregate.measurements.HasMinNumSamples():
+        self._progress.Info(full_name, "Collecting more samples.")
       else:
-        elapsed_time = time.time() - start_time
-        aggregate.metadata["elapsed_time"] = elapsed_time
-        return aggregate
+        break
 
-  def _SafelyRunBenchmark(self, subject, benchmark_def, metadata, debug_flags):
-    """Run benchmark and retry until successful.
+    elapsed_time = time.time() - start_time
+    aggregate.metadata["elapsed_time"] = elapsed_time
 
-    Returns None if the the benchmark failed MAX_BENCHMARK_TRIES times.
+    with self._progress.LogExceptions(full_name, "Fatal Exception"):
+      self.PublishAggregateResults(subject, aggregate, version)
+    self._progress.Info(full_name, "Aggregate Results:")
+    print aggregate
 
-    :type subject: BenchmarkSubject
-    :type metadata: dict
-    :type debug_flags: List[str]
-    :rtype Optional[Benchmark]
+  def RunSubjectVersionBenchmarkRepetition(self, subject, benchmark_def,
+                                           metadata):
+    """Run single benchmark repetition on a subject/version.
+
+    This method should never throw Exceptions except for KeyboardInterrupts.
+
+    :type subject: OrchestratorSubject
+    :type benchmark_def: BenchmarkDefinition
+    :type metadata: Dict[str, Any]
     """
     benchmark_time = datetime.now()
     metadata["time"] = benchmark_time
+    full_name = "%s/%s" % (subject.name, benchmark_def.name)
 
     for repetition in range(self.MAX_BENCHMARK_TRIES):
-      full_name = "%s/%s" % (subject.name, benchmark_def.name)
-      rep_name = "Benchmark (repetiton=%d)" % repetition
-      try:
+      with self._progress.LogExceptions(full_name, "Fatal Exception"):
+        rep_name = "Benchmark (repetiton=%d)" % repetition
         self._progress.Info(full_name, "Running %s" % rep_name)
 
         benchmark = self._runner.CreateBenchmark(full_name,
             benchmark_def.benchmark_type, benchmark_def.activity,
             benchmark_def.params, metadata)
-        self._runner.RunBenchmark(benchmark, debug_flags)
+        self._runner.RunBenchmark(benchmark)
 
-        self._StoreBenchmark(benchmark, subject, benchmark_time)
-
-        if not len(benchmark.results.error):
+        self.PublishBenchmarkRepetition(benchmark, subject, benchmark_time)
+        if len(benchmark.results.error):
+          self._progress.Error(full_name, "%s failed." % rep_name)
+          self._progress.LogFailure(full_name, "Benchmark failed",
+                                    str(benchmark.results))
+        else:
           self._progress.Info(full_name, "Results:")
           print benchmark.results
           return benchmark
-
-        self._progress.Error(benchmark.name, "%s failed." % rep_name)
-      except KeyboardInterrupt:
-        raise
-      except:
-        self._progress.Error(full_name, "%s failed." % rep_name)
-        self._progress.Exception(full_name)
-
-    self._progress.Error(benchmark.name, "All repetitions failed. Giving up!")
     return None
+
+  def OpenAndCalibrateSubject(self, subject):
+    """Safely open and calibrate a subject on the BenchmarkRunner.
+
+    This method should never throw Exceptions except for KeyboardInterrupts.
+
+    :type subject: OrchestratorSubject
+    :returns bool: True if successful.
+    """
+    with self._progress.CaptureFailures(subject.name, "Subject calibration"):
+      self._runner.OpenAndCalibrateSubject(subject)
+      return True
+    return False
+
+  def PublishAggregateResults(self, subject, aggregate, version):
+    """Publishes AggregateResults of a benchmark.
+
+    Generates the reports and reports the results to the dashboard.
+
+    :type subject: OrchestratorSubject
+    :type aggregate: AggregateResults
+    :type version: str
+    :raises Exception: If Google cloud storage is offline
+    """
+    name = aggregate.benchmark_name
+
+    self._progress.Info(name, "Generating Aggregate report:")
+    benchmark_time = datetime.now()
+    results_url, uid = self._FindUniqueResultsURL(benchmark_time)
+    if self._generate_reports:
+      with GSFolder(results_url) as report_path:
+        report = AggregateReport(report_path, xkcd=self._xkcd)
+        report.GenerateReport(aggregate)
+
+    public_url = self._GetPublicReportUrl(results_url)
+    self._progress.Info(name,
+                        "Report available at: %s" % public_url)
+
+    if subject.dashboard:
+      self._progress.Info(name, "Reporting results to dashboard")
+      subject.dashboard.ReportResults(aggregate, version,
+                                      public_url)
+
+  def PublishBenchmarkRepetition(self, benchmark, subject, time):
+    """Store benchmark to results folder and register in database.
+
+    :type benchmark: Benchmark
+    :type subject: OrchestratorSubject
+    :type time: datetime
+    :raises Exception: If Google cloud storage is offline
+    """
+    results_url, uid = self._FindUniqueResultsURL(time)
+    public_url = self._GetPublicReportUrl(results_url)
+    benchmark.results.report_url = public_url
+    benchmark.results.uid = uid
+
+    self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
+    save_video = bool(len(benchmark.results.error))
+    benchmark.Save(results_url, debug_info=True, video=save_video)
+
+    if self._generate_reports:
+      self._progress.Info(benchmark.name, "Generating Report")
+
+      with GSFolder(results_url) as report_path:
+        report = BenchmarkReport(report_path, xkcd=self._xkcd)
+        report.GenerateReport(benchmark.results, benchmark.trace,
+                              benchmark.screen_calibration, benchmark.video)
+      self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
+
+    self._InsertResults(time, uid, subject, benchmark.results)
+
+  def QueryResults(self):
+    """Return iterator over all results in database."""
+    return self._results_table.all()
+
+  def _GetPublicReportUrl(self, url):
+    public_url = url.replace("gs://", "http://storage.googleapis.com/")
+    return os.path.join(public_url, "report.html")
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.
@@ -357,6 +326,7 @@ class Orchestrator(object):
 
     :type time: datetime
     :rtype str
+    :raises Exception: If Google cloud storage is offline
     """
     base_name = str(time.strftime("%Y%m%d_%H%M"))
     return GSFindUniqueFilename(self._results_url, base_name)
@@ -378,62 +348,14 @@ class Orchestrator(object):
       grouped[subject].append(definition)
     return grouped.iteritems()
 
-  def _ParseVersion(self, string, installed_version, available_versions):
-    string = string.strip()
-    if string == "installed":
-      return installed_version
-    if string == "latest":
-      return available_versions[-1]
-    else:
-      return_last_match = True
-      if string.endswith("-"):
-        string = string[:-1]
-        return_last_match = False
-      last_match = None
-      for version in available_versions:
-        if version.startswith(string):
-          if return_last_match:
-            last_match = version
-          else:
-            return version
-      if last_match:
-        return last_match
-      raise Exception("No such version '%s'" % string)
-
-  def _ParseVersionRange(self, string, installed_version, available_versions):
-    segments = string.split(":")
-    if len(segments) == 1:
-      return [self._ParseVersion(string, installed_version, available_versions)]
-    elif len(segments) == 2:
-      from_version = self._ParseVersion(segments[0], installed_version,
-                                        available_versions)
-      to_version = self._ParseVersion(segments[1], installed_version,
-                                      available_versions)
-    else:
-      raise Exception("Invalid version syntax '%s'" % string)
-
-    version_list = []
-    in_range = False
-    out_range = False
-    for version in available_versions:
-      if not in_range and version.startswith(from_version):
-          in_range = True
-
-      if in_range:
-        if version.startswith(to_version):
-          out_range = True
-        elif out_range:
-          break
-        version_list.append(version)
-    return version_list
-
   def _InsertResults(self, time, uid, subject, results):
     """Inserts results into database
 
     :type time: datetime
     :type uid: str
-    :type subject_version: Optional[str]
+    :type subject: OrchestratorSubject
     :type results: BenchmarkResults
+    :raises Exception: If database connection is lost.
     """
     dump = lambda array: ", ".join(str(array))
 

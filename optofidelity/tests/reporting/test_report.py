@@ -41,8 +41,7 @@ class ReportTests(TestCase):
                                               metadata)
     benchmark.trace.ApplyFingerLocationCalib(10)
     benchmark.trace.ApplyLEDCalib(-10, 10)
-    report = BenchmarkReport(self.tempdir, "report.html", xkcd=xkcd,
-                             skip_images=True)
+    report = BenchmarkReport(self.tempdir, xkcd=xkcd, skip_images=True)
     report.GenerateReport(benchmark.results, benchmark.trace,
                           benchmark.screen_calibration, benchmark.video)
     benchmark.Save(self.tempdir, debug_info=True)
@@ -59,7 +58,7 @@ class ReportTests(TestCase):
     for repetition in range(3):
       aggregateResults.AddRepetition(benchmark.results)
 
-    report = AggregateReport(self.tempdir, "report.html", skip_images=True)
+    report = AggregateReport(self.tempdir, skip_images=True)
     report.GenerateReport(aggregateResults)
     benchmark.Save(self.tempdir, debug_info=True)
 

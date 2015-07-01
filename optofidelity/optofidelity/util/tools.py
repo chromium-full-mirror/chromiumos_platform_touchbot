@@ -136,13 +136,53 @@ def TimeoutCommunicate(process, timeout=None):
 
 
 class ProgressPrinter(object):
+  _failure_log = logging.getLogger("optofidelity.failure")
+  _perf_log = logging.getLogger("optofidelity.perf")
+
   def __init__(self, log):
     self._log = log
+
+  @contextmanager
+  def LogExceptions(self, header, message="Caught Exception"):
+    try:
+      yield
+    except KeyboardInterrupt:
+      raise
+    except:
+      self.Exception(header, message)
+
+  @contextmanager
+  def CaptureFailures(self, header, message):
+    capture = LogCapture()
+    with capture:
+      try:
+        yield
+      except KeyboardInterrupt:
+        raise
+      except:
+        self.Exception(header, message)
+        self.LogFailure(header, message, capture.log)
+
+  def LogFailure(self, header, message, log):
+    header = self._Format(header, message, logging.ERROR)
+    bar = "-" * 50
+    self._failure_log.error("%s\n- %s\n%s\n%s\n" % (bar, header, bar, log))
 
   def Exception(self, header, message="Caught Exception"):
     self.Error(header, message)
     traceback.print_exc(limit=1)
     self._log.exception(message)
+
+  @contextmanager
+  def LogPerf(self, header):
+    start_time = time.time()
+    try:
+      yield
+    finally:
+      elapsed_minutes = (time.time() - start_time) / 60
+      line = self._Format(header, "Elapsed time: %d min" % elapsed_minutes,
+                          logging.INFO)
+      self._perf_log.info(line)
 
   def Info(self, header, message):
     self.Print(header, message, logging.INFO)
@@ -151,14 +191,18 @@ class ProgressPrinter(object):
     self.Print(header, message, logging.ERROR)
 
   def Print(self, header, message, level):
+    log_line = self._Format(header, message, level)
+    self._log.log(level, log_line)
+    print log_line
+
+  def _Format(self, header, message, level):
     color = "32"
     if level == logging.ERROR:
       color = "31"
 
     pretty_format = "\033[1m\033[0;%sm%s:\033[0m \033[1m%s\033[0m"
     log_line = pretty_format % (color, header, message)
-    self._log.log(level, log_line)
-    print log_line
+    return log_line
 
 @contextmanager
 def SingleInstanceLock(lock_name):

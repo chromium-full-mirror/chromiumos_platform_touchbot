@@ -249,6 +249,13 @@ class AggregateMeasurements(defaultdict):
     """
     super(AggregateMeasurements, self).__init__(BenchmarkMeasurements)
 
+  def HasMinNumSamples(self):
+    for series_name, series_info in self.series_infos.iteritems():
+      series_values = self.SummarizeValues(series_name)
+      if len(series_values) < series_info.min_num_samples:
+        return False
+    return True
+
   @property
   def series_infos(self):
     """Aggregated series_infos from all BenchmarkMeasurements."""

@@ -22,6 +22,9 @@ class Updater(object):
   """Interface for a service to update subjects."""
   __metaclass__ = InterfaceMeta
 
+  def Verify(self):
+    pass
+
   @abstractproperty
   def available_versions(self):
     """:returns List[str]: List of versions available for install."""
@@ -95,6 +98,12 @@ class ChromeUpdater(Updater):
     elif channel == "dev":
       self._package_name = "com.chrome.dev"
       self._filename = "ChromeDev.apk"
+
+  def Verify(self):
+    if self.installed_version is None:
+      raise Exception("Chrome %s is not installed" % self._channel)
+    if not self.available_versions:
+      raise Exception("No versions available for chrome %s" % self._channel)
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):

@@ -37,17 +37,16 @@ class Report(object):
   """
   __metaclass__ = TypecheckMeta
 
-  def __init__(self, path, filename, xkcd=False, skip_images=False):
+  def __init__(self, path, xkcd=False, skip_images=False):
     """
     :param str path: Path to folder in which to store report
-    :param str filename: Filename of report html file
     :param bool xkcd: Give report more authority
     """
     self.path = path
     self.data_path = os.path.join(self.path, "report_data")
     if not os.path.exists(self.data_path):
       os.makedirs(self.data_path)
-    self.html_filename = os.path.join(self.path, filename)
+    self.html_filename = os.path.join(self.path, "report.html")
     self._xkcd = xkcd
     self._skip_images = skip_images
 

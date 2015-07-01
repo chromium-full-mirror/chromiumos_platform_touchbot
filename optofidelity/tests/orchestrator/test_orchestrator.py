@@ -7,8 +7,7 @@ import os
 import shutil
 import tempfile
 
-from optofidelity.benchmark import (Benchmark, BenchmarkMeasurements,
-                                    DrawEventLatencySeries)
+from optofidelity.benchmark import Benchmark, DrawEventLatencySeries
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.orchestrator import (Dashboard, FakeUpdater, Orchestrator,
                                        OrchestratorSubject)
@@ -24,6 +23,7 @@ class OrchestratorTests(TestCase):
     self.subject = OrchestratorSubject.FromBenchmarkSubject(subject)
     self.subject.DefineBenchmark("tap", "tap", "fake", {})
     self.subject.updater = FakeUpdater()
+    self.subject.updater.Install("1.0")
     self.subject.updater._available_versions = ["1.0", "2.0"]
     self.tempdir = tempfile.mkdtemp()
 
@@ -41,7 +41,7 @@ class OrchestratorTests(TestCase):
 
   def testResultsDatabase(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 2)
     for result in results:
@@ -56,7 +56,7 @@ class OrchestratorTests(TestCase):
   def testMinSamples(self):
     orchestrator = self.createOrchestrator()
     DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 8
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
     results = list(orchestrator.QueryResults())
     # Should repeat test 2 times, with 2 measurement id's each
     # resulting in 4 entries in the database.
@@ -64,7 +64,7 @@ class OrchestratorTests(TestCase):
 
   def testResultsPersistence(self):
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
 
     # Create new instance to test if data is stored persistently
     orchestrator = self.createOrchestrator()
@@ -79,7 +79,7 @@ class OrchestratorTests(TestCase):
     self.runner.fake_benchmark = benchmark
 
     orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "installed")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
     results = list(orchestrator.QueryResults())
     self.assertEqual(len(results), 6)
     for result in results:
@@ -89,11 +89,11 @@ class OrchestratorTests(TestCase):
     orchestrator = self.createOrchestrator()
 
     # The subject should be updated to 2.0 then have tests run
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "2.0")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "2.0")
     self.assertEqual(self.subject.updater.installed_version, "2.0")
 
     # Force test run with version 1.0
-    orchestrator.UpdateAndRunBenchmarks("*/tap", [], "1.0")
+    orchestrator.UpdateAndRunBenchmarks("*/tap", "1.0")
     self.assertEqual(self.subject.updater.installed_version, "1.0")
 
     results = list(orchestrator.QueryResults())
@@ -103,32 +103,13 @@ class OrchestratorTests(TestCase):
     self.assertIn("1.0", versions_tested)
     self.assertIn("2.0", versions_tested)
 
-  def testUpdateSubject(self):
-    orchestrator = self.createOrchestrator()
-
-    # The subject should be updated to 2.0 then have tests run
-    ret = orchestrator.UpdateSubject(self.subject)
-    self.assertEqual(ret, True)
-    self.assertEqual(self.subject.updater.installed_version, "2.0")
-
-    # Force test run with version 1.0
-    ret = orchestrator.UpdateSubject(self.subject, forced_version="1.0")
-    self.assertEqual(ret, True)
-    self.assertEqual(self.subject.updater.installed_version, "1.0")
-
-    # Update back to latest version. Next update call should return False
-    orchestrator.UpdateSubject(self.subject)
-    ret = orchestrator.UpdateSubject(self.subject)
-    self.assertEqual(ret, False)
-    self.assertEqual(self.subject.updater.installed_version, "2.0")
-
   def testVersionParsing(self):
-    orchestrator = self.createOrchestrator()
     available = ["1.0", "1.1", "1.2", "2.0", "2.2", "3.0"]
     installed = "1.1"
 
     def Parse(string):
-        return orchestrator._ParseVersionRange(string, installed, available)
+        return OrchestratorSubject._ParseVersionRange(string, installed,
+                                                      available)
     self.assertEqual(Parse("installed"), ["1.1"])
     self.assertEqual(Parse("installed:"), ["1.1", "1.2", "2.0", "2.2", "3.0"])
     self.assertEqual(Parse("1-:1"), ["1.0", "1.1", "1.2"])

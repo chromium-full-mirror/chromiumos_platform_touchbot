@@ -25,6 +25,9 @@ class Navigator(object):
     self._is_open = False
     self._current_activity = None
 
+  def Verify(self):
+    pass
+
   @abstractproperty
   def activities(self):
     """List of supported activity names.
@@ -261,6 +264,10 @@ class BaseADBNavigator(Navigator):
   @state.setter
   def state(self, value):
     pass
+
+  def Verify(self):
+    self.Open(False)
+    self.Close()
 
   def _Open(self, safe):
     if not self._stay_alive:

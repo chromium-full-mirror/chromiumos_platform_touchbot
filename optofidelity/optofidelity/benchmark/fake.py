@@ -44,7 +44,7 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     with runner.UseSubject(runner.benchmark_system.fake_subject):
       benchmark = runner.CreateBenchmark("fake", benchmark_type, "fake", {},
                                          metadata)
-      runner.RunBenchmark(benchmark, [])
+      runner.RunBenchmark(benchmark)
       return benchmark
 
   def CreateBenchmark(self, name, benchmark_type, activity, parameters,
@@ -54,7 +54,7 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     return super(FakeBenchmarkRunner, self).CreateBenchmark(name,
         benchmark_type, activity, parameters, metadata)
 
-  def RunBenchmark(self, benchmark, debug_flags):
+  def RunBenchmark(self, benchmark):
     if self.fake_benchmark:
       return
-    super(FakeBenchmarkRunner, self).RunBenchmark(benchmark, debug_flags)
+    super(FakeBenchmarkRunner, self).RunBenchmark(benchmark)
