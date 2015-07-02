@@ -232,6 +232,12 @@ class SystemBuilder(object):
     subject.navigator = navigator
     subject.updater = updater
     subject.dashboard = dashboard
+
+    margin_attrib = subject_elem.get("margin")
+    if margin_attrib:
+      margin_attrib = self._ParseValue(margin_attrib, additional)
+      subject.margin = self._ParseCoord(margin_attrib)
+
     for benchmark_elem in subject_elem.iter("benchmark"):
       attrib, children = self._GetElementAttribs(benchmark_elem, {})
       subject.DefineBenchmark(attrib["name"], attrib["type"],

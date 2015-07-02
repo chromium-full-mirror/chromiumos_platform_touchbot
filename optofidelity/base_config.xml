@@ -29,7 +29,8 @@
   </subject-type>
 
   <subject-type type-name="clank_stable" parent-type="clank_base">
-    <navigator type="web_adb" component="com.android.chrome/.Main" />
+    <navigator type="web_adb"
+               component="com.android.chrome/com.google.android.apps.chrome.Main" />
     <updater type="chrome" channel="stable"/>
   </subject-type>
 

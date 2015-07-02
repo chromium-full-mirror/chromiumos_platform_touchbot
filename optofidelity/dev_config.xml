@@ -1,13 +1,16 @@
 <optofidelity>
   <include file="base_config.xml" />
 
-  <dut-type type-name="nexus_phone" master="touchbot.dev">
-    <subject name="clank_beta" type="clank_beta" margin="(20, 15)" />
+  <dut-type type-name="nexus_phone" master="touchbot.dev"
+            chrome_margin="(20, 15)">
+    <subject name="clank_stable" type="clank_stable" margin="{chrome_margin}" />
+    <subject name="clank_beta" type="clank_beta" margin="{chrome_margin}" />
+    <subject name="clank_dev" type="clank_dev" margin="{chrome_margin}" />
     <subject name="native" type="android_native" />
   </dut-type>
 
-  <dut-type type-name="nexus_tablet" parent-type="nexus_phone">
-    <subject name="clank_beta" margin="(30, 15)" />
+  <dut-type type-name="nexus_tablet" parent-type="nexus_phone"
+            chrome_margin="(30, 15)">
   </dut-type>
 
   <dut name="nexus4" adb="04f6cafb8c976e5a" type="nexus_phone" />
