@@ -183,6 +183,8 @@ class BenchmarkReport(Report):
       elif series_info.units == "%":
         figure = HistogramFigure(460, 460, "%", 0, 1)
         figure.PlotOverviewHistogram(pass_values, "Pass")
+      else:
+        raise ValueError("Unknown series unit '%s'" % series_info.units)
       self._SaveFigure(figure, "%s_histogram" % series_name)
 
       for pass_num, pass_msrmnts in msrmnts.iteritems():
@@ -315,10 +317,16 @@ class AggregateReport(Report):
     :type aggregate_results: AggregateResults
     """
     msrmnts = aggregate_results.measurements
-    for series_name in msrmnts.series_infos:
+    for series_name, series_info in msrmnts.series_infos.iteritems():
 
       for rep_num, rep_msrmnts in msrmnts.iteritems():
-        figure = LatencyHistogramFigure(460, 460)
+        if series_info.units == "ms":
+          figure = LatencyHistogramFigure(460, 460)
+        elif series_info.units == "%":
+          figure = HistogramFigure(460, 460, "%", 0, 1)
+        else:
+          raise ValueError("Unknown series unit '%s'" % series_info.units)
+
         primary_plot = np.asarray(rep_msrmnts.SummarizeValues(series_name))
         figure.PlotPrimary(primary_plot, "Repetition #%02d" % rep_num,
                            figure.GetRotationColor(rep_num))
