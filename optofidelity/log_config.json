@@ -1,0 +1,58 @@
+{
+    "version": 1,
+    "disable_existing_loggers": true,
+
+    "formatters": {
+        "verbose": {
+            "format": "%(levelname)s %(asctime)s %(message)s"
+        },
+        "simple": {
+            "format": "%(message)s"
+        }
+    },
+    "handlers": {
+        "main": {
+          "class": "logging.handlers.TimedRotatingFileHandler",
+          "filename": "logs/debug",
+          "when": "midnight",
+          "formatter": "verbose"
+        },
+        "summary": {
+          "class": "logging.handlers.TimedRotatingFileHandler",
+          "filename": "logs/summary",
+          "when": "midnight",
+          "formatter": "verbose"
+        },
+        "failure": {
+            "class": "logging.FileHandler",
+            "filename": "logs/failures.log",
+            "formatter": "simple"
+        },
+        "perf": {
+            "class": "logging.FileHandler",
+            "filename": "logs/perf.log",
+            "formatter": "simple"
+        }
+    },
+    "root": {
+        "level": "WARN",
+        "handlers": ["main"]
+    },
+    "loggers": {
+        "optofidelity": {
+            "level":"INFO"
+        },
+        "optofidelity.failure": {
+            "handlers":["failure"],
+            "propagate": false
+        },
+        "optofidelity.perf": {
+            "handlers":["perf"],
+            "propagate": false
+        },
+        "optofidelity.orchestrator": {
+          "level": "INFO",
+          "handlers": ["summary"]
+        }
+    }
+}

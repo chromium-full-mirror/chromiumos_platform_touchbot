@@ -3,23 +3,11 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Main module for command line interface to optofidelity latency tests."""
-import logging
-logging.basicConfig(filename="orchestrator.log", level=logging.WARN)
-
 from optparse import OptionParser
-import logging
 import sys
 
 from optofidelity.builder import SystemBuilder
 from optofidelity.util import SingleInstanceLock
-
-
-logging.getLogger("optofidelity").setLevel(level=logging.INFO)
-logging.getLogger("optofidelity.failure").addHandler(
-    logging.FileHandler("failures.log"))
-logging.getLogger("optofidelity.perf").addHandler(
-    logging.FileHandler("perf.log"))
-logging.captureWarnings(True)
 
 
 usage_string = """Orchestrator usage examples:

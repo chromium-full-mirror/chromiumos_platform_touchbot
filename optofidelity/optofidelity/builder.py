@@ -7,6 +7,9 @@ from collections import namedtuple
 from copy import deepcopy
 import cPickle as pickle
 import itertools
+import json
+import logging
+import logging.config
 import os
 import re
 import xml.etree.ElementTree as ElementTree
@@ -128,6 +131,7 @@ class SystemBuilder(object):
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
     self._config_element = config_element
+    self._SetupLogging()
 
   @const_property
   def benchmark_system(self):
@@ -164,6 +168,16 @@ class SystemBuilder(object):
     """Initialize with config from config_string."""
     return cls(ElementTree.fromstring(config_string), ".")
 
+  def _SetupLogging(self):
+    log_config = self._ParseValue(self._config_element.get("log-config"))
+    if log_config:
+      with open(log_config, "r") as file_obj:
+        dictionary = json.load(file_obj)
+      logging.config.dictConfig(dictionary)
+    else:
+      logging.basicConfig(level=logging.INFO)
+    logging.captureWarnings(True)
+
   def _ParseIncludes(self, config_element):
     for index, child in enumerate(list(config_element)):
       if child.tag != "include":
@@ -173,6 +187,7 @@ class SystemBuilder(object):
       self._ParseIncludes(included)
       for included_element in included:
         config_element.append(included_element)
+      config_element.attrib.update(included.attrib)
 
   def _BuildBenchmarkSystem(self, system_element):
     """Builds a BenchmarkSystem instance."""
@@ -305,6 +320,9 @@ class SystemBuilder(object):
     return attrib, children
 
   def _ParseValue(self, value, context=dict()):
+    if value is None:
+      return value
+
     if value.startswith("file:"):
       value = value[len("file:"):]
       return os.path.join(self._root_dir, value)
