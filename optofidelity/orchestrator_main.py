@@ -48,12 +48,14 @@ Whereas the names of benchmarks are put together in the following format:
 """
 
 
-def RunBenchmarks(config, match, versions, info, skip_installed):
+def RunBenchmarks(config, matches, versions, info, skip_installed):
   builder = SystemBuilder.FromFile(config)
-  if info:
-    builder.orchestrator.PrintInfo(match)
-  else:
-    builder.orchestrator.UpdateAndRunBenchmarks(match, versions, skip_installed)
+  for match in matches:
+    if info:
+      builder.orchestrator.PrintInfo(match)
+    else:
+      builder.orchestrator.UpdateAndRunBenchmarks(match, versions,
+                                                  skip_installed)
 
 
 def Main():
@@ -73,9 +75,9 @@ def Main():
                     help="Specify config file to use.")
 
   (options, args) = parser.parse_args()
-  match = args[0] if len(args) > 0 else "*"
+  matches = args if len(args) > 0 else ["*"]
 
-  RunBenchmarks(options.config, match, options.versions, options.info,
+  RunBenchmarks(options.config, matches, options.versions, options.info,
                 options.prepare, options.skip_installed)
 
 
