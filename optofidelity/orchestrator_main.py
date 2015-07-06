@@ -48,13 +48,10 @@ Whereas the names of benchmarks are put together in the following format:
 """
 
 
-def RunBenchmarks(config, match, versions, list, skip_installed):
+def RunBenchmarks(config, match, versions, info, skip_installed):
   builder = SystemBuilder.FromFile(config)
-
-  if list:
-    print "Available benchmarks:"
-    for name in sorted(builder.orchestrator.benchmark_names):
-      print "  ", name
+  if info:
+    builder.orchestrator.PrintInfo(match)
   else:
     builder.orchestrator.UpdateAndRunBenchmarks(match, versions, skip_installed)
 
@@ -68,9 +65,9 @@ def Main():
   parser.add_option("--versions", "-v",
                     dest="versions", default="installed",
                     help="Specify versions to test.")
-  parser.add_option("--list", "-l",
-                    dest="list", default=False, action="store_true",
-                    help="List all available benchmarks."),
+  parser.add_option("--info", "-i",
+                    dest="info", default=False, action="store_true",
+                    help="Show info on subjects and benchmarks."),
   parser.add_option("--config", "-c",
                     dest="config", default="dev_config.xml",
                     help="Specify config file to use.")
@@ -78,8 +75,8 @@ def Main():
   (options, args) = parser.parse_args()
   match = args[0] if len(args) > 0 else "*"
 
-  RunBenchmarks(options.config, match, options.versions, options.list,
-                options.skip_installed)
+  RunBenchmarks(options.config, match, options.versions, options.info,
+                options.prepare, options.skip_installed)
 
 
 if __name__ == "__main__":

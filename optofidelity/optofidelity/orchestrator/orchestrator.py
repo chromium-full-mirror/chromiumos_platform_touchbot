@@ -6,6 +6,7 @@ from datetime import datetime
 from fnmatch import fnmatch
 import logging
 import os
+import sys
 import time
 
 from safetynet import Any, Dict, List, Optional, TypecheckMeta
@@ -76,14 +77,33 @@ class Orchestrator(object):
     database = parameters["database"]
     return cls(system, runner, results, database, xkcd=xkcd)
 
-  @property
-  def benchmark_names(self):
-    """List of names of all benchmarks that this Orchestrator can run.
+  def PrintInfo(self, match):
+    for subject in self._subjects.itervalues():
+      if not fnmatch(subject.name, match):
+        continue
+      print "Subject:", subject.name
+      if not subject.Verify():
+        print "  Cannot verify subject"
+        continue
+      installed_version = subject.updater.installed_version
+      print "  Installed version:", installed_version
 
-    :rtype: List[str]
-    """
-    return [ "%s/%s" % (s.name, n) for s in self._subjects.itervalues()
-                                   for n in s.benchmark_defs ]
+      print "  Available versions:"
+      sys.stdout.write("    ")
+      for i, version in enumerate(subject.updater.available_versions):
+        if i % 6 == 0 and i != 0:
+          sys.stdout.write("\n    ")
+        if version == installed_version:
+          version = "*" + version
+        sys.stdout.write(version.ljust(16))
+      print
+
+      print "  Available benchmarks:"
+      for benchmark_def in subject.benchmark_defs.itervalues():
+        print "    %s/%s (type=%s activity=%s)" % (subject.name,
+            benchmark_def.name, benchmark_def.benchmark_type,
+            benchmark_def.activity)
+      print
 
   def AddSubject(self, subject):
     """
