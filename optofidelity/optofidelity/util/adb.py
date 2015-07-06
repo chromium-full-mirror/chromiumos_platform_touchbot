@@ -44,7 +44,7 @@ class ADB(object):
     :type package_name: str
     :returns Optional[str]: version name of package if it is installed
     """
-    info = self.ExecuteShell(["pm", "dump", package_name], timeout=5)
+    info = self.ExecuteShell(["pm", "dump", package_name], timeout=20)
     version_regex = re.compile("versionName=(.+)")
     match = version_regex.search(info)
     if match:
@@ -61,11 +61,11 @@ class ADB(object):
       self.SendKey(self.KEY_POWER)
 
   def IsAwake(self):
-    power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=5)
+    power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=20)
     return "mWakefulness=Awake" in power_dump
 
   def SendKey(self, key_name):
-    self.ExecuteShell(["input", "keyevent", key_name], timeout=5, retries=2)
+    self.ExecuteShell(["input", "keyevent", key_name], timeout=10, retries=2)
 
   def PushFile(self, local_file, remote_file):
     self.Execute(["push", local_file, remote_file], timeout=240)
@@ -81,7 +81,7 @@ class ADB(object):
                         ("-d", uri), ("-c", category)]:
       if value:
         cmd += [flag, value]
-    self.ExecuteShell(cmd, check_error=True, timeout=10)
+    self.ExecuteShell(cmd, check_error=True, timeout=20)
 
   def Execute(self, sub_command, check_success=False, check_error=False,
               timeout=False, retries=0):
