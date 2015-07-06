@@ -15,6 +15,9 @@ import numpy as np
 
 from optofidelity.detection import Event
 
+def SummarizeList(values):
+  return "%.2f (std=%.2f, N=%d)" % (np.mean(values), np.std(values),
+                                    len(values))
 
 MeasurementSeriesInfo = namedtuple("MeasurementSeriesInfo",
     ("series_name", "series_type", "units", "min_num_samples"))
@@ -235,7 +238,8 @@ class BenchmarkMeasurements(defaultdict):
     for pass_num, pass_msrmnts in self.iteritems():
       add_line(2, "Pass %d:", pass_num)
       for series in pass_msrmnts.itervalues():
-        add_line(3, "%s: %s", series.series_name, str(series.values))
+        info = SummarizeList(series.values)
+        add_line(3, "%s: %s", series.series_name, info)
     return "\n".join(lines)
 
 class AggregateMeasurements(defaultdict):
@@ -279,7 +283,8 @@ class AggregateMeasurements(defaultdict):
       lines.append("  " * indent + (fmt % params))
     add_line(1, "Aggregate Measurements:")
     for series_name in self.series_infos:
-      add_line(2, "%s: %s", series_name, self.SummarizeValues(series_name))
+      info = SummarizeList(self.SummarizeValues(series_name))
+      add_line(2, "%s: %s", series_name, info)
     return "\n".join(lines)
 
 class Measurement(object):
