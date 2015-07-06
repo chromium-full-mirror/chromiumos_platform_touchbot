@@ -65,7 +65,7 @@ class ADB(object):
     return "mWakefulness=Awake" in power_dump
 
   def SendKey(self, key_name):
-    self.ExecuteShell(["input", "keyevent", key_name], timeout=5)
+    self.ExecuteShell(["input", "keyevent", key_name], timeout=5, retries=2)
 
   def PushFile(self, local_file, remote_file):
     self.Execute(["push", local_file, remote_file], timeout=240)
@@ -84,7 +84,7 @@ class ADB(object):
     self.ExecuteShell(cmd, check_error=True, timeout=10)
 
   def Execute(self, sub_command, check_success=False, check_error=False,
-              timeout=False):
+              timeout=False, retries=0):
     """Execute an adb command.
 
     Many ADB commands do not return an error code when failing, so we have
@@ -95,26 +95,38 @@ class ADB(object):
     :param bool check_success: Check for 'success' message, raises Exception if
            it was not printed.
     """
-    command = self.adb_cmd + sub_command
-    _log.info("Executing %s", " ".join(command))
-    process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT)
-    stdout = TimeoutCommunicate(process, timeout)
-    if stdout is False:
-      raise Exception("'%s' timed out." % (" ".join(command),))
-    if process.returncode > 0:
-      raise Exception("'%s' returned with %d" % (" ".join(command),
-                                                 process.returncode))
-    if ((check_success and not "Success" in stdout) or
-        (check_error and "Error" in stdout) or
-        (process.returncode > 0)):
-      for line in stdout.split("\n"):
-        _log.error("     %s" % line.strip())
-      raise Exception("'%s' failed" % (" ".join(command)))
-    return stdout
+    try:
+      command = self.adb_cmd + sub_command
+      _log.info("Executing %s", " ".join(command))
+      process = subprocess.Popen(command, shell=False, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT)
+      stdout = TimeoutCommunicate(process, timeout)
+      error_message = None
+      if stdout is False:
+        error_message = "'%s' timed out." % (" ".join(command),)
+      if process.returncode > 0:
+        error_message = "'%s' returned with %d" % (" ".join(command),
+                                                   process.returncode)
+      if ((check_success and not "Success" in stdout) or
+          (check_error and "Error" in stdout) or
+          (process.returncode > 0)):
+        error_message = "'%s' failed" % (" ".join(command))
+      if error_message:
+        if stdout:
+          _log.error(error_message + "\n" + stdout)
+        raise Exception(error_message)
+      return stdout
+    except KeyboardInterrupt:
+      raise
+    except:
+      if retries > 0:
+        _log.exception("Retrying command")
+        return self.Execute(sub_command, check_success, check_error, timeout,
+                            retries - 1)
+      raise
 
   def ExecuteShell(self, shell_command, check_success=False, check_error=False,
-                   timeout=False):
+                   timeout=False, retries=0):
     """Wrapper to execute an adb shell command.
 
     :type shell_command: List[str]
@@ -122,4 +134,4 @@ class ADB(object):
            it was not printed.
     """
     return self.Execute(["shell"] + shell_command, check_success, check_error,
-                        timeout)
+                        timeout, retries)
