@@ -10,7 +10,7 @@ from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
-from optofidelity.util import LogCapture, ProgressPrinter
+from optofidelity.util import LogCapture, ProgressPrinter, GSFindUniqueFilename
 
 from .benchmark import Benchmark
 from ._line_delegates import LineDrawDelegate, LineDrawStartDelegate
@@ -48,6 +48,7 @@ class BenchmarkRunner(object):
     self._screen_calibration = None
     self._current_subject = None
     self.led_calib_delays = (0.0, 0.0)
+    self._calib_video_path = None
 
   @classmethod
   def FromConfig(cls, parameters, children, benchmark_system, video_processor):
@@ -56,6 +57,7 @@ class BenchmarkRunner(object):
     up = parameters.get("led-calibration-up")
     self.led_calib_delays = (float(down) if down else 0.0,
                              float(up) if up else 0.0)
+    self._calib_video_path = parameters.get("calibration-video-path")
     return self
 
   @contextmanager
@@ -156,8 +158,21 @@ class BenchmarkRunner(object):
     :type subject: BenchmarkSubject
     :rtype ScreenCalibration
     """
-    self._progress.Info(subject.name, "Calibrating screen")
-    video_reader = subject.RecordCalibrationVideo()
-    screen_calibration = self.video_processor.CreateScreenCalibration(
-        video_reader)
-    return screen_calibration
+    try:
+      self._progress.Info(subject.name, "Calibrating screen")
+      video_reader = subject.RecordCalibrationVideo()
+      screen_calibration = self.video_processor.CreateScreenCalibration(
+          video_reader)
+      return screen_calibration
+    except KeyboardInterrupt:
+      raise
+    except:
+      if self._calib_video_path:
+        unique_file, _ = GSFindUniqueFilename(self._calib_video_path,
+                                              "calibration_", ".avi")
+        self._progress.Error(subject.name, "Failed calibration video at: %s" %
+                                           (unique_file,))
+        video_reader.Save(unique_file)
+
+      raise
+

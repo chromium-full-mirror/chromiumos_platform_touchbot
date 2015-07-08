@@ -344,7 +344,7 @@ class Orchestrator(object):
     :rtype str
     :raises Exception: If Google cloud storage is offline
     """
-    base_name = str(time.strftime("%Y%m%d_%H%M"))
+    base_name = str(time.strftime("%Y%m%d_%H%M_"))
     return GSFindUniqueFilename(self.results_url, base_name)
 
   def _ListMatchingBenchmarks(self, match):

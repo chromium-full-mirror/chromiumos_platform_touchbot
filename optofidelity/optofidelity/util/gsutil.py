@@ -13,9 +13,9 @@ from .tools import ProgressBar
 _log = logging.getLogger(__name__)
 
 
-def GSFindUniqueFilename(folder_url, base_name):
+def GSFindUniqueFilename(folder_url, prefix, suffix=""):
   for i in range(999):
-    filename = "%s_%03d" % (base_name, i)
+    filename = "%s%03d%s" % (prefix, i, suffix)
     path = os.path.join(folder_url, filename)
     if not GSPathExists(path):
       return path, filename

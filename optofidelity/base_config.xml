@@ -8,7 +8,8 @@
     <led-calibration-subject backend-name="calibration" />
   </benchmark-system>
 
-  <benchmark-runner led-calibration-down="-4" led-calibration-up="4" />
+  <benchmark-runner led-calibration-down="-4" led-calibration-up="4"
+                    calibration-video-path="file:failed_calibrations"/>
 
   <orchestrator results="{results}" database="{database}" />
 
