@@ -51,7 +51,7 @@ class Orchestrator(object):
     """
     self._system = benchmark_system
     self._runner = benchmark_runner
-    self._results_url = results_url
+    self.results_url = results_url
 
     self._results_db = None
     self._results_table = None
@@ -221,8 +221,7 @@ class Orchestrator(object):
 
     with self._progress.LogExceptions(full_name, "Fatal Exception"):
       self.PublishAggregateResults(subject, aggregate, version)
-    self._progress.Info(full_name, "Aggregate Results:")
-    print aggregate
+    self._progress.Info(full_name, "Aggregate Results:\n%s" % aggregate)
 
   def RunSubjectVersionBenchmarkRepetition(self, subject, benchmark_def,
                                            metadata):
@@ -254,8 +253,7 @@ class Orchestrator(object):
           self._progress.LogFailure(full_name, "Benchmark failed",
                                     str(benchmark.results))
         else:
-          self._progress.Info(full_name, "Results:")
-          print benchmark.results
+          self._progress.Info(full_name, "Results:\n%s" % benchmark.results)
           return benchmark
     return None
 
@@ -284,7 +282,6 @@ class Orchestrator(object):
     """
     name = aggregate.benchmark_name
 
-    self._progress.Info(name, "Generating Aggregate report:")
     benchmark_time = datetime.now()
     results_url, uid = self._FindUniqueResultsURL(benchmark_time)
     if self._generate_reports:
@@ -294,7 +291,7 @@ class Orchestrator(object):
 
     public_url = self._GetPublicReportUrl(results_url)
     self._progress.Info(name,
-                        "Report available at: %s" % public_url)
+                        "Aggregate report available at: %s" % public_url)
 
     if subject.dashboard:
       self._progress.Info(name, "Reporting results to dashboard")
@@ -319,13 +316,12 @@ class Orchestrator(object):
     benchmark.Save(results_url, debug_info=True, video=save_video)
 
     if self._generate_reports:
-      self._progress.Info(benchmark.name, "Generating Report")
-
       with GSFolder(results_url) as report_path:
         report = BenchmarkReport(report_path, xkcd=self._xkcd)
         report.GenerateReport(benchmark.results, benchmark.trace,
                               benchmark.screen_calibration, benchmark.video)
-      self._progress.Info(benchmark.name, "Report available at: %s" % public_url)
+      self._progress.Info(benchmark.name, "Repetition report available at: %s"
+                                          % public_url)
 
     self._InsertResults(time, uid, subject, benchmark.results)
 
@@ -349,7 +345,7 @@ class Orchestrator(object):
     :raises Exception: If Google cloud storage is offline
     """
     base_name = str(time.strftime("%Y%m%d_%H%M"))
-    return GSFindUniqueFilename(self._results_url, base_name)
+    return GSFindUniqueFilename(self.results_url, base_name)
 
   def _ListMatchingBenchmarks(self, match):
     """Lists (subject, benchmark_definition) for a match string
