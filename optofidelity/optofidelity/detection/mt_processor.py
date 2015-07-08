@@ -85,6 +85,10 @@ class PreprocessWorker(multiprocessing.Process):
         prev_image = self.buffer_list[prev_index].image
 
       # Run preprocessing
+      if sys.platform == "darwin":
+        # OpenCV in subprocesses is broken on OSX.
+        ScreenCalibration.ENABLE_STABILIZATION = False
+
       calib_frame = CalibratedFrame(image, prev_image,
                                     self.processor.screen_calibration, i)
       result = self.processor._Preprocess(calib_frame)

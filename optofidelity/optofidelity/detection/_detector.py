@@ -50,6 +50,10 @@ class DetectorDebugger(object):
     elif "delta" in self._debug_flags:
       debug_frame = self.ComposeCameraSpace(
           0.5 + calib_frame.camera_space_delta)
+    elif "stabilization" in self._debug_flags:
+      delta = (0.5 + self.screen_calibration.black_frame
+                   - calib_frame.camera_space_frame)
+      debug_frame = self.ComposeCameraSpace(delta)
     else:
       debug_frame = self.ComposeCameraSpace(calib_frame.camera_space_frame)
     return debug_frame
@@ -73,6 +77,8 @@ class DetectorDebugger(object):
     :param np.ndarray frame: Has to be a grayscale image in screen space.
     :returns np.ndarray: An RGB image in screen space.
     """
+    self.camera_space_canvas.DrawMask(Canvas.GREEN,
+                                      self.screen_calibration.shape.contour)
     screen_space_transformed = self.screen_space_canvas.Transformed(
         self.screen_calibration.ScreenToCameraSpace)
     debug_frame = color.gray2rgb(frame)

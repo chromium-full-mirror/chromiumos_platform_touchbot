@@ -111,12 +111,12 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     calib_frame = CalibratedFrame(frame, prev_frame, screen_calibration,
                                   frame_index)
     debugger = None
+    if "viewer" in debug_flags:
+      debugger = DetectorDebugger(screen_calibration, debug_flags)
+
     all_events = []
     for detector in self._detectors:
       use_debugger = detector.NAME in debug_flags or "all" in debug_flags
-      if use_debugger and not debugger:
-        debugger = DetectorDebugger(screen_calibration, debug_flags)
-
       detector_debugger = debugger if use_debugger else None
       preprocessed_data = detector.Preprocess(calib_frame, detector_debugger)
       events = detector.GenerateEvents(preprocessed_data, frame_index,

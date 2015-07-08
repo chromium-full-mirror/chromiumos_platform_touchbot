@@ -16,7 +16,7 @@ class FingerDetectorTest(DetectorTest):
   def testPreprocessing(self):
     frame = self.calibratedFrame("finger.png")
     location = FingerDetector().Preprocess(frame, None)
-    delta = np.abs(location - 37.5)
+    delta = np.abs(location - 35.5)
     self.assertLess(delta, 1)
 
 

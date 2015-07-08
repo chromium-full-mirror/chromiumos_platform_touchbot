@@ -8,6 +8,7 @@ import cPickle as pickle
 import numpy as np
 
 from optofidelity.detection.screen_calibration import ScreenCalibration
+from optofidelity.videoproc import DebugView
 
 from . import test_data
 
@@ -61,3 +62,10 @@ class ScreenCalibrationTests(TestCase):
 
     self.assertTrue(np.allclose(black_normalized, 0))
     self.assertTrue(np.allclose(white_normalized, 1))
+
+  def testStabilization(self):
+    self.skipTest("Manual verification required.")
+    calib = ScreenCalibration(test_data.LoadImage("stabilization_black.png"),
+                              test_data.LoadImage("stabilization_white.png"))
+    img1 = test_data.LoadImage("stabilization_1.png")
+    calib.StabilizeFrame(img1, debug=True)

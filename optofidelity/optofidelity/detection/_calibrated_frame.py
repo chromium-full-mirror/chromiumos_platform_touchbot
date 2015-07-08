@@ -37,10 +37,13 @@ class CalibratedFrame(object):
     :param Optional[ScreenCalibration] screen_calibration
     :param int frame_index
     """
+    if screen_calibration:
+      frame = screen_calibration.StabilizeFrame(frame)
+      if prev_frame is not None:
+        prev_frame = screen_calibration.StabilizeFrame(prev_frame)
     self.camera_space_frame = frame
     self.camera_space_prev_frame = prev_frame
     self.frame_index = frame_index
-
     self._screen_calibration = screen_calibration
 
   @property

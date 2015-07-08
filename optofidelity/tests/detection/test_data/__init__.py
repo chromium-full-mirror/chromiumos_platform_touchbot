@@ -5,6 +5,7 @@
 import cPickle as pickle
 import os.path as path
 
+import skimage
 import skimage.color as color
 import skimage.io as io
 
@@ -32,4 +33,6 @@ def Path(filename):
 
 def LoadImage(filename):
   image = io.imread(Path(filename))
-  return color.rgb2gray(image)
+  if len(image.shape) > 2:
+    image = color.rgb2gray(image)
+  return skimage.img_as_float(image)

@@ -4,21 +4,24 @@
 """Implementation of ScreenCalibration."""
 
 import logging
+import sys
 
-from safetynet import TypecheckMeta, Tuple
-
+from safetynet import Tuple, TypecheckMeta
+import cv2
 import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
 
-from optofidelity.videoproc import Filter, Shape, DebugView
-
+from optofidelity.videoproc import DebugView, Filter, Shape
 
 _log = logging.getLogger(__name__)
 
 
 class ScreenCalibration(object):
   __metaclass__ = TypecheckMeta
+
+  ENABLE_STABILIZATION = True
+  """Enable image stabilization."""
 
   SHAPE_MARGIN = 12
   """The test area is reduced in size by this margin to account for potential
@@ -82,6 +85,23 @@ class ScreenCalibration(object):
     self.white_reference = self.CameraToScreenSpace(white_frame)
     self.black_frame = black_frame
     self.white_frame = white_frame
+
+    # Detect features for tracking
+    image_width = self.black_frame.shape[1]
+    self._feature_range = (0, image_width)
+    self._good_features = None
+    if not self.is_identity:
+      space_left = self.shape.left
+      space_right = image_width - self.shape.right
+      if space_left > space_right:
+        # Trim to show only space left of the screen
+        self._feature_range = (0, self.shape.left - 100)
+      else:
+        # Trip to show only space right of the screen
+        self._feature_range = (self.shape.right + 200, image_width)
+      features_image = self._GetFeaturesImage(self.black_frame)
+      self._good_features = cv2.goodFeaturesToTrack(features_image, 200, 0.01,
+                                                    30)
     return self
 
   @property
@@ -152,6 +172,50 @@ class ScreenCalibration(object):
       return cls(ref_images[1], ref_images[0])
     else:
       return cls(ref_images[0], ref_images[1])
+
+  def _GetFeaturesImage(self, camera_space_frame):
+    """Trims image to area not showing the screen nor robot arm.
+
+    Returns a uint8 image for OpenCV
+    """
+    range_ = self._feature_range
+    feature_image = camera_space_frame[:, range_[0]:range_[1]]
+    return (feature_image * 255).astype(np.uint8)
+
+  def StabilizeFrame(self, camera_space_frame, debug=False):
+    """Stabilizes a frame to line up with the calibration image.
+    """
+    if self._good_features is None or not self.ENABLE_STABILIZATION:
+      return camera_space_frame
+    frame = self._GetFeaturesImage(camera_space_frame)
+    ref = self._GetFeaturesImage(self.black_frame)
+
+    # Match features
+    features, st, err = cv2.calcOpticalFlowPyrLK(ref, frame,
+                                                 self._good_features, None)
+    # Filter so only features that have been matched are in the list.
+    ref_features = self._good_features[st == 1]
+    features = features[st == 1]
+
+    # Average the translation between the features
+    translation = np.median(features - ref_features, 0)
+
+    # Translate image
+    tform = transform.SimilarityTransform(translation=translation)
+    stable = transform.warp(camera_space_frame, tform)
+
+    if debug:
+      delta = (0.5 + stable - self.black_frame)
+      def GetCoords(feature):
+        return (int(feature[0] + self._feature_range[0]), int(feature[1]))
+      black = (0, 0, 0)
+      for good_feature in self._good_features:
+        print good_feature[0], GetCoords(good_feature[0])
+        cv2.circle(delta, GetCoords(good_feature[0]), 5, black)
+      for ref_feature, feature in zip(ref_features, features):
+        cv2.line(delta, GetCoords(ref_feature), GetCoords(feature), black, 1)
+      DebugView(debug=delta, title="Stabilization Debug")
+    return stable
 
   def NormalizeFrame(self, screen_space_frame):
     """Normalizes color on a frame in screen space.
