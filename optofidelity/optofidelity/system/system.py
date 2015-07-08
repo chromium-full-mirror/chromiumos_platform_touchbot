@@ -98,7 +98,6 @@ class BenchmarkSystem(object):
     self.backend = backend
     self.camera = camera
     self.led_calibration_subject = None
-    self.finger_calib_delay = FingerCalibDelay(0.0, 0.0)
 
   def SaveState(self, state_file):
     """Save current state to file.

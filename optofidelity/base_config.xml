@@ -8,6 +8,8 @@
     <led-calibration-subject backend-name="calibration" />
   </benchmark-system>
 
+  <benchmark-runner led-calibration-down="-4" led-calibration-up="4" />
+
   <orchestrator results="{results}" database="{database}" />
 
   <subject-type type-name="base">

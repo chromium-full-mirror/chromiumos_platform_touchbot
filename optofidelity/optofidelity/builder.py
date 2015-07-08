@@ -101,7 +101,7 @@ class SystemBuilder(object):
     Updater: {
       "chrome": ChromeUpdater,
       "manual": ManualUpdater,
-      "fake": FakeUpdater,
+      "fake": FakeUpdater
     },
     Navigator: {
       "robot": RobotNavigator,
@@ -118,6 +118,9 @@ class SystemBuilder(object):
     },
     Orchestrator: {
       "default": Orchestrator
+    },
+    BenchmarkRunner: {
+      "default": BenchmarkRunner
     }
   }
 
@@ -146,7 +149,9 @@ class SystemBuilder(object):
 
   @const_property
   def benchmark_runner(self):
-    return BenchmarkRunner(self.benchmark_system, self.video_processor)
+    element = self._config_element.find("benchmark-runner")
+    return self._CreateComponent(BenchmarkRunner, element, self.attrib,
+                                 self.benchmark_system, self.video_processor)
 
   @const_property
   def orchestrator(self):

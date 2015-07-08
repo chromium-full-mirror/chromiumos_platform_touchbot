@@ -55,7 +55,6 @@ class BenchmarkSubject(object):
     self.name = name
     self.camera = camera
     self.navigator = None
-    self.finger_calib_delay = (0.0, 0.0)
 
     self.top = 0.0
     self.left = 0.0

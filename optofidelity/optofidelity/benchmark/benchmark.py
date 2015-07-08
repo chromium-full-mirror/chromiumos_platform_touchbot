@@ -46,7 +46,7 @@ class Benchmark(object):
     """
     self._delegate = delegate
     self.name = name
-    self.finger_calib_delay = (0.0, 0.0)
+    self.led_calib_delays = (0.0, 0.0)
 
     self.screen_calibration = screen_calibration
     self.framerate = None
@@ -64,7 +64,6 @@ class Benchmark(object):
     self.results.metadata["subject_name"] = subject.name
     self.video = self._delegate.ExecuteOnSubject(subject)
     self.framerate = self.video.framerate
-    self.finger_calib_delay = subject.finger_calib_delay
     self.trace = None
     self.results.measurements = None
     return self.video
@@ -87,7 +86,7 @@ class Benchmark(object):
     self.trace = video_processor.ProcessVideo(self.video,
                                               self.screen_calibration,
                                               debug_flags)
-    self.trace.ApplyLEDCalib(*self.finger_calib_delay)
+    self.trace.ApplyLEDCalib(*self.led_calib_delays)
 
     self.results.measurements = None
 

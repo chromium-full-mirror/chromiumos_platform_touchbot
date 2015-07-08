@@ -47,6 +47,16 @@ class BenchmarkRunner(object):
     self._progress = ProgressPrinter(_log)
     self._screen_calibration = None
     self._current_subject = None
+    self.led_calib_delays = (0.0, 0.0)
+
+  @classmethod
+  def FromConfig(cls, parameters, children, benchmark_system, video_processor):
+    self = cls(benchmark_system, video_processor)
+    down = parameters.get("led-calibration-down")
+    up = parameters.get("led-calibration-up")
+    self.led_calib_delays = (float(down) if down else 0.0,
+                             float(up) if up else 0.0)
+    return self
 
   @contextmanager
   def UseSubject(self, subject):
@@ -77,7 +87,9 @@ class BenchmarkRunner(object):
                       metadata):
     delegate_type = self.BENCHMARK_TYPES[benchmark_type]
     delegate = delegate_type(activity, parameters)
-    return Benchmark(name, delegate, metadata, self._screen_calibration)
+    benchmark = Benchmark(name, delegate, metadata, self._screen_calibration)
+    benchmark.led_calib_delays = self.led_calib_delays
+    return benchmark
 
   def RunBenchmark(self, benchmark):
     """Run benchmark on subject picked with UseSubject.
