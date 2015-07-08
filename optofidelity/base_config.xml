@@ -1,4 +1,6 @@
-<optofidelity log-config="log_config.json">
+<optofidelity log-config="log_config.json"
+              results="gs://touchbot/optofidelity/benchmark_results"
+              database="filecontents:results_database.url">
   <benchmark-system>
     <backend type="tnt" host="192.168.0.11" port="8000" />
     <camera type="phantom" host="192.168.0.4" />
@@ -6,8 +8,7 @@
     <led-calibration-subject backend-name="calibration" />
   </benchmark-system>
 
-  <orchestrator results="gs://touchbot/optofidelity/benchmark_results"
-                database="filecontents:results_database.url" />
+  <orchestrator results="{results}" database="{database}" />
 
   <subject-type type-name="base">
     <benchmark name="tap" type="tap" activity="tap" />

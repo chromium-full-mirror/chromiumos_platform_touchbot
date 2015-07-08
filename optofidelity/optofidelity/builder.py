@@ -131,6 +131,7 @@ class SystemBuilder(object):
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
     self._config_element = config_element
+    self.attrib = config_element.attrib
     self._SetupLogging()
 
   @const_property
@@ -141,7 +142,7 @@ class SystemBuilder(object):
   @const_property
   def video_processor(self):
     element = self._config_element.find("video-processor")
-    return self._CreateComponent(VideoProcessor, element, {})
+    return self._CreateComponent(VideoProcessor, element, self.attrib)
 
   @const_property
   def benchmark_runner(self):
@@ -150,7 +151,7 @@ class SystemBuilder(object):
   @const_property
   def orchestrator(self):
     element = self._config_element.find("orchestrator")
-    orchestrator = self._CreateComponent(Orchestrator, element, {},
+    orchestrator = self._CreateComponent(Orchestrator, element, self.attrib,
         self.benchmark_system, self.benchmark_runner)
     for dut_elem in self._config_element.iter("dut"):
       for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
@@ -333,7 +334,8 @@ class SystemBuilder(object):
         return file_obj.read()
     if "{" in value and "}" in value:
       for key, context_value in context.iteritems():
-        value = value.replace("{%s}" % key, context_value)
+        parsed = self._ParseValue(context_value)
+        value = value.replace("{%s}" % key, parsed)
     return value
 
   def _CreateComponent(self, interface_type, element, context, *extra_args):

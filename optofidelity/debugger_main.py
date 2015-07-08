@@ -1,0 +1,75 @@
+#! /usr/bin/env python
+# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+"""Main module for debugging command line interface"""
+import logging
+logging.basicConfig(level=logging.WARN)
+logging.getLogger("optofidelity").setLevel(level=logging.DEBUG)
+logging.captureWarnings(True)
+
+from optparse import OptionParser
+import os
+
+from optofidelity.benchmark import Benchmark
+from optofidelity.detection import (MultithreadedVideoProcessor,
+                                    ScreenCalibration,
+                                    SinglethreadedVideoProcessor)
+from optofidelity.reporting import BenchmarkReport
+from optofidelity.builder import SystemBuilder
+from optofidelity.util import GSPathExists, GSDownload, ProgressBar
+
+usage_string = """
+"""
+
+CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
+
+def ProcessBenchmark(url_or_uid, what, debug_flags):
+  debug_flags += ["viewer"]
+  builder = SystemBuilder.FromFile("dev_config.xml")
+
+  if os.path.exists(url_or_uid) or url_or_uid.startswith("gs://"):
+    url = url_or_uid
+  else:
+    uid = url_or_uid
+    url = os.path.join(CACHE_DIR, uid)
+    if not os.path.exists(url):
+      gs_url = os.path.join(builder.attrib["results"], uid)
+      with ProgressBar("Downloading %s" % gs_url):
+        def CacheFile(filename):
+          gs_path = os.path.join(gs_url, filename)
+          if GSPathExists(gs_path):
+            GSDownload(gs_path, url)
+        os.mkdir(url)
+        CacheFile("benchmark.pickle")
+        CacheFile("video.avi")
+
+  benchmark = Benchmark.Load(url)
+  try:
+    if what in ("all", "video"):
+      video_processor = SinglethreadedVideoProcessor()
+      benchmark.ProcessVideo(video_processor, debug_flags)
+    if what in ("all", "video", "trace"):
+      benchmark.ProcessTrace()
+    if what in ("all", "video", "trace", "report"):
+      report = BenchmarkReport(url)
+      report.GenerateReport(benchmark.results, benchmark.trace,
+                            benchmark.screen_calibration, benchmark.video)
+  finally:
+    benchmark.Save(url, debug_info=True)
+
+def Main():
+  usage = usage_string
+  parser = OptionParser(usage=usage)
+  parser.add_option("--debug","-d",
+                    dest="debug_flags", default="",
+                    help="Dump flags.")
+  parser.add_option("--process", "-p",
+                    dest="process", default=None,
+                    help="Process local files")
+
+  (options, args) = parser.parse_args()
+  ProcessBenchmark(args[0], options.process, options.debug_flags.split(","))
+
+if __name__ == "__main__":
+  Main()

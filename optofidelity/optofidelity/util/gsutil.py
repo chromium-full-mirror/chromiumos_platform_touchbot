@@ -85,6 +85,8 @@ def GSOpenFile(url, mode):
     with open(gs_file, mode) as file_object:
       yield file_object
 
+def GSDownload(url, target_dir):
+  _GSCopy(url, target_dir, True)
 
 def _GSList(path):
   command = ["gsutil", "ls", path]
