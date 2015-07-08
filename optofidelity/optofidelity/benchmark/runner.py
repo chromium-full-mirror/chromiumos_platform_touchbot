@@ -106,9 +106,13 @@ class BenchmarkRunner(object):
       self._progress.Exception(subject.name,
                                "Caught Exception. Retrying in safe mode.")
       # Failed? Re-try using safe-mode Open.
-      subject.navigator.Reset()
-      subject.navigator.Open(True)
-      return self._CalibrateScreen(subject)
+      try:
+        subject.navigator.Reset()
+        subject.navigator.Open(True)
+        return self._CalibrateScreen(subject)
+      except:
+        subject.navigator.Cleanup()
+        raise
 
   def _ExecuteBenchmark(self, benchmark):
     """Execute all steps of benchmark processing.
