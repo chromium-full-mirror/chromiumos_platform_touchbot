@@ -72,7 +72,7 @@ def get_finger_positions(filename):
             fingers[curr_id]['x'] = get_evtest_value(line)
         elif 'ABS_MT_POSITION_Y' in line:
             fingers[curr_id]['y'] = get_evtest_value(line)
-        elif 'SYN' in line and curr_id != -1:
+        elif 'SYN' in line and curr_id != -1 and curr_id in fingers:
             t = get_evtest_timestamp(line)
             last_x = x = fingers[curr_id].get('x', last_x)
             last_y = y = fingers[curr_id].get('y', last_y)
