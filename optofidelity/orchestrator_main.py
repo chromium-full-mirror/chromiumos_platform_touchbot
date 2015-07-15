@@ -32,7 +32,7 @@ version is implied.
 
   "-v 42-:42" Every version that starts with 42.
   "-v installed:" All versions since the currently installed one.
-  "-v :42" All versions until and including the last one that starts with 42.
+  "-v :42" All versions until the last one that starts with 42..
 
 The wildcard * can be replaced with any glob such as:
 
@@ -48,14 +48,18 @@ Whereas the names of benchmarks are put together in the following format:
 """
 
 
-def RunBenchmarks(config, matches, versions, info, skip_installed):
-  builder = SystemBuilder.FromFile(config)
+def RunBenchmarks(matches, options):
+  builder = SystemBuilder.FromFile(options.config)
+  if options.prepare:
+    builder.orchestrator.PrepareSubjects()
   for match in matches:
-    if info:
+    if options.info:
       builder.orchestrator.PrintInfo(match)
+    elif options.setup:
+      builder.orchestrator.SetUpSubjects(match, options.versions)
     else:
-      builder.orchestrator.UpdateAndRunBenchmarks(match, versions,
-                                                  skip_installed)
+      builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
+                                                  options.skip_installed)
 
 
 def Main():
@@ -70,15 +74,20 @@ def Main():
   parser.add_option("--info", "-i",
                     dest="info", default=False, action="store_true",
                     help="Show info on subjects and benchmarks."),
+  parser.add_option("--prepare", "-p",
+                    dest="prepare", default=False, action="store_true",
+                    help="Reset system and prepare devices.")
   parser.add_option("--config", "-c",
                     dest="config", default="dev_config.xml",
                     help="Specify config file to use.")
+  parser.add_option("--setup",
+                    dest="setup", default=False, action="store_true",
+                    help="Setup specified devices.")
 
   (options, args) = parser.parse_args()
   matches = args if len(args) > 0 else ["*"]
 
-  RunBenchmarks(options.config, matches, options.versions, options.info,
-                options.prepare, options.skip_installed)
+  RunBenchmarks(matches, options)
 
 
 if __name__ == "__main__":

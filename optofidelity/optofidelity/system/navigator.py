@@ -25,6 +25,9 @@ class Navigator(object):
     self._is_open = False
     self._current_activity = None
 
+  def SetUp(self):
+    pass
+
   def Verify(self):
     pass
 
@@ -322,9 +325,7 @@ class WebADBNavigator(BaseADBNavigator):
         self._resources.append(child_attrib["file"])
     return self
 
-  def _Open(self, safe):
-    super(WebADBNavigator, self)._Open(safe)
-
+  def SetUp(self):
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
     for filename in (self._resources + self._activity_files.values()):
       basename = os.path.basename(filename)
@@ -365,8 +366,9 @@ class NativeADBNavigator(BaseADBNavigator):
         self.AddActivity(child_attrib["name"], child_attrib)
     return self
 
-  def _Open(self, safe):
-    super(NativeADBNavigator, self)._Open(safe)
+  def SetUp(self):
+    if self._adb.GetPackageVersion(self._package_name):
+      self._adb.UninstallPackage(self._package_name)
     self._adb.InstallAPK(self._apk_file)
 
   def AddActivity(self, activity_name, parameters):

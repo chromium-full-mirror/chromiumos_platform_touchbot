@@ -19,4 +19,7 @@
   <dut name="nexus7" adb="071c76bf" type="nexus_tablet" />
   <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" />
 
+  <dut name="temp" adb="00656e9429c02d0f">
+    <subject name="native" type="android_native" margin="(10, 10)"/>
+  </dut>
 </optofidelity>

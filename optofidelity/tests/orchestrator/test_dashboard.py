@@ -10,6 +10,8 @@ from optofidelity.orchestrator.omaha import GetLatestChromeVersions
 
 from . import test_data
 
+import gspread
+
 #ENDPOINT_URL = "https://chromeperf.appspot.com/add_point"
 ENDPOINT_URL = None
 
@@ -29,3 +31,22 @@ class DashboardTests(TestCase):
     for version in GetLatestChromeVersions("beta"):
       self.dashboard.ReportResults(self.benchmark.results, version,
                                    "http://fake.com")
+
+class SpreadsheetTests(TestCase):
+  def testSpreadsheets(self):
+
+
+    # Login with your Google account
+    gc = gspread.login('thedude@abid.es', 'password')
+
+    # WARNING: The code above uses ClientLogin and was disabled
+    # on April 20, 2015.
+
+    # Please use OAuth2 authorization to access Google Sheets.
+
+    # Open a worksheet from spreadsheet with one shot
+    wks = gc.open("Where is the money Lebowski?").sheet1
+
+    wks.update_acell('B2', "it's down there somewhere, let me take another look.")
+
+    print wks.get_all_values()

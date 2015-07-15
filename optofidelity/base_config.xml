@@ -14,6 +14,11 @@
   <orchestrator results="{results}" database="{database}" />
 
   <subject-type type-name="base">
+    <preparer type="adb_screen_off" adb="{adb}" />
+    <setup type="adb_settings" adb="{adb}">
+      <setting name="screen_brightness" value="255" />
+      <setting name="screen_brightness_mode" value="0" />
+    </setup>
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>

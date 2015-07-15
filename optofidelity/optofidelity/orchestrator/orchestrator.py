@@ -111,6 +111,40 @@ class Orchestrator(object):
     """
     self._subjects[subject.name] = subject
 
+  def SetUpSubjects(self, match, versions_string):
+    """Runs setup on all subjects matching 'match'.
+
+    :param str match: a glob on subject names
+    """
+    for subject in self._subjects.itervalues():
+      if not fnmatch(subject.name, match):
+        continue
+      self._progress.Info(subject.name, "Setting up Subject")
+
+      subject.SetUp()
+
+      if versions_string:
+        versions = subject.GetMatchingVersions(versions_string, False)
+        if len(versions) > 1:
+          self._progress.Error(subject.name, "Pick a single version.")
+        elif len(versions) == 0:
+          self._progress.Error(subject.name, "Cannot find version.")
+        else:
+          if not subject.Update(versions[0]):
+            self._progress.Error(subject.name, "Cannot update subject.")
+
+      if not subject.Verify():
+        self._progress.Error(subject.name, "Subject is in a bad state.")
+
+  def PrepareSubjects(self):
+    """Gets all subjects into testable state.
+
+    :type subject: OrchestratorSubject
+    """
+    for subject in self._subjects.itervalues():
+      self._progress.Info(subject.name, "Preparing")
+      subject.Prepare()
+
   def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
     """Runs updates and benchmarks on all bencharks matching 'match'
 

@@ -10,6 +10,9 @@ from safetynet import List
 from optofidelity.system import BenchmarkSubject
 from optofidelity.util import ProgressPrinter
 
+from .subject_setup import SubjectSetup
+from .subject_preparer import SubjectPreparer
+
 _log = logging.getLogger(__name__)
 BenchmarkDefinition = namedtuple("BenchmarkDefinition",
                                  ["name", "benchmark_type", "activity",
@@ -21,6 +24,8 @@ class OrchestratorSubject(BenchmarkSubject):
     self.benchmark_defs = {}
     self.updater = None
     self.dashboard = None
+    self.setups = []
+    self.preparer = []
     self._progress = ProgressPrinter(_log)
 
   @classmethod
@@ -45,6 +50,17 @@ class OrchestratorSubject(BenchmarkSubject):
       self.navigator.Verify()
       return True
     return False
+
+  def SetUp(self):
+    with self._progress.LogExceptions(self.name, "Setting up subject"):
+      self.navigator.SetUp()
+      for setup in self.setups:
+        setup.SetUp()
+
+  def Prepare(self):
+    with self._progress.LogExceptions(self.name, "Preparing subject"):
+      for preparer in self.preparer:
+        preparer.Prepare()
 
   def Update(self, version):
     """Update subject to a specific version.

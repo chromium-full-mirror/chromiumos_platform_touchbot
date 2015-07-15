@@ -20,9 +20,11 @@ from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
 from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ChromePerfDashboard, ChromeUpdater, Dashboard,
+from .orchestrator import (ADBScreenOffPreparer, ADBSettingsSetup,
+                           ChromePerfDashboard, ChromeUpdater, Dashboard,
                            FakeUpdater, ManualUpdater, Orchestrator,
-                           OrchestratorSubject, Updater)
+                           OrchestratorSubject, SubjectPreparer, SubjectSetup,
+                           Updater)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
@@ -121,6 +123,12 @@ class SystemBuilder(object):
     },
     BenchmarkRunner: {
       "default": BenchmarkRunner
+    },
+    SubjectSetup: {
+      "adb_settings": ADBSettingsSetup
+    },
+    SubjectPreparer: {
+      "adb_screen_off": ADBScreenOffPreparer
     }
   }
 
@@ -238,25 +246,33 @@ class SystemBuilder(object):
     subject_name = subject_elem.attrib["name"]
     dut_name = dut_elem.attrib["name"]
 
-    additional = dut_elem.attrib.copy()
-    additional.update(subject_elem.attrib)
+    context = dut_elem.attrib.copy()
+    context.update(subject_elem.attrib)
 
     name = "%s/%s" % (dut_name, subject_name)
     navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
-                                      additional, dut_backend)
+                                      context, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
-                                    additional, dut_backend)
+                                    context, dut_backend)
     dashboard = self._CreateComponent(Dashboard, subject_elem.find("dashboard"),
-                                      additional, name)
+                                      context, name)
 
     subject = OrchestratorSubject(name, dut_backend, system.camera)
     subject.navigator = navigator
     subject.updater = updater
     subject.dashboard = dashboard
 
+    for preparer_elem in subject_elem.iter("preparer"):
+      preparer = self._CreateComponent(SubjectPreparer, preparer_elem, context)
+      subject.preparer.append(preparer)
+
+    for setup_elem in subject_elem.iter("setup"):
+      setup = self._CreateComponent(SubjectSetup, setup_elem, context)
+      subject.setups.append(setup)
+
     margin_attrib = subject_elem.get("margin")
     if margin_attrib:
-      margin_attrib = self._ParseValue(margin_attrib, additional)
+      margin_attrib = self._ParseValue(margin_attrib, context)
       subject.margin = self._ParseCoord(margin_attrib)
 
     for benchmark_elem in subject_elem.iter("benchmark"):

@@ -9,4 +9,6 @@ running benchmarks.
 from .dashboard import ChromePerfDashboard, Dashboard
 from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject
+from .subject_preparer import SubjectPreparer, ADBScreenOffPreparer
+from .subject_setup import SubjectSetup, ADBSettingsSetup
 from .updater import ChromeUpdater, FakeUpdater, ManualUpdater, Updater
