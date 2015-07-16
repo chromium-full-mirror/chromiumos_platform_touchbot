@@ -273,6 +273,14 @@ class SystemBuilder(object):
 
     margin_attrib = subject_elem.get("margin")
     if margin_attrib:
+      margin_attrib = self._ParseValue(margin_attrib, dut_elem.attrib)
+      subject.margin = self._ParseCoord(margin_attrib)
+
+    exposure = self._ParseValue(subject_elem.get("exposure"), dut_elem.attrib)
+    if exposure:
+      subject.exposure = float(exposure)
+
+    if margin_attrib:
       margin_attrib = self._ParseValue(margin_attrib, context)
       subject.margin = self._ParseCoord(margin_attrib)
 
@@ -354,10 +362,9 @@ class SystemBuilder(object):
       path = os.path.join(self._root_dir, filename)
       with open(path, "r") as file_obj:
         return file_obj.read()
-    if "{" in value and "}" in value:
-      for key, context_value in context.iteritems():
-        parsed = self._ParseValue(context_value)
-        value = value.replace("{%s}" % key, parsed)
+    if value.startswith("{") and value.endswith("}"):
+      key = value[1:-1]
+      value = self._ParseValue(context.get(key))
     return value
 
   def _CreateComponent(self, interface_type, element, context, *extra_args):

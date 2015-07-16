@@ -14,11 +14,12 @@ class HighSpeedCamera(object):
   __metaclass__ = InterfaceMeta
 
   @abstractmethod
-  def Prepare(self, duration, fps=None):
+  def Prepare(self, duration, fps=None, exposure=None):
     """Prepare a recording of duration.
 
     :param int duration: Duration in ms to record.
     :param Optional[int] fps: How many frames per second to record.
+    :param Optional[float] exposure: Exposure time in ms.
     """
 
   @abstractmethod

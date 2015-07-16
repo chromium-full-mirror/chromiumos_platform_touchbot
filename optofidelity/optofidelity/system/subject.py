@@ -54,6 +54,7 @@ class BenchmarkSubject(object):
     """
     self.name = name
     self.camera = camera
+    self.exposure = None
     self.navigator = None
 
     self.top = 0.0
@@ -192,7 +193,7 @@ class BenchmarkSubject(object):
 
     :returns VideoReader: A video reader containing the calibration video.
     """
-    self.camera.Prepare(1000)
+    self.camera.Prepare(1000, exposure=self.exposure)
     self.navigator.OpenActivity(self.CALIBRATION_ACTIVITY)
     self.MoveRobotOutOfCameraView()
     self.camera.Trigger()

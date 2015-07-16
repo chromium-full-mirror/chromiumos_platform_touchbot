@@ -32,7 +32,7 @@ class TapDelegate(BenchmarkDelegate):
   def ExecuteOnSubject(self, subject):
     duration = (self.BASE_DURATION +
                 self.PER_TAP_DURATION * self.NUM_MEASUREMENTS)
-    subject.camera.Prepare(duration, self.CAMERA_FRAMERATE)
+    subject.camera.Prepare(duration, self.CAMERA_FRAMERATE, subject.exposure)
     center = subject.height / 2.0
 
     subject.MoveOnTestPlane(center, 10.0, blocking=True)

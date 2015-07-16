@@ -98,7 +98,7 @@ class FakeHighSpeedCamera(HighSpeedCamera):
   def FromConfig(cls, attributes, children):
     return cls()
 
-  def Prepare(self, duration, fps=None):
+  def Prepare(self, duration, fps=None, exposure=None):
     self.fps = fps or self.fps
     self.num_frames = duration * self.fps / 1000
     _log.info("Prepare Camera")

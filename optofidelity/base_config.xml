@@ -13,7 +13,7 @@
 
   <orchestrator results="{results}" database="{database}" />
 
-  <subject-type type-name="base">
+  <subject-type type-name="base" exposure="{exposure}">
     <preparer type="adb_screen_off" adb="{adb}" />
     <setup type="adb_settings" adb="{adb}">
       <setting name="screen_brightness" value="255" />

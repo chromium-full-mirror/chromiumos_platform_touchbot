@@ -31,7 +31,8 @@ class LineDrawDelegate(BenchmarkDelegate):
 
     :param BenchmarkSubject subject
     """
-    subject.camera.Prepare(self.COMMANDS_DURATION, self.CAMERA_FRAMERATE)
+    subject.camera.Prepare(self.COMMANDS_DURATION, self.CAMERA_FRAMERATE,
+                           subject.exposure)
 
     # The robot will draw a line between the 'left' and 'right' location and
     # back. It will pause after the first bit of the line so the video
@@ -128,7 +129,8 @@ class LineDrawStartDelegate(BenchmarkDelegate):
 
     :param BenchmarkSubject subject
     """
-    subject.camera.Prepare(self.COMMANDS_DURATION, self.CAMERA_FRAMERATE)
+    subject.camera.Prepare(self.COMMANDS_DURATION, self.CAMERA_FRAMERATE,
+                           subject.exposure)
 
     # Height of finger down and up state in cm
     down = -1.0

@@ -136,6 +136,9 @@ class Orchestrator(object):
       if not subject.Verify():
         self._progress.Error(subject.name, "Subject is in a bad state.")
 
+      self._runner.OpenAndCalibrateSubject(subject)
+      self._runner.CloseSubject()
+
   def PrepareSubjects(self):
     """Gets all subjects into testable state.
 

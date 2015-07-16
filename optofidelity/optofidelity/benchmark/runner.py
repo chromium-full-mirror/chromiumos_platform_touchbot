@@ -163,6 +163,7 @@ class BenchmarkRunner(object):
       video_reader = subject.RecordCalibrationVideo()
       screen_calibration = self.video_processor.CreateScreenCalibration(
           video_reader)
+      screen_calibration.Validate()
       return screen_calibration
     except KeyboardInterrupt:
       raise
@@ -170,7 +171,7 @@ class BenchmarkRunner(object):
       if self._calib_video_path:
         unique_file, _ = GSFindUniqueFilename(self._calib_video_path,
                                               "calibration_", ".avi")
-        self._progress.Error(subject.name, "Failed calibration video at: %s" %
+        self._progress.Exception(subject.name, "Failed calibration video at: %s" %
                                            (unique_file,))
         video_reader.Save(unique_file)
 

@@ -99,13 +99,21 @@ class PhantomCamera(HighSpeedCamera):
   def FromConfig(cls, attrib, children):
     return cls(attrib["host"], attrib.get("port"))
 
-  def Prepare(self, duration, fps=None):
+  def Prepare(self, duration, fps=None, exposure=None):
     self._fps = fps or self.default_fps
+    if exposure is None:
+      exposure = (1.0 / float(self._fps)) * 1000.0
+    exposure_ns = exposure * 1000.0 * 1000.0
+
     self._num_frames = duration * self._fps / 1000
     if self._num_frames > self.MAX_PTFRAMES:
       raise ValueError("Cannot record more than %d frames" % self.MAX_PTFRAMES)
 
+    _log.info("Preparing recording: fps=%d, exp=%d, num_frames=%d", self._fps,
+              exposure_ns, self._num_frames)
     self._SetProperty("defc.rate", self._fps)
+    self._SetProperty("defc.exp", exposure_ns)
+    self._SetProperty("defc.edrexp", 0)
     self._SetProperty("defc.ptframes", self._num_frames)
     self._SendCommand("rec 1")
 

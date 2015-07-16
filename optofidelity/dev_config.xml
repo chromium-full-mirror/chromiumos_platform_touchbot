@@ -15,9 +15,9 @@
 
   <dut name="nexus4" adb="04f6cafb8c976e5a" type="nexus_phone" />
   <dut name="nexus5" adb="08a9896c255d540b" type="nexus_phone" />
-  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" />
+  <dut name="nexus6" adb="NP5A340401" type="nexus_phone" exposure="2" />
   <dut name="nexus7" adb="071c76bf" type="nexus_tablet" />
-  <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" />
+  <dut name="nexus9" adb="HT4AEJT02069" type="nexus_tablet" exposure="2" />
 
   <dut name="temp" adb="00656e9429c02d0f">
     <subject name="native" type="android_native" margin="(10, 10)"/>
