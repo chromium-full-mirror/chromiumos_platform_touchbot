@@ -63,6 +63,9 @@
       <activity name="tap" intent="TapActivity" />
     </navigator>
     <updater type="manual" version="0.0" />
+    <dashboard type="spreadsheet"
+               sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
+               oauth-key-file="oauth2key.json" />
   </subject-type>
 
 </optofidelity>

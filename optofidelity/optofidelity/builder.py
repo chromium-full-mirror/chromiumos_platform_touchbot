@@ -24,7 +24,7 @@ from .orchestrator import (ADBScreenOffPreparer, ADBSettingsSetup,
                            ChromePerfDashboard, ChromeUpdater, Dashboard,
                            FakeUpdater, ManualUpdater, Orchestrator,
                            OrchestratorSubject, SubjectPreparer, SubjectSetup,
-                           Updater)
+                           Updater, SpreadsheetDashboard)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
@@ -116,7 +116,8 @@ class SystemBuilder(object):
       "default": MultithreadedVideoProcessor
     },
     Dashboard: {
-      "chromeperf": ChromePerfDashboard
+      "chromeperf": ChromePerfDashboard,
+      "spreadsheet": SpreadsheetDashboard
     },
     Orchestrator: {
       "default": Orchestrator

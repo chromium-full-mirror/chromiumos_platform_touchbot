@@ -17,6 +17,22 @@ import time
 import traceback
 
 
+def AskUserContinue(message):
+  print message
+  print "Press Enter to continue"
+  sys.stdin.readline()
+
+@contextmanager
+def PrintTime(header):
+  start_time = time.time()
+  sys.stdout.write("%s: " % header)
+  sys.stdout.flush()
+  try:
+    yield
+  finally:
+    elapsed_ms = (time.time() - start_time) * 1000
+    print "%dms" % (elapsed_ms)
+
 class const_property(object):
   """Variant of the @property decorator that caches values.
 

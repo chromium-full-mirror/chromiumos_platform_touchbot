@@ -10,8 +10,7 @@ _data_dir = path.dirname(path.realpath(__file__))
 def Path(filename):
   return path.join(_data_dir, filename)
 
-def LoadTrace(filename):
-  with open(Path(filename), "r") as file_obj:
+def LoadPickle(filename):
+  with open(Path(filename), "rb") as file_obj:
     return pickle.load(file_obj)
-
-_data_dir = path.dirname(path.realpath(__file__))
+LoadTrace = LoadPickle
