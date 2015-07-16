@@ -45,23 +45,15 @@ class ScreenCalibration(object):
   """Factor by which the rectified image will be enlarged to make sure we are
      not losing any information due to interpolation."""
 
-  DIFF_UNCHANGED_MAX_MID_RANGE = 0.01
-  """If the mid-range value of a diff image exceeds this value it is considered
-     to show no change."""
-
-  REFERENCE_MIN_NUM_FRAMES = 6
-  """Minimum number of frames to use for building a reference frame."""
-
-  DIFF_CHANGE_MIN_DURATION = 2
-  """Minimum number of frames that have to show change to accept it as as
-     changing."""
-
   OUT_OF_VIEW_EDGE_PIXELS = 10
   """How many pixels of the test_area have to be at the edge of the screen
      to consider it being out of view?"""
 
-  MIN_DYNAMIC_RANGE = 0.3
-  """Minimum range between black and white."""
+  WHITE_LEVEL_MIN = 0.5
+  """Minimum level of a the white reference image."""
+
+  WHITE_LEVEL_MAX = 0.99
+  """Maximum level of a the white reference image."""
 
   def __new__(cls, black_frame, white_frame):
     """Creates new screen calibration from black and white video frames.
@@ -130,40 +122,37 @@ class ScreenCalibration(object):
     with video_reader.PrefetchEnabled():
       frames = video_reader.Frames()
 
-      # Accumulator to calculate mean images.
       i, prev_frame = frames.next()
-      mean_accum = np.zeros(prev_frame.shape)
-      mean_accum_num = 0
-      last_frame_below_thresh = 0
+      change_direction = 0
+      change_duration = 0
 
       for i, frame in frames:
         # Calculate the mid-range value of the inter-frame difference.
         # This reliably describes the general direction of change.
         diff = frame - prev_frame
         midrange = Filter.StableMidRange(diff)
+        _log.debug("%4d: midrange=%.2f, dir=%d, dur=%d", i, midrange,
+                  change_direction, change_duration)
 
-        if np.abs(midrange) < cls.DIFF_UNCHANGED_MAX_MID_RANGE:
-          # Add frame to accumulator
-          mean_accum += frame
-          mean_accum_num += 1
-          last_frame_below_thresh = i
-        elif i - last_frame_below_thresh > cls.DIFF_CHANGE_MIN_DURATION:
-          # The screen is in the process of switching colors.
-          if mean_accum_num > cls.REFERENCE_MIN_NUM_FRAMES:
-            # We collected enough samples for a solid reference image.
-            ref_images.append(mean_accum / mean_accum_num)
-            if len(ref_images) >= 2:
-              break
-          # Reset mean accumulator
-          mean_accum_num = 0
-          mean_accum = np.zeros(prev_frame.shape)
+        if change_direction == 0:
+          # Once the screen is clearly changing in one direction, make note
+          # of the direction.
+          if np.abs(midrange) > 0.05:
+            change_direction = np.sign(midrange)
+            change_duration = 1
+        else:
+          change_duration += 1
+          if np.sign(midrange) != change_direction:
+            # Wait until the screen is flipping it's change direction, this is
+            # a reference frame we want to pick.
+            if change_duration > 3:
+              ref_images.append(prev_frame)
+              if len(ref_images) >= 2:
+                break
+            change_direction = 0
+            change_duration = 0
 
-        _log.debug("%4d: midrange=%.2f, N=%d", i, midrange, mean_accum_num)
         prev_frame = frame
-
-    # Add the last accumulation in case we don't have enough reference images
-    if mean_accum_num > cls.REFERENCE_MIN_NUM_FRAMES and len(ref_images) < 2:
-      ref_images.append(mean_accum / mean_accum_num)
 
     if len(ref_images) < 2:
       raise Exception("Cannot find flashing screen")
@@ -245,17 +234,16 @@ class ScreenCalibration(object):
     frame_border[0, :] = True
     frame_border[width - 1, :] = True
     border_overlap = np.sum(frame_border * self.shape.mask)
-    _log.debug("border_overlap=%.2f", border_overlap)
+    _log.info("border_overlap=%.2f", border_overlap)
 
     if border_overlap > self.OUT_OF_VIEW_EDGE_PIXELS:
       raise Exception("Screen out of camera view")
 
-    # Check dynamic range. We need enough resolution to distinguish shades
-    # between black and white during later processing.
-    dynamic_range = np.mean(self.white_reference - self.black_reference)
-    _log.debug("dynamic_range=%.2f", dynamic_range)
-    if dynamic_range <  self.MIN_DYNAMIC_RANGE:
-      raise Exception("Not enough dynamic range.")
+    _log.info("white_mean=%.2f", np.mean(self.white_reference))
+    if np.mean(self.white_reference) > self.WHITE_LEVEL_MAX:
+      raise Exception("Calibration is over exposed")
+    if np.mean(self.white_reference) < self.WHITE_LEVEL_MIN:
+      raise Exception("Calibration is under exposed")
 
   def CameraToScreenSpace(self, camera_space_frame):
     """Transform camera space frame into screen space.
@@ -316,7 +304,6 @@ class ScreenCalibration(object):
     :returns Shape: shape object of the detected screen
     """
     delta = Filter.Truncate(white_frame - black_frame)
-
     margin_kernel = morphology.disk(self.SHAPE_MARGIN)
     binary = delta > self.DIFF_THRESHOLD
     binary = morphology.binary_closing(binary, self.CLOSING_KERNEL)

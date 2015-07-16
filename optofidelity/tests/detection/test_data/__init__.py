@@ -20,16 +20,19 @@ def CalibrationBlackImage():
   return LoadImage("calibration_black.png")
 
 def CalibrationVideo():
-  return FileVideoReader(Path("calibration.avi"), 300)
+  return LoadVideo("calibration.avi")
 
 def TouchMoveVideo():
-  return FileVideoReader(Path("touch_move.avi"), 300)
+  return LoadVideo("touch_move.avi")
 
 def LineDrawTrace():
   return pickle.load(Path("line_draw_trace.pickle"))
 
 def Path(filename):
   return path.join(_data_dir, filename)
+
+def LoadVideo(filename):
+  return FileVideoReader(Path(filename), 300)
 
 def LoadImage(filename):
   image = io.imread(Path(filename))

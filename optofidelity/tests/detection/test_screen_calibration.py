@@ -27,8 +27,8 @@ class ScreenCalibrationTests(TestCase):
     avg_black = np.mean(calibration.black_reference)
     max_white_deviation = np.max(calibration.white_reference - avg_white)
     max_black_deviation = np.max(calibration.black_reference - avg_black)
-    self.assertLess(np.abs(max_white_deviation), 0.05)
-    self.assertLess(np.abs(max_black_deviation), 0.05)
+    self.assertLess(np.abs(max_white_deviation), 0.1)
+    self.assertLess(np.abs(max_black_deviation), 0.1)
 
   def testCalibrationFromImages(self):
     calibration = self.createCalibration()
@@ -38,6 +38,12 @@ class ScreenCalibrationTests(TestCase):
     with test_data.CalibrationVideo() as video_reader:
       calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
       self.assertCalibrationIsConsistent(calibration)
+
+  def testCalibrationIssue(self):
+    for filename in ("calibration_issue_1.avi", ):
+      with test_data.LoadVideo(filename) as video_reader:
+        calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
+        self.assertCalibrationIsConsistent(calibration)
 
   def testCompactPickling(self):
     before = self.createCalibration()
@@ -62,6 +68,11 @@ class ScreenCalibrationTests(TestCase):
 
     self.assertTrue(np.allclose(black_normalized, 0))
     self.assertTrue(np.allclose(white_normalized, 1))
+
+  def testPWMCalibration(self):
+    calib = ScreenCalibration.FromScreenFlashVideo(
+        test_data.LoadVideo("pwm_calibration.avi"))
+    self.assertCalibrationIsConsistent(calib)
 
   def testStabilization(self):
     self.skipTest("Manual verification required.")
