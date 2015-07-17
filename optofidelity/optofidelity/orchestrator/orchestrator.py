@@ -4,6 +4,7 @@
 from collections import defaultdict
 from datetime import datetime
 from fnmatch import fnmatch
+import cPickle as pickle
 import logging
 import os
 import sys
@@ -323,6 +324,9 @@ class Orchestrator(object):
     results_url, uid = self._FindUniqueResultsURL(benchmark_time)
     if self._generate_reports:
       with GSFolder(results_url) as report_path:
+        pickle_file = open(os.path.join(report_path, "results.pickle"), "wb")
+        pickle.dump(aggregate, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
+
         report = AggregateReport(report_path, xkcd=self._xkcd)
         report.GenerateReport(aggregate)
 
