@@ -67,6 +67,16 @@ class CalibratedFrame(object):
         self.camera_space_prev_frame)
 
   @const_property
+  def screen_space_prev_normalized(self):
+    """:returns np.ndarray: color normalized frame in screen space."""
+    self._require_calibration()
+    if self.camera_space_prev_frame is None:
+      return None
+    normalized = self._screen_calibration.NormalizeFrame(
+        self.screen_space_prev_frame)
+    return Filter.Truncate(normalized)
+
+  @const_property
   def screen_space_normalized(self):
     """:returns np.ndarray: color normalized frame in screen space."""
     self._require_calibration()
@@ -81,8 +91,8 @@ class CalibratedFrame(object):
   def screen_space_delta(self):
     """:returns np.ndarray: inter-frame delta in screen space."""
     self._require_calibration()
-    if self.screen_space_prev_frame is not None:
-      return self.screen_space_frame - self.screen_space_prev_frame
+    if self.screen_space_prev_normalized is not None:
+      return self.screen_space_normalized - self.screen_space_prev_normalized
     else:
       return np.zeros(self.screen_space_shape)
 

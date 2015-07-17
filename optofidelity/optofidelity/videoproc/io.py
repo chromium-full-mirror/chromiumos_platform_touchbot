@@ -29,7 +29,7 @@ def SaveImage(filename, image):
   # in many test cases. We want to ignore this warning.
   with warnings.catch_warnings():
     warnings.simplefilter("ignore", UserWarning)
-    skimage.io.imsave(filename, image)
+    skimage.io.imsave(filename, skimage.img_as_ubyte(image))
 
 
 class PrefetchEnabled(object):

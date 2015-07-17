@@ -5,7 +5,7 @@
 from safetynet import TypecheckMeta
 import cv2
 
-from .io import VideoReader
+from .io import VideoReader, SaveImage
 from .types import RGBImage
 
 
@@ -57,9 +57,9 @@ class InteractiveVideoViewer(object):
       yield frame_index, self._current_frame
 
       cv2.imshow("Interactive View Viewer", self._current_frame)
-      frame_index = self._HandleUserInput(frame_index)
+      frame_index = self._HandleUserInput(frame_index, video_reader)
 
-  def _HandleUserInput(self, frame_index):
+  def _HandleUserInput(self, frame_index, video_reader):
     if self._interactive:
       # Pause and wait for user input
       key = chr(cv2.waitKey() & 0xFF)
@@ -75,6 +75,10 @@ class InteractiveVideoViewer(object):
         return frame_index + 1
       elif key == "q":
         return -1
+      elif key == "s":
+        SaveImage("%04d.png" % frame_index, video_reader.FrameAt(frame_index))
+        SaveImage("%04d_debug.png" % frame_index, self._current_frame)
+        return frame_index
       return frame_index
     else:
       # Get user input without pausing
@@ -86,6 +90,7 @@ class InteractiveVideoViewer(object):
         print "  Press h/l to move by 10 frames"
         print "  Press g/; to move by 100 frames"
         print "  Press c to continue playback"
+        print "  Press s to save frame"
         print "  Press q to quit viewer"
         return frame_index
       elif key == "q":

@@ -7,8 +7,8 @@ import logging
 import numpy as np
 import numpy.linalg as linalg
 
-from optofidelity.videoproc import Canvas, Filter, Shape
-
+from optofidelity.videoproc import Canvas, Filter, Shape, DebugView
+import skimage.filters
 from ._detector import Detector
 from .events import Event, LEDEvent
 
@@ -25,8 +25,8 @@ class LEDDetector(Detector):
   """Margin around the screen when blacking out the screen for LED
      detection."""
 
-  LED_MEDIAN_FILTER_STRENGTH = 5
-  """Kernel size of the minimum rank order filter applied for LED detection."""
+  LED_GAUSSIAN_SIGMA = 5.0
+  """Sigma of gaussian filter for smoothing."""
 
   LED_MIN_DIFF_THRESHOLD = 0.2
   """Pixels that have changed by at least this amount from the last frame are
@@ -35,17 +35,18 @@ class LEDDetector(Detector):
   LED_MIN_AREA = 100
   """Minimum size of an LED in the min filtered and thresholded picture."""
 
-  SCREEN_MAX_AVG_DELTA = 0.01
+  SCREEN_MAX_AVG_DELTA = 0.1
   """Maximum average delta of the screen before suppressing LED events."""
 
   DEBOUNCE_DURATION = 5
   """Number of camera frames to ignore after an LED switched."""
 
-  LED_MIN_DISTANCE = 20
+  LED_MIN_DISTANCE = 50
   """Distance [in px] between two flashes to be considered separate LEDs."""
 
   def __init__(self):
     self.recent_flash_times = []
+    self.expected_location = None
 
   def Preprocess(self, calib_frame, debugger):
     def log(msg, *params):
@@ -64,16 +65,17 @@ class LEDDetector(Detector):
     # of the robot to look like a flashing LED. So We want to suppress any
     # LED events during this time.
     if calib_frame.has_calibration:
-      screen_avg_delta = np.mean(np.abs(calib_frame.screen_space_delta))
+      screen_profile = np.mean(calib_frame.screen_space_delta, 0)
+      screen_avg_delta = np.max(np.abs(screen_profile))
       log("screen_avg_delta=%.2f", screen_avg_delta)
       if screen_avg_delta > self.SCREEN_MAX_AVG_DELTA:
         log("Suspending LED detection")
         return []
 
     # Look for an LED shaped large change in the masked area.
-    delta = np.abs(calib_frame.camera_space_delta * off_screen_mask)
-    delta = Filter.Median(delta, disk_size=self.LED_MEDIAN_FILTER_STRENGTH)
-    binary = delta > self.LED_MIN_DIFF_THRESHOLD
+    delta = calib_frame.camera_space_delta * off_screen_mask
+    delta = skimage.filters.gaussian_filter(delta, self.LED_GAUSSIAN_SIGMA)
+    binary = np.abs(delta) > self.LED_MIN_DIFF_THRESHOLD
 
     flashes = []
     for shape in Shape.Shapes(binary):
@@ -84,10 +86,12 @@ class LEDDetector(Detector):
         draw_color = Canvas.RED
       if debugger:
         debugger.camera_space_canvas.DrawMask(draw_color, shape.contour)
-
     return flashes
 
   def GenerateEvents(self, preprocessed_data, frame_index, debugger):
+    def log(msg, *params):
+      _log.debug("%04d: " + msg, frame_index, *params)
+
     flashes = preprocessed_data
     updated = [(flash, time) for flash, time in self.recent_flash_times
                              if time + self.DEBOUNCE_DURATION >= frame_index]
@@ -115,6 +119,13 @@ class LEDDetector(Detector):
       if has_recently_flashed(flash):
         continue
       self.recent_flash_times.append((flash, frame_index))
+      if self.expected_location is not None:
+        distance = linalg.norm(flash.coords - self.expected_location)
+        if distance > self.LED_MIN_DISTANCE:
+          log("Supressing LED that's away from the usual location.")
+          continue
+      else:
+        self.expected_location = flash.coords
 
       state = Event.STATE_ON if flash.color > 0 else Event.STATE_OFF
       events.append(LEDEvent(frame_index, state=state))

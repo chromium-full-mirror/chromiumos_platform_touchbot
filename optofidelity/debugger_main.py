@@ -3,21 +3,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Main module for debugging command line interface"""
-import logging
-logging.basicConfig(level=logging.WARN)
-logging.getLogger("optofidelity").setLevel(level=logging.DEBUG)
-logging.captureWarnings(True)
-
 from optparse import OptionParser
+import logging
 import os
 
 from optofidelity.benchmark import Benchmark
+from optofidelity.builder import SystemBuilder
 from optofidelity.detection import (MultithreadedVideoProcessor,
                                     ScreenCalibration,
                                     SinglethreadedVideoProcessor)
 from optofidelity.reporting import BenchmarkReport
-from optofidelity.builder import SystemBuilder
-from optofidelity.util import GSPathExists, GSDownload, ProgressBar
+from optofidelity.util import GSDownload, GSPathExists, ProgressBar
+
+logging.basicConfig(level=logging.WARN)
+logging.getLogger("optofidelity").setLevel(level=logging.DEBUG)
+logging.captureWarnings(True)
+
 
 usage_string = """
 """
@@ -25,7 +26,8 @@ usage_string = """
 CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
 
 def ProcessBenchmark(url_or_uid, what, debug_flags):
-  debug_flags += ["viewer"]
+  if len(debug_flags):
+    debug_flags += ["viewer"]
   builder = SystemBuilder.FromFile("dev_config.xml")
 
   if os.path.exists(url_or_uid) or url_or_uid.startswith("gs://"):
@@ -47,8 +49,13 @@ def ProcessBenchmark(url_or_uid, what, debug_flags):
   benchmark = Benchmark.Load(url)
   try:
     if what in ("all", "video"):
-      video_processor = SinglethreadedVideoProcessor()
+      print debug_flags
+      if len(debug_flags):
+        video_processor = SinglethreadedVideoProcessor()
+      else:
+        video_processor = MultithreadedVideoProcessor()
       benchmark.ProcessVideo(video_processor, debug_flags)
+      print benchmark.trace
     if what in ("all", "video", "trace"):
       benchmark.ProcessTrace()
     if what in ("all", "video", "trace", "report"):
@@ -69,7 +76,10 @@ def Main():
                     help="Process local files")
 
   (options, args) = parser.parse_args()
-  ProcessBenchmark(args[0], options.process, options.debug_flags.split(","))
+  debug_flags = []
+  if options.debug_flags:
+    debug_flags = options.debug_flags.split(",")
+  ProcessBenchmark(args[0], options.process, debug_flags)
 
 if __name__ == "__main__":
   Main()
