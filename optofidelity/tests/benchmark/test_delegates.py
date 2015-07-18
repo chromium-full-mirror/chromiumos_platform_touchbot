@@ -77,13 +77,13 @@ class LineDrawDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
     "line_draw_basic.trace": {
       "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48, 42,
-                                     48, 46, 43, 44, 43, 43, 39, 44]) * 3.33,
-      "DroppedFrameFrequency": np.asarray([42.105263157894735])
+                                     48, 46, 43, 44, 43, 43, 39, 44, 46]) * 3.33,
+      "DroppedFrameFrequency": np.asarray([40.0])
     },
     "line_draw_incomplete.trace": {
-      "LineDrawLatency": np.asarray([29, 28, 28, 29, 29, 30, 31, 35, 35,
+      "LineDrawLatency": np.asarray([28, 28, 29, 29, 30, 31, 35, 35,
                                      35, 40, 40, 45, 44, 46, 47]) * 3.33,
-      "DroppedFrameFrequency": np.asarray([25])
+      "DroppedFrameFrequency": np.asarray([26.666666666666668])
     },
   }
 
@@ -139,15 +139,6 @@ class TestResultsCompability(unittest.TestCase):
     delegate = LineDrawDelegate("fake", {})
     delegate.ProcessTrace(trace, results.measurements)
     return results
-
-  def testLoading(self):
-    results = self.generateResults()
-
-    file_obj = open(test_data.Path("line_draw_basic.results"), "r")
-    loaded_results = pickle.load(file_obj)
-    loaded_msrmnts = loaded_results.measurements
-    self.assertEqual(results.measurements.SummarizeValues("LineDrawLatency"),
-                     loaded_msrmnts.SummarizeValues("LineDrawLatency"))
 
   def testSaveAndLoad(self):
     results = self.generateResults()

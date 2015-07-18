@@ -71,20 +71,24 @@ class LineDrawDelegate(BenchmarkDelegate):
     for pass_num, pass_trace in enumerate(trace.SegmentedByLineReset()):
       # Find pause after first movement to calibrate the offset between
       # finger and line location.
-      calib_start, calib_end = pass_trace.FindStationaryFinger()
+      if len(pass_trace.FilteredByType(LineDrawEvent)) < 6:
+        continue
+
+      # Find linear motion range
+      start_event, end_event = pass_trace.FindLinearFingerMotion()
+
+      calib_start, calib_end = pass_trace.FindStationaryFinger(start_event.time)
       line_at_calib = pass_trace.Find(LineDrawEvent, calib_end.time, "before")
       calib_offset = line_at_calib.location - calib_end.location
       pass_trace.ApplyFingerLocationCalib(calib_offset)
 
-      # Find linear motion range and trim draw events to this range.
-      start_event, end_event = pass_trace.FindLinearFingerMotion()
+      # Filter draw events to only use locations during which the finger was
+      # moving linearly.
       start_location = start_event.location
       end_location = end_event.location
       if start_location > end_location:
         (start_location, end_location) = (end_location, start_location)
 
-      # Filter draw events to only use locations during which the finger was
-      # moving linearly.
       draw_events = pass_trace.FilteredByType(LineDrawEvent)
       draw_events = [e for e in draw_events if e.location >= start_location and
                                                e.location < end_location]

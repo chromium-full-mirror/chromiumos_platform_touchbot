@@ -9,7 +9,6 @@ import scipy.signal as signal
 from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
                      ScreenDrawEvent)
 
-
 class Trace(list):
   """Contains a list of events ordered by time.
 
@@ -23,6 +22,9 @@ class Trace(list):
   LINEAR_MOTION_MAX_SPEED_DEVIATION = 0.2
   """How much can the speed deviate from the target speed to be considered
      part of the linear motion area."""
+
+  STATIONARY_MAX_SPEED = 0.1
+  """Maximum speed of the finger to be considered stationary."""
 
   ms_per_frame = 3.33
   """Milliseconds per camera frame. Default value for older traces
@@ -255,6 +257,7 @@ class Trace(list):
     # Allow 20% variation of the maximum speed in linear range.
     speed = self.finger_speed
     speed[np.isnan(speed)] = 0
+
     max_speed_idx = np.argmax(speed)
     min_speed_factor = (1 - self.LINEAR_MOTION_MAX_SPEED_DEVIATION)
     min_speed = self.finger_speed[max_speed_idx] * min_speed_factor
@@ -262,35 +265,35 @@ class Trace(list):
     # Find area in which the robot continuously has this speed.
     start = 0
     end = len(self.finger_speed)
-    for i in range(max_speed_idx, 0, -1):
-      if speed[i] < min_speed:
-        start = i
-        break
-    for i in range(max_speed_idx, len(self.finger_speed)):
-      if speed[i] < min_speed:
-        end = i
-        break
+    for i, speed in enumerate(self.finger_speed):
+      if speed > min_speed:
+        if not start:
+          start = i
+      else:
+        if start:
+          end = i - 1
+          break
     return self.Find(FingerEvent, start), self.Find(FingerEvent, end)
 
-  def FindStationaryFinger(self):
+  def FindStationaryFinger(self, start_time):
     """Return (start, end) event of range in which event shows no motion.
 
     The stationary range has to be enclosed between motion.
     :returns Tuple[Event, Event]
     """
-    moved = False
     start = None
     end = None
-    for i, speed in enumerate(self.finger_speed):
-      if speed > 1:
-        moved = True
-        if end is not None:
+    for i in range(start_time, 0, -1):
+      speed = self.finger_speed[i]
+      if np.isnan(speed):
+        continue
+      if speed < self.STATIONARY_MAX_SPEED:
+        if not end:
+          end = i
+      else:
+        if end:
+          start = i + 1
           break
-      if moved and speed < 0.05:
-        if start is None:
-          start = i
-        end = i
-
     if start is None or end is None:
       raise Exception("Cannot find static motion range")
     return self.Find(FingerEvent, start), self.Find(FingerEvent, end)

@@ -57,8 +57,10 @@ def ProcessBenchmark(url_or_uid, what, debug_flags):
       benchmark.ProcessVideo(video_processor, debug_flags)
       print benchmark.trace
     if what in ("all", "video", "trace"):
+      print "Processing Trace"
       benchmark.ProcessTrace()
     if what in ("all", "video", "trace", "report"):
+      print "Generating Report"
       report = BenchmarkReport(url)
       report.GenerateReport(benchmark.results, benchmark.trace,
                             benchmark.screen_calibration, benchmark.video)

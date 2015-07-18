@@ -329,16 +329,15 @@ class TraceTests(unittest.TestCase):
       trace = self.FingerMotionTrace(seed, 0.2)
       trace = trace.Trimmed(0, 350)
       start, end = trace.FindLinearFingerMotion()
-      self.assertLessEqual(np.abs(start.time - 120), 10)
-      self.assertLessEqual(np.abs(end.time - 310), 10)
+      self.assertLessEqual(np.abs(start.time - 115), 10)
+      self.assertLessEqual(np.abs(end.time - 295), 10)
 
   def test_stationary_finger(self):
     for seed in range(20):
       trace = self.FingerMotionTrace(seed, 0.2)
-      start, end = trace.FindStationaryFinger()
-
-      self.assertLessEqual(np.abs(start.time - 300), 10)
-      self.assertLessEqual(np.abs(end.time - 410), 10)
+      start, end = trace.FindStationaryFinger(500)
+      self.assertLessEqual(np.abs(start.time - 305), 10)
+      self.assertLessEqual(np.abs(end.time - 405), 10)
 
   def test_finger_time_at_location(self):
     trace = self.FingerMotionTrace(0, 0)
