@@ -31,7 +31,7 @@ from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
 from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
 from .system.navigator import (NativeADBNavigator, RobotNavigator,
-                               WebADBNavigator)
+                               WebADBNavigator, ManualNavigator)
 from .system.system import FingerCalibDelay
 from .util import const_property
 
@@ -108,7 +108,8 @@ class SystemBuilder(object):
     Navigator: {
       "robot": RobotNavigator,
       "web_adb": WebADBNavigator,
-      "native_adb": NativeADBNavigator
+      "native_adb": NativeADBNavigator,
+      "manual": ManualNavigator
     },
     VideoProcessor: {
       "multithreaded": MultithreadedVideoProcessor,

@@ -11,7 +11,7 @@ from safetynet import Any, Dict, InterfaceMeta, List
 
 from optofidelity.util import const_property
 
-from optofidelity.util import ADB
+from optofidelity.util import ADB, AskUserContinue
 from .backend import DUTBackend
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -102,25 +102,58 @@ class Navigator(object):
     self._CloseActivity()
     self._current_activity = None
 
-  @abstractmethod
   def _Open(safe=False):
     pass
 
-  @abstractmethod
   def _Close(self):
     pass
 
-  @abstractmethod
   def _Reset(self):
     pass
 
-  @abstractmethod
   def _OpenActivity(self):
     pass
 
-  @abstractmethod
   def _CloseActivity(self):
     pass
+
+
+class ManualNavigator(Navigator):
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls()
+
+  @property
+  def activities(self):
+    return []
+
+  @property
+  def state(self):
+    return {}
+
+  def AddActivity(self, activity_name, parameters):
+    pass
+
+  def Open(self, safe):
+    pass
+
+  def Close(self):
+    pass
+
+  def Reset(self):
+    pass
+
+  def Cleanup(self):
+    pass
+
+  def OpenActivity(self, activity_name):
+    if self._current_activity != activity_name:
+      AskUserContinue("Open the '%s' activity" % activity_name)
+      self._current_activity = activity_name
+
+  def CloseActivity(self):
+    pass
+
 
 class RobotNavigator(Navigator):
   """A navigation backend that uses the robot and OCR/Icon Detection.
