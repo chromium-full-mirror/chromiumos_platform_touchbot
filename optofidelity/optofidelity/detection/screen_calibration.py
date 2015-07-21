@@ -55,6 +55,10 @@ class ScreenCalibration(object):
   WHITE_LEVEL_MAX = 0.99
   """Maximum level of a the white reference image."""
 
+  PWM_COMPENSATION_LEVEL = 0.2
+  """Compensate for PWM if the range of colors in the white reference image is
+     larger than this value."""
+
   def __new__(cls, black_frame, white_frame):
     """Creates new screen calibration from black and white video frames.
 
@@ -94,6 +98,7 @@ class ScreenCalibration(object):
       features_image = self._GetFeaturesImage(self.black_frame)
       self._good_features = cv2.goodFeaturesToTrack(features_image, 200, 0.01,
                                                     30)
+      self._CompensatePWM()
     return self
 
   @property
@@ -161,6 +166,13 @@ class ScreenCalibration(object):
       return cls(ref_images[1], ref_images[0])
     else:
       return cls(ref_images[0], ref_images[1])
+
+  def _CompensatePWM(self):
+    profile = np.mean(self.white_reference, 0)
+    profile_range = np.max(profile) - np.min(profile)
+    if profile_range > self.PWM_COMPENSATION_LEVEL:
+      _log.warn("Compensating for PWM (range=%.2f)" % profile_range)
+      self.white_reference[:] = np.min(profile)
 
   def _GetFeaturesImage(self, camera_space_frame):
     """Trims image to area not showing the screen nor robot arm.

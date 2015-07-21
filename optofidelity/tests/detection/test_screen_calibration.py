@@ -74,6 +74,11 @@ class ScreenCalibrationTests(TestCase):
         test_data.LoadVideo("pwm_calibration.avi"))
     self.assertCalibrationIsConsistent(calib)
 
+  def testPWMCompensation(self):
+    calib = ScreenCalibration(test_data.LoadImage("pwm_calib_black.png"),
+                              test_data.LoadImage("pwm_calib_white.png"))
+    self.assertLess(np.std(calib.white_reference), 0.01)
+
   def testStabilization(self):
     self.skipTest("Manual verification required.")
     calib = ScreenCalibration(test_data.LoadImage("stabilization_black.png"),
