@@ -273,7 +273,8 @@ class Trace(list):
         if start:
           end = i - 1
           break
-    return self.Find(FingerEvent, start), self.Find(FingerEvent, end)
+    return (FingerEvent(start, self.finger[start]),
+            FingerEvent(end, self.finger[end]))
 
   def FindStationaryFinger(self, start_time):
     """Return (start, end) event of range in which event shows no motion.
@@ -296,7 +297,8 @@ class Trace(list):
           break
     if start is None or end is None:
       raise Exception("Cannot find static motion range")
-    return self.Find(FingerEvent, start), self.Find(FingerEvent, end)
+    return (FingerEvent(start, self.finger[start]),
+            FingerEvent(end, self.finger[end]))
 
   def _TimeSeries(self, event_type, start_time=False, interpolate=False,
                   calib=False):

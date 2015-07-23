@@ -62,7 +62,9 @@ class Benchmark(object):
     :type subject: BenchmarkSubject
     """
     self.results.metadata["subject_name"] = subject.name
+    subject.navigator.OpenActivity(self._delegate.activity)
     self.video = self._delegate.ExecuteOnSubject(subject)
+    subject.navigator.CloseActivity()
     self.framerate = self.video.framerate
     self.trace = None
     self.results.measurements = None

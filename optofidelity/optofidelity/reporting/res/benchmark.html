@@ -148,21 +148,21 @@
               {% endmacro %}
 
               <!-- Input Event -->
-              {{ detail("%s/%d_%d_input" % (data_dir, pass_num, loop.index - 1),
+              {{ detail("%s/%s_%d_%d_input" % (data_dir, series.series_name, pass_num, loop.index - 1),
                         msrmnt.input_event.uncalib_time,
-                        msrmnt.input_event.time - msrmnt.input_event.uncalib_time,
+                        msrmnt.input_event.uncalib_time - msrmnt.input_event.time,
                         msrmnt.input_event.EVENT_TYPE_NAME) }}
 
               <!-- Optional Output Start Draw Event -->
               {% if msrmnt.output_event.start_time %}
-              {{ detail("%s/%d_%d_output_start" % (data_dir, pass_num, loop.index - 1),
+              {{ detail("%s/%s_%d_%d_output_start" % (data_dir, series.series_name, pass_num, loop.index - 1),
                         msrmnt.output_event.start_time,
                         msrmnt.output_event.start_time - msrmnt.input_event.time,
                         msrmnt.output_event.EVENT_TYPE_NAME) }}
               {% endif %}
 
               <!-- Output Event -->
-              {{ detail("%s/%d_%d_output" % (data_dir, pass_num, loop.index - 1),
+              {{ detail("%s/%s_%d_%d_output" % (data_dir, series.series_name, pass_num, loop.index - 1),
                         msrmnt.output_event.time,
                         msrmnt.output_event.time - msrmnt.input_event.time,
                         msrmnt.output_event.EVENT_TYPE_NAME) }}

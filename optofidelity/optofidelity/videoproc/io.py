@@ -97,8 +97,7 @@ class VideoReader(object):
     """
     width = self.frame_shape[1]
     height = self.frame_shape[0]
-    writer = cv2.VideoWriter(filename, CODEC, self.framerate,
-                             (width, height))
+    writer = cv2.VideoWriter(filename, CODEC, 15, (width, height))
 
     for i, frame in self.Frames():
       sys.stdout.write("\rWriting frame %d/%d" % (i, self.num_frames))

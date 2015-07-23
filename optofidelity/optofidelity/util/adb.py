@@ -76,7 +76,7 @@ class ADB(object):
     The parameters are directly passed to the am start command to specify the
     intent to start.
     """
-    cmd = ["am", "start"]
+    cmd = ["am", "start", "-W", "-S"]
     for flag, value in [("-a", action), ("-n", component),
                         ("-d", uri), ("-c", category)]:
       if value:

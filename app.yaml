@@ -9,6 +9,10 @@ handlers:
   static_files: optofidelity/html/index.html
   upload: optofidelity/html/index.html
 
+- url: /jquery.min.js
+  static_files: optofidelity/html/jquery.min.js
+  upload: optofidelity/html/jquery.min.js
+
 - url: /(.*)
   static_files: optofidelity/html/\1.html
   upload: optofidelity/html/(.*)

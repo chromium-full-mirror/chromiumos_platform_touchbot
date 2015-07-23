@@ -248,7 +248,7 @@ class BenchmarkReport(Report):
                           video)
           self._SaveFrame(path + ".png", time, event, screen_calibration, video)
 
-        basename = "%d_%d" % (series.pass_num, i)
+        basename = "%s_%d_%d" % (series.series_name, series.pass_num, i)
         SaveFrames("%s_input" % basename, msrmnt.input_event,
                    msrmnt.input_event.uncalib_time)
         SaveFrames("%s_output_start" % basename, msrmnt.output_event,

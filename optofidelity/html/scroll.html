@@ -12,7 +12,6 @@
       width: 60px;
       margin: auto;
       height: 1024px;
-      cursor: pointer;
     }
     div#block_a {
       background-color: white;
@@ -24,15 +23,20 @@
       margin: 0;
       -webkit-user-select: none;
     }
+    #container {
+      cursor: pointer;
+    }
   </style>
   <script>
     function on_click(event) {
       // Swap colors with each click
-      block_a_color = $("#block_a").css("background-color");
-      block_b_color = $("#block_b").css("background-color");
-      $("#block_a").css("background-color", block_b_color)
-      $("#block_b").css("background-color", block_a_color)
-
+      if (event.clientY < (window.innerHeight / 2.0)) {
+        $("#block_a").css("background-color", "black")
+        $("#block_b").css("background-color", "white")
+      } else {
+        $("#block_a").css("background-color", "white")
+        $("#block_b").css("background-color", "black")
+      }
       // Scroll to location of click
       $("body").animate({
           scrollTop: $("#block_a").height() - event.clientY
@@ -45,8 +49,10 @@
 </head>
 
 <body>
-  <div id="block_a" class="block">&nbsp;</div>
-  <div id="block_b" class="block">&nbsp;</div>
+  <div id="container">
+    <div id="block_a" class="block">&nbsp;</div>
+    <div id="block_b" class="block">&nbsp;</div>
+  </div>
 </body>
 
 </html>

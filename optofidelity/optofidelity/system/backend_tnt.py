@@ -85,7 +85,8 @@ class TnTRobotBackend(RobotBackend):
   def Reset(self):
     robot = self._client.robots().values()[0]
     robot.go_home()
-    robot.set_speed(200)
+    robot.rotate(90)
+    robot.set_speed((200.0, 15.0))
 
   def GetDUTBackend(self, name):
     dut_client = self._client.dut(name)

@@ -26,7 +26,7 @@ class CalibratedFrame(object):
   """Brightness that is out of range by this threshold amout will raise an
      exception."""
 
-  FOREGROUND_MAX_BRIGHTNESS = 0.9
+  FOREGROUND_MAX_BRIGHTNESS = 0.8
   """Everything below this threshold is considered to be the foreground
      objects on the screen."""
 

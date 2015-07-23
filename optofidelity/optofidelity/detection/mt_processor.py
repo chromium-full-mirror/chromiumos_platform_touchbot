@@ -107,7 +107,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
   intensive operations in parallel.
   """
 
-  def __init__(self):
+  def __init__(self, debug_video=None):
     SinglethreadedVideoProcessor.__init__(self)
     self.num_processes = multiprocessing.cpu_count()
 

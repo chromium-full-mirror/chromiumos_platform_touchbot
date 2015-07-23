@@ -37,6 +37,7 @@ class TapDelegate(BenchmarkDelegate):
 
     subject.MoveOnTestPlane(center, 10.0, blocking=True)
 
+    subject.TapOnTestPlane(center)
     subject.camera.Trigger()
     subject.TapOnTestPlane(center, count=self.NUM_MEASUREMENTS)
 
@@ -50,6 +51,8 @@ class TapDelegate(BenchmarkDelegate):
       # that the LED detection either missed an LED or it detected a spurious
       # one.
       raise Exception("LED detection was inconsistent.")
+    trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
+
     measurements.AddSeriesInfo("UpLatency", DrawEventLatencySeries)
     measurements.AddSeriesInfo("DownLatency", DrawEventLatencySeries)
 

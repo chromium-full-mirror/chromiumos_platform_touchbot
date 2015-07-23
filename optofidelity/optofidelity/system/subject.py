@@ -83,7 +83,7 @@ class BenchmarkSubject(object):
     return self._margin
 
   @margin.setter
-  def set_margin(self, margin):
+  def margin(self, margin):
     self.top = margin[0]
     self.left = 0.0
     self.bottom = self._dut_backend.height - margin[1]

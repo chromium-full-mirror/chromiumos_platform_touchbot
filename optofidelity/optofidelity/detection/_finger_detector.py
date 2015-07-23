@@ -20,9 +20,6 @@ class FingerDetector(Detector):
   FINGER_MIN_AREA = 500
   """Minimal area of the robot finger in square pixels."""
 
-  FINGER_MAX_SPEED = 10
-  """Maximum movement speed of the finger in pixels per frame."""
-
   def __init__(self):
     self._current_location = None
 
@@ -61,8 +58,4 @@ class FingerDetector(Detector):
     if new_location is None or new_location == self._current_location:
       return []
 
-    if (self._current_location is None or
-        np.abs(self._current_location - new_location) < self.FINGER_MAX_SPEED):
-      self._current_location = new_location
-      return [FingerEvent(frame_index, location=new_location)]
-    return []
+    return [FingerEvent(frame_index, location=new_location)]
