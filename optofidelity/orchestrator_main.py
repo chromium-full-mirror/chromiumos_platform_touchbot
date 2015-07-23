@@ -78,7 +78,7 @@ def Main():
                     dest="prepare", default=False, action="store_true",
                     help="Reset system and prepare devices.")
   parser.add_option("--config", "-c",
-                    dest="config", default="dev_config.xml",
+                    dest="config", default="config/dev.xml",
                     help="Specify config file to use.")
   parser.add_option("--setup",
                     dest="setup", default=False, action="store_true",

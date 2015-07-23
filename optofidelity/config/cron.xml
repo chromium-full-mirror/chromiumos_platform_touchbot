@@ -1,5 +1,5 @@
 <optofidelity>
-  <include file="base_config.xml" />
+  <include file="base.xml" />
 
   <dut-type type-name="nexus_phone" master="touchbot">
     <subject name="clank_stable" type="clank_stable" margin="(20, 15)">

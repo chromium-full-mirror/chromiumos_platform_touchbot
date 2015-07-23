@@ -1,4 +1,4 @@
-<optofidelity log-config="log_config.json"
+<optofidelity log-config="file:log.json"
               results="gs://touchbot/optofidelity/benchmark_results"
               database="filecontents:results_database.url">
   <benchmark-system>
@@ -24,12 +24,12 @@
   </subject-type>
 
   <subject-type type-name="clank_base" parent-type="base">
-    <navigator type="web_adb" adb="{adb}">
-      <activity name="calibration" file="file:html/flash.html" />
-      <activity name="scroll" file="file:html/scroll.html" />
-      <activity name="touch_move" file="file:html/move.html" />
-      <activity name="tap" file="file:html/tap.html" />
-      <resource file="file:html/jquery.min.js" />
+    <navigator type="web_adb" adb="{adb}" data="file:../apps/web">
+      <activity name="calibration" file="{data}/flash.html" />
+      <activity name="scroll" file="{data}/scroll.html" />
+      <activity name="touch_move" file="{data}/move.html" />
+      <activity name="tap" file="{data}/tap.html" />
+      <resource file="{data}/jquery.min.js" />
     </navigator>
     <updater type="chrome" adb="{adb}"/>
     <dashboard type="chromeperf" master="{master}"
@@ -57,7 +57,7 @@
 
   <subject-type type-name="android_native" margin="(20, 15)" parent-type="base">
     <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
-               apk="file:apks/touchlatency.apk">
+               apk="file:../apps/touchlatency.apk">
       <activity name="calibration" intent="FlashActivity" />
       <activity name="scroll" intent="ScrollActivity" />
       <activity name="tap" intent="TapActivity" />
@@ -65,7 +65,7 @@
     <updater type="manual" version="0.0" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
-               oauth-key-file="oauth2key.json" />
+               oauth-key-file="file:oauth2key.json" />
   </subject-type>
 
   <subject-type type-name="manual" margin="(15, 15)" exposure="{exposure}">
@@ -73,7 +73,7 @@
     <updater type="manual" version="0.0" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
-               oauth-key-file="oauth2key.json" />
+               oauth-key-file="file:oauth2key.json" />
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
