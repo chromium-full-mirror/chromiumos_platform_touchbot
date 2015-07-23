@@ -154,7 +154,7 @@ class SubjectTests(TestCase):
     self.assertGreater(subject._test_plane, subject.width / 2)
 
     self.dut_backend._orientation = 0
-    self.assertRaises(Exception, lambda: self.createSubject())
+    self.assertRaises(Exception, lambda: self.createSubject()._test_plane)
 
 
   def testSafeMovementViaJumping(self):

@@ -56,39 +56,39 @@ class BenchmarkSubject(object):
     self.camera = camera
     self.exposure = None
     self.navigator = None
+    self.margin = (0.0, 0.0)
+    self._dut_backend = dut_backend
 
-    self.top = 0.0
-    self.left = 0.0
-    self.bottom = dut_backend.height
-    self.right = dut_backend.width
-
+  @const_property
+  def _test_plane(self):
     def is_oriented(orientation, target):
       dist = np.abs(orientation - target)
       dist = min(dist, (2 * np.pi) - dist)
       return dist < self.ORIENTATION_THRESHOLD
 
-    orientation = dut_backend.orientation
+    orientation = self._dut_backend.orientation
     if is_oriented(orientation, np.pi / 2):
-      self._test_plane = self.TEST_PLANE_MARGIN
+      return self.TEST_PLANE_MARGIN
     elif is_oriented(orientation, np.pi / 2 * 3):
-      self._test_plane = self.right - self.TEST_PLANE_MARGIN
+      return self.right - self.TEST_PLANE_MARGIN
     else:
       raise Exception("DUTs need to be oriented at 90 or 270 degrees.")
 
-    self._dut_backend = dut_backend
-    self._margin = (0.0, 0.0)
+  @const_property
+  def top(self):
+    return self.margin[0]
 
-  @property
-  def margin(self):
-    return self._margin
+  @const_property
+  def left(self):
+    return 0
 
-  @margin.setter
-  def margin(self, margin):
-    self.top = margin[0]
-    self.left = 0.0
-    self.bottom = self._dut_backend.height - margin[1]
-    self.right = self._dut_backend.width
-    self._margin = margin
+  @const_property
+  def bottom(self):
+    return self._dut_backend.height - self.margin[1]
+
+  @const_property
+  def right(self):
+    return self._dut_backend.width
 
   @property
   def state(self):
