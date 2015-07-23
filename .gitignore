@@ -8,3 +8,8 @@ optofidelity/logs
 optofidelity/.cache
 *xcuserdata
 *xcworkspace
+.gradle
+local.properties
+optofidelity/apps/Android/.idea/workspace.xml
+optofidelity/apps/Android/.idea/libraries
+optofidelity/apps/Android/build

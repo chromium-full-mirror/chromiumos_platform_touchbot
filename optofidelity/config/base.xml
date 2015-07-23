@@ -57,7 +57,7 @@
 
   <subject-type type-name="android_native" margin="(20, 15)" parent-type="base">
     <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
-               apk="file:../apps/touchlatency.apk">
+               apk="file:../apps/Android/app/app-release.apk">
       <activity name="calibration" intent="FlashActivity" />
       <activity name="scroll" intent="ScrollActivity" />
       <activity name="tap" intent="TapActivity" />

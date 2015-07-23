@@ -1,0 +1,43 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".ScrollActivity">
+
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/scrollView" >
+
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:weightSum="100"
+            android:background="#ffffffff"
+            android:gravity="center_horizontal">
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_weight="25"
+                android:background="#ffffffff"
+                android:id="@+id/scrollLayout">
+
+                <FrameLayout
+                    android:layout_width="fill_parent"
+                    android:layout_height="2048px"
+                    android:background="#ff000000"
+                    android:layout_gravity="center_horizontal"
+                    android:id="@+id/topBar"></FrameLayout>
+
+                <FrameLayout
+                    android:layout_width="fill_parent"
+                    android:layout_height="2048px"
+                    android:background="#ffffffff"
+                    android:layout_gravity="center_horizontal"
+                    android:id="@+id/bottomBar"></FrameLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>
