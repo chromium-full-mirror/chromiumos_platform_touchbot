@@ -6,3 +6,5 @@ optofidelity/config/oauth2key.json
 optofidelity/config/results_database.url
 optofidelity/logs
 optofidelity/.cache
+*xcuserdata
+*xcworkspace

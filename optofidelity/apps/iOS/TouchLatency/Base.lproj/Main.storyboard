@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="7706" systemVersion="14E46" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" initialViewController="49e-Tb-3d3">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="7703"/>
+    </dependencies>
+    <scenes>
+        <!--Tap-->
+        <scene sceneID="XhU-9d-ATB">
+            <objects>
+                <viewController id="sFw-My-zm5" userLabel="Tap" customClass="TapViewController" customModule="TouchLatency" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="bAJ-F9-oZH"/>
+                        <viewControllerLayoutGuide type="bottom" id="xwy-ni-ACA"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="tEu-Zr-wm7">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <accessibility key="accessibilityConfiguration">
+                            <accessibilityTraits key="traits" none="YES" notEnabled="YES"/>
+                        </accessibility>
+                    </view>
+                    <tabBarItem key="tabBarItem" title="Tap" image="second" id="l69-pg-jGo"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="lgk-t5-Gq2" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="750" y="-423"/>
+        </scene>
+        <!--Flash-->
+        <scene sceneID="hNz-n2-bh7">
+            <objects>
+                <viewController id="9pv-A4-QxB" customClass="FlashViewController" customModule="TouchLatency" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="B6p-bb-Gcs"/>
+                        <viewControllerLayoutGuide type="bottom" id="e8D-tv-sDd"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="tsR-hK-woN">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                    </view>
+                    <tabBarItem key="tabBarItem" title="Flash" image="first" id="acW-dT-cKf"/>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="W5J-7L-Pyd" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="750" y="-1178"/>
+        </scene>
+        <!--Scroll-->
+        <scene sceneID="wg7-f3-ORb">
+            <objects>
+                <viewController id="8rJ-Kc-sve" customClass="ScrollViewController" customModule="TouchLatency" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="DTj-x6-sWW"/>
+                        <viewControllerLayoutGuide type="bottom" id="CMr-ZD-6tW"/>
+                    </layoutGuides>
+                    <view key="view" autoresizesSubviews="NO" contentMode="scaleToFill" id="QS5-Rx-YEW" customClass="UIScrollView">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="600"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <view autoresizesSubviews="NO" contentMode="center" translatesAutoresizingMaskIntoConstraints="NO" id="0vI-0W-PgS" userLabel="TopView">
+                                <rect key="frame" x="268" y="0.0" width="64" height="1024"/>
+                                <color key="backgroundColor" white="0.0" alpha="1" colorSpace="calibratedWhite"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="1024" id="PUx-nh-N9Z"/>
+                                    <constraint firstAttribute="width" constant="64" id="ys2-L5-DNh"/>
+                                </constraints>
+                            </view>
+                            <view autoresizesSubviews="NO" contentMode="center" translatesAutoresizingMaskIntoConstraints="NO" id="vG2-90-ayQ" userLabel="BottomView">
+                                <rect key="frame" x="268" y="1024" width="64" height="1024"/>
+                                <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="1024" id="KnL-g9-VEN"/>
+                                    <constraint firstAttribute="width" constant="64" id="sin-oI-459"/>
+                                </constraints>
+                            </view>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstAttribute="centerX" secondItem="vG2-90-ayQ" secondAttribute="centerX" id="0Eo-eM-Hev"/>
+                            <constraint firstAttribute="centerX" secondItem="0vI-0W-PgS" secondAttribute="centerX" id="DtB-xX-bly"/>
+                            <constraint firstItem="vG2-90-ayQ" firstAttribute="top" secondItem="0vI-0W-PgS" secondAttribute="bottom" id="NIb-bL-Qz3"/>
+                            <constraint firstItem="0vI-0W-PgS" firstAttribute="top" secondItem="QS5-Rx-YEW" secondAttribute="top" id="dv3-tw-Vbv"/>
+                        </constraints>
+                        <connections>
+                            <outlet property="delegate" destination="8rJ-Kc-sve" id="T89-jy-tFN"/>
+                        </connections>
+                    </view>
+                    <tabBarItem key="tabBarItem" title="Scroll" image="second" id="cPa-gy-q4n"/>
+                    <connections>
+                        <outlet property="bottomView" destination="vG2-90-ayQ" id="UiS-5K-AvA"/>
+                        <outlet property="scrollView" destination="QS5-Rx-YEW" id="AE1-dw-E4l"/>
+                        <outlet property="topView" destination="0vI-0W-PgS" id="RON-0x-MKs"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="4Nw-L8-lE0" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="750" y="360"/>
+        </scene>
+        <!--Tab Bar Controller-->
+        <scene sceneID="yl2-sM-qoP">
+            <objects>
+                <tabBarController id="49e-Tb-3d3" sceneMemberID="viewController">
+                    <nil key="simulatedBottomBarMetrics"/>
+                    <tabBar key="tabBar" contentMode="scaleToFill" id="W28-zg-YXA">
+                        <rect key="frame" x="0.0" y="975" width="768" height="49"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMinY="YES"/>
+                        <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="calibratedWhite"/>
+                    </tabBar>
+                    <connections>
+                        <segue destination="9pv-A4-QxB" kind="relationship" relationship="viewControllers" id="u7Y-xg-7CH"/>
+                        <segue destination="8rJ-Kc-sve" kind="relationship" relationship="viewControllers" id="lzU-1b-eKA"/>
+                        <segue destination="sFw-My-zm5" kind="relationship" relationship="viewControllers" id="da2-CJ-yZM"/>
+                    </connections>
+                </tabBarController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="HuB-VB-40B" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="0.0" y="0.0"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="first" width="30" height="30"/>
+        <image name="second" width="30" height="30"/>
+    </resources>
+</document>
