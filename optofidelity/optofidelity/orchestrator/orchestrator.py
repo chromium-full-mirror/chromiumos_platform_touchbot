@@ -41,7 +41,8 @@ class Orchestrator(object):
   FILED_BENCHMARKS_FILE = "failed_benchmarks.log"
 
   def __init__(self, benchmark_system, benchmark_runner, results_url,
-               results_db_url, generate_reports=True, xkcd=False):
+               results_db_url, generate_reports=True, xkcd=False,
+               save_video=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -64,6 +65,7 @@ class Orchestrator(object):
     self._generate_reports = generate_reports
     self._xkcd = xkcd
     self._subjects = {}
+    self._save_video = save_video
 
   @classmethod
   def FromConfig(cls, parameters, children, system, runner):
@@ -76,7 +78,10 @@ class Orchestrator(object):
     xkcd = parameters.get("xkcd") is not None
     results = parameters["results"]
     database = parameters["database"]
-    return cls(system, runner, results, database, xkcd=xkcd)
+    true_values = ("True", "true", "1")
+    save_video = parameters.get("save-video", "") in true_values
+    return cls(system, runner, results, database, xkcd=xkcd,
+               save_video=save_video)
 
   def PrintInfo(self, match):
     for subject in self._subjects.itervalues():
@@ -353,7 +358,7 @@ class Orchestrator(object):
     benchmark.results.uid = uid
 
     self._progress.Info(benchmark.name, "Saving benchmark to %s" % results_url)
-    save_video = bool(len(benchmark.results.error))
+    save_video = self._save_video or bool(len(benchmark.results.error))
     benchmark.Save(results_url, debug_info=True, video=save_video)
 
     if self._generate_reports:
