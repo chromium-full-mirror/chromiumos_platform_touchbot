@@ -11,7 +11,7 @@
   <benchmark-runner led-calibration-down="-4" led-calibration-up="4"
                     calibration-video-path="file:failed_calibrations"/>
 
-  <orchestrator results="{results}" database="{database}" />
+  <orchestrator results="{results}" database="{database}" save-video="option:save_video" quick="option:quick" />
 
   <subject-type type-name="base" exposure="{exposure}">
     <preparer type="adb_screen_off" adb="{adb}" />

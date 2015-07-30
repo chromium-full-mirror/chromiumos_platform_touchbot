@@ -49,7 +49,7 @@ Whereas the names of benchmarks are put together in the following format:
 
 
 def RunBenchmarks(matches, options):
-  builder = SystemBuilder.FromFile(options.config)
+  builder = SystemBuilder.FromFile(options.config, options)
   if options.prepare:
     builder.orchestrator.PrepareSubjects()
   for match in matches:
@@ -83,7 +83,12 @@ def Main():
   parser.add_option("--setup",
                     dest="setup", default=False, action="store_true",
                     help="Setup specified devices.")
-
+  parser.add_option("--save-video",
+                    dest="save_video", default=False, action="store_true",
+                    help="Save video of each benchmark.")
+  parser.add_option("--quick",
+                    dest="quick", default=False, action="store_true",
+                    help="Quick benchmark without repetitions.")
   (options, args) = parser.parse_args()
   matches = args if len(args) > 0 else ["*"]
 

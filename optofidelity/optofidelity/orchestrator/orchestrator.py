@@ -42,7 +42,7 @@ class Orchestrator(object):
 
   def __init__(self, benchmark_system, benchmark_runner, results_url,
                results_db_url, generate_reports=True, xkcd=False,
-               save_video=False):
+               save_video=False, quick=False):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -66,6 +66,7 @@ class Orchestrator(object):
     self._xkcd = xkcd
     self._subjects = {}
     self._save_video = save_video
+    self._quick = quick
 
   @classmethod
   def FromConfig(cls, parameters, children, system, runner):
@@ -80,8 +81,9 @@ class Orchestrator(object):
     database = parameters["database"]
     true_values = ("True", "true", "1")
     save_video = parameters.get("save-video", "") in true_values
+    quick = parameters.get("quick", "") in true_values
     return cls(system, runner, results, database, xkcd=xkcd,
-               save_video=save_video)
+               save_video=save_video, quick=quick)
 
   def PrintInfo(self, match):
     for subject in self._subjects.itervalues():
@@ -254,7 +256,7 @@ class Orchestrator(object):
         return
       aggregate.AddRepetition(benchmark.results)
 
-      if not aggregate.measurements.HasMinNumSamples():
+      if not self._quick and not aggregate.measurements.HasMinNumSamples():
         self._progress.Info(full_name, "Collecting more samples.")
       else:
         break

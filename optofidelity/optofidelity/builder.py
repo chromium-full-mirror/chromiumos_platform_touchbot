@@ -135,7 +135,7 @@ class SystemBuilder(object):
     }
   }
 
-  def __init__(self, config_element, root_dir):
+  def __init__(self, config_element, root_dir, options):
     """Initialize all components from the configuration in config_element.
 
     :type config_element: ElementTree.Element
@@ -145,6 +145,7 @@ class SystemBuilder(object):
     self._subject_types = self._ReadTypes(config_element, "subject-type")
     self._dut_types = self._ReadTypes(config_element, "dut-type")
     self._config_element = config_element
+    self._options = options
     self.attrib = config_element.attrib
     self._SetupLogging()
 
@@ -175,15 +176,15 @@ class SystemBuilder(object):
     return orchestrator
 
   @classmethod
-  def FromFile(cls, config_file):
+  def FromFile(cls, config_file, options):
     """Initialize with config loaded from config_file."""
     root_dir = os.path.dirname(config_file)
-    return cls(ElementTree.parse(config_file).getroot(), root_dir)
+    return cls(ElementTree.parse(config_file).getroot(), root_dir, options)
 
   @classmethod
   def FromString(cls, config_string):
     """Initialize with config from config_string."""
-    return cls(ElementTree.fromstring(config_string), ".")
+    return cls(ElementTree.fromstring(config_string), ".", object())
 
   def _SetupLogging(self):
     log_config = self._ParseValue(self._config_element.get("log-config"))
@@ -364,6 +365,9 @@ class SystemBuilder(object):
       path = os.path.join(self._root_dir, filename)
       with open(path, "r") as file_obj:
         return file_obj.read()
+    if value.startswith("option:"):
+      option_name = value[len("option:"):]
+      return str(getattr(self._options, option_name))
     if value.startswith("{") and value.endswith("}"):
       key = value[1:-1]
       value = self._ParseValue(context.get(key))
