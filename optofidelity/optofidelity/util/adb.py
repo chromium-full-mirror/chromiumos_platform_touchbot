@@ -64,6 +64,16 @@ class ADB(object):
     power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=20)
     return "mWakefulness=Awake" in power_dump
 
+  def GetProp(self, prop_name):
+    """Return 'getprop' property from device.
+
+    Returns None if the property does not exist.
+    """
+    prop = self.ExecuteShell(["getprop", prop_name]).strip()
+    if len(prop):
+      return prop
+    return None
+
   def SendKey(self, key_name):
     self.ExecuteShell(["input", "keyevent", key_name], timeout=10, retries=2)
 

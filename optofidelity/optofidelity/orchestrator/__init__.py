@@ -11,4 +11,5 @@ from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject
 from .subject_preparer import ADBScreenOffPreparer, SubjectPreparer
 from .subject_setup import ADBSettingsSetup, SubjectSetup
-from .updater import ChromeUpdater, FakeUpdater, ManualUpdater, Updater
+from .updater import (AndroidUpdater, ChromeUpdater, FakeUpdater,
+                      ManualUpdater, Updater)

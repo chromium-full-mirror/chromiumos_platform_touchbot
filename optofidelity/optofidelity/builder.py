@@ -21,17 +21,17 @@ from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
 from .orchestrator import (ADBScreenOffPreparer, ADBSettingsSetup,
-                           ChromePerfDashboard, ChromeUpdater, Dashboard,
-                           FakeUpdater, ManualUpdater, Orchestrator,
-                           OrchestratorSubject, SubjectPreparer, SubjectSetup,
-                           Updater, SpreadsheetDashboard)
+                           AndroidUpdater, ChromePerfDashboard, ChromeUpdater,
+                           Dashboard, FakeUpdater, ManualUpdater, Orchestrator,
+                           OrchestratorSubject, SpreadsheetDashboard,
+                           SubjectPreparer, SubjectSetup, Updater)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
 from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
-from .system.navigator import (NativeADBNavigator, RobotNavigator,
-                               WebADBNavigator, ManualNavigator)
+from .system.navigator import (ManualNavigator, NativeADBNavigator,
+                               RobotNavigator, WebADBNavigator)
 from .system.system import FingerCalibDelay
 from .util import const_property
 
@@ -102,6 +102,7 @@ class SystemBuilder(object):
     },
     Updater: {
       "chrome": ChromeUpdater,
+      "android": AndroidUpdater,
       "manual": ManualUpdater,
       "fake": FakeUpdater
     },

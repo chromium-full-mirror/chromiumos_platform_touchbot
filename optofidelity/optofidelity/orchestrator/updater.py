@@ -150,6 +150,37 @@ class ChromeUpdater(Updater):
                                                  process.returncode))
 
 
+class AndroidUpdater(Updater):
+  """Updater for Android that pulls version information via ADB.
+
+  This class does not support installing new versions of android but only
+  provides the currently installed version build id or release version.
+  """
+  def __init__(self, adb_device):
+    self._adb = ADB(adb_device)
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls(attributes["adb"])
+
+  @property
+  def available_versions(self):
+    return []
+
+  @const_property
+  def installed_version(self):
+    build_id = self._adb.GetProp("ro.build.id")
+    if build_id:
+      return build_id
+    return self._adb.GetProp("ro.build.version.release")
+
+  def Install(self, version):
+    raise NotImplementedError()
+
+  def Uninstall(self):
+    raise NotImplementedError()
+
+
 class FakeUpdater(Updater):
   """Updater that returns a constant version.
 
