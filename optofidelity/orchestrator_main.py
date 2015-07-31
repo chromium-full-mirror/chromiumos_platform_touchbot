@@ -50,6 +50,8 @@ Whereas the names of benchmarks are put together in the following format:
 
 def RunBenchmarks(matches, options):
   builder = SystemBuilder.FromFile(options.config, options)
+  builder.LoadState()
+
   if options.prepare:
     builder.orchestrator.PrepareSubjects()
   for match in matches:
@@ -60,7 +62,7 @@ def RunBenchmarks(matches, options):
     else:
       builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
                                                   options.skip_installed)
-
+  builder.SaveState()
 
 def Main():
   usage = usage_string % ((sys.argv[0],) * 4)

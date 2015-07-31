@@ -5,6 +5,7 @@
 
 from collections import namedtuple
 import cPickle as pickle
+import os
 import re
 import xml.etree.ElementTree as ElementTree
 
@@ -98,29 +99,6 @@ class BenchmarkSystem(object):
     self.backend = backend
     self.camera = camera
     self.led_calibration_subject = None
-
-  def SaveState(self, state_file):
-    """Save current state to file.
-
-    This mostly includes locations of buttons and icons on devices.
-    :param str state_file: File to save into.
-    """
-    subject_states = {k: s.state for k, s in self.subjects.items()}
-    state = {"subjects": subject_states}
-    pickle.dump(state, open(state_file, "w"), protocol=-1)
-
-  def LoadState(self, state_file):
-    """Load state from file.
-
-    This mostly includes locations of buttons and icons on devices.
-    :param str state_file: File to load from.
-    """
-    state = pickle.load(open(state_file, "r"))
-    subject_states = state["subjects"]
-    for key, subject in self.subjects.items():
-      state = subject_states.get(key, None)
-      if state:
-        subject.state = state
 
   def Reset(self):
     """Reset system.

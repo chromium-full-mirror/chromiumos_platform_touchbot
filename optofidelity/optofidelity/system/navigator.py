@@ -9,9 +9,8 @@ import time
 
 from safetynet import Any, Dict, InterfaceMeta, List
 
-from optofidelity.util import const_property
+from optofidelity.util import ADB, AskUserContinue, const_property
 
-from optofidelity.util import ADB, AskUserContinue
 from .backend import DUTBackend
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -159,22 +158,42 @@ class RobotNavigator(Navigator):
   """A navigation backend that uses the robot and OCR/Icon Detection.
 
   This backend will use icon detection and OCR to navigate a device.
+  The device is expected to be in a kiosk mode always running the benchmark app.
   """
-  def __init__(self, dut_backend, icon_shape_file):
+
+  NEUTRAL_ACTIVITY = "neutral"
+  """Name of neutral activity to go back to after benchmark."""
+
+  def __init__(self, dut_backend):
     """
     :type dut_backend: DUTBackend
-    :param str icon_shape_file: path to icon shape file of the subject.
     """
     super(RobotNavigator, self).__init__()
     self._dut_backend = dut_backend
-    self._app_icon_shape_file = icon_shape_file
-    self._app_icon_coords = None
-    self._activity_button_names = {}
-    self._activity_button_coords = {}
+    self._activity_targets = {}
+    self._activity_coords = {}
+
+  def SetUp(self):
+    icons = {i: a for a, (w, i) in self._activity_targets.iteritems()
+                  if i is not None}
+    words = {w: a for a, (w, i) in self._activity_targets.iteritems()
+                  if w is not None}
+
+    word_coords = self._dut_backend.DetectWords(words.keys())
+    for word, coords in word_coords.iteritems():
+      if coords is None:
+        raise Exception("Cannot detect word '%s'" % (word,))
+      self._activity_coords[words[word]] = coords
+
+    for icon_file, activity in icons.iteritems():
+      coords = self._dut_backend.DetectIcon(icon_file)
+      if coords is None:
+        raise Exception("Cannot detect icon '%s'" % (icon_file,))
+      self._activity_coords[activity] = coords
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    self = cls(dut_backend, attributes.get("icon", ""))
+    self = cls(dut_backend)
     for child_name, child_attrib in children:
       if child_name == "activity":
         self.AddActivity(child_attrib["name"], child_attrib)
@@ -182,90 +201,42 @@ class RobotNavigator(Navigator):
 
   @property
   def activities(self):
-    return self._activity_button_names.keys()
+    return self._activity_targets.keys()
 
   @property
   def state(self):
     return {
-      "page_button_coords": self._activity_button_coords,
-      "app_icon_coords": self._app_icon_coords
+      "activity_coords": self._activity_coords
     }
 
   @state.setter
   def state(self, value):
-    self._activity_button_coords = value["page_button_coords"]
-    self._app_icon_coords = value["app_icon_coords"]
+    self._activity_coords = value["activity_coords"]
 
   def AddActivity(self, activity_name, parameters):
-    self._activity_button_names[activity_name] = parameters["text"]
+    self._activity_targets[activity_name] = (parameters.get("text"),
+                                             parameters.get("icon"))
 
   def _Open(self, safe):
-    if safe:
-      self.Reset()
-    else:
-      self._dut_backend.Tap(*self._home_button_coords)
-
-    if safe or self._app_icon_coords is None:
-      self._app_icon_coords = self._DetectAppIconCoords()
-
-    self._dut_backend.Tap(*self._app_icon_coords)
-    if safe or not self._activity_button_coords:
-      self._activity_button_coords = self._DetectActivityButtonCoords()
+    if len(self._activity_targets) != len(self._activity_coords):
+      raise Exception("You need to run --setup before using this navigator.")
 
   def _Close(self):
-    self._dut_backend.Tap(*self._back_button_coords)
+    pass
 
   def _Reset(self):
-    if self._app_icon_coords:
-      self._dut_backend.Tap(*self._app_icon_coords)
-    self._dut_backend.Tap(*self._back_button_coords)
-    self._dut_backend.Tap(*self._back_button_coords)
-    self._dut_backend.Tap(*self._home_button_coords)
+    self._CloseActivity()
 
   def _OpenActivity(self, activity_name):
-    coords = self._activity_button_coords[activity_name]
+    if activity_name not in self._activity_coords:
+      raise Exception("Unknown activity %s" % activity_name)
+    coords = self._activity_coords[activity_name]
     self._dut_backend.Tap(*coords)
 
   def _CloseActivity(self):
-    self._dut_backend.Tap(*self._back_button_coords)
-
-  @const_property
-  def _back_button_coords(self):
-    screen_min_width = 50
-    button_distance_scale_factor = 0.75
-    button_min_distance = 10
-    button_max_distance = 20
-
-    back_location = (button_min_distance +
-                     (self._dut_backend.width - screen_min_width) *
-                     button_distance_scale_factor)
-    back_location = min((back_location, button_max_distance))
-
-    return (float(self._dut_backend.width / 2 - back_location),
-            float(self._dut_backend.height - 3))
-
-  @const_property
-  def _home_button_coords(self):
-    return (float(self._dut_backend.width / 2),
-            float(self._dut_backend.height - 3))
-
-  def _DetectAppIconCoords(self):
-    coords = self._dut_backend.DetectIcon(self._app_icon_shape_file)
-    if coords is None:
-      raise Exception("Cannot detect app icon")
-    return coords
-
-  def _DetectActivityButtonCoords(self):
-    button_names = self._activity_button_names.values()
-    button_coords = self._dut_backend.DetectWords(button_names)
-    activity_coords = dict()
-    for activity_name, button_name in self._activity_button_names.iteritems():
-      coords = button_coords[button_name]
-      if coords is None:
-        raise Exception("Cannot find button '%s' for activity '%s" %
-                        (button_name, activity_name))
-      activity_coords[activity_name] = coords
-    return activity_coords
+    if self.NEUTRAL_ACTIVITY  in self._activity_coords:
+      coords = self._activity_coords[self.NEUTRAL_ACTIVITY]
+      self._dut_backend.Tap(*coords)
 
 
 class BaseADBNavigator(Navigator):

@@ -1,6 +1,7 @@
 <optofidelity log-config="file:log.json"
               results="gs://touchbot/optofidelity/benchmark_results"
-              database="filecontents:results_database.url">
+              database="filecontents:results_database.url"
+              state-file="file:optofidelity.state">
   <benchmark-system>
     <backend type="tnt" host="192.168.0.11" port="8000" />
     <camera type="phantom" host="192.168.0.4" />
@@ -13,17 +14,20 @@
 
   <orchestrator results="{results}" database="{database}" save-video="option:save_video" quick="option:quick" />
 
-  <subject-type type-name="base" exposure="{exposure}">
+  <subject-type type-name="base" margin="(15, 15)" exposure="{exposure}">
+    <benchmark name="tap" type="tap" activity="tap" />
+    <benchmark name="scroll" type="line_draw" activity="scroll" />
+  </subject-type>
+
+  <subject-type type-name="adb-base" parent-type="base">
     <preparer type="adb_screen_off" adb="{adb}" />
     <setup type="adb_settings" adb="{adb}">
       <setting name="screen_brightness" value="255" />
       <setting name="screen_brightness_mode" value="0" />
     </setup>
-    <benchmark name="tap" type="tap" activity="tap" />
-    <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
 
-  <subject-type type-name="clank_base" parent-type="base">
+  <subject-type type-name="clank_base" parent-type="adb-base">
     <navigator type="web_adb" adb="{adb}" data="file:../apps/web">
       <activity name="calibration" file="{data}/flash.html" />
       <activity name="scroll" file="{data}/scroll.html" />
@@ -55,7 +59,7 @@
     <updater type="chrome" channel="dev"/>
   </subject-type>
 
-  <subject-type type-name="android_native" margin="(20, 15)" parent-type="base">
+  <subject-type type-name="android_native" margin="(20, 15)" parent-type="adb-base">
     <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
                apk="file:../apps/Android/app/app-release.apk">
       <activity name="calibration" intent="FlashActivity" />
@@ -68,14 +72,25 @@
                oauth-key-file="file:oauth2key.json" />
   </subject-type>
 
-  <subject-type type-name="manual" margin="(15, 15)" exposure="{exposure}">
+  <subject-type type-name="manual"  parent-type="base">
     <navigator type="manual" />
     <updater type="manual" version="0.0" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
                oauth-key-file="file:oauth2key.json" />
-    <benchmark name="tap" type="tap" activity="tap" />
-    <benchmark name="scroll" type="line_draw" activity="scroll" />
+  </subject-type>
+
+  <subject-type type-name="ios" parent-type="base">
+    <navigator type="robot">
+      <activity name="neutral" icon="file:icons/neutral.shm" />
+      <activity name="calibration" icon="file:icons/flash.shm" />
+      <activity name="tap" icon="file:icons/tap.shm" />
+      <activity name="scroll" icon="file:icons/scroll.shm" />
+    </navigator>
+    <updater type="manual" version="0.0" />
+    <dashboard type="spreadsheet"
+               sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
+               oauth-key-file="file:oauth2key.json" />
   </subject-type>
 
 </optofidelity>

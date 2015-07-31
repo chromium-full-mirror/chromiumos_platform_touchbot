@@ -68,6 +68,16 @@ class Orchestrator(object):
     self._save_video = save_video
     self._quick = quick
 
+  @property
+  def state(self):
+    return {"subjects": {k: v.state for k, v in self._subjects.iteritems()}}
+
+  @state.setter
+  def state(self, state):
+    for key, value in state["subjects"].iteritems():
+      if key in self._subjects:
+        self._subjects[key].state = value
+
   @classmethod
   def FromConfig(cls, parameters, children, system, runner):
     """

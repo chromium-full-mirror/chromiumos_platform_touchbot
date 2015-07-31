@@ -147,6 +147,7 @@ class SystemBuilder(object):
     self._config_element = config_element
     self._options = options
     self.attrib = config_element.attrib
+    self._state_file = self._ParseValue(config_element.get("state-file"))
     self._SetupLogging()
 
   @const_property
@@ -185,6 +186,28 @@ class SystemBuilder(object):
   def FromString(cls, config_string):
     """Initialize with config from config_string."""
     return cls(ElementTree.fromstring(config_string), ".", object())
+
+  def SaveState(self):
+    """Save current state to file.
+
+    This mostly includes locations of buttons and icons on devices.
+    :param str state_file: File to save into.
+    """
+    if not self._state_file:
+      return
+    state = {"orchestrator": self.orchestrator.state}
+    pickle.dump(state, open(self._state_file, "w"), protocol=-1)
+
+  def LoadState(self):
+    """Load state from file.
+
+    This mostly includes locations of buttons and icons on devices.
+    """
+    if not self._state_file or not os.path.exists(self._state_file):
+      return
+    state = pickle.load(open(self._state_file, "r"))
+    if "orchestrator" in state:
+      self.orchestrator.state = state["orchestrator"]
 
   def _SetupLogging(self):
     log_config = self._ParseValue(self._config_element.get("log-config"))
