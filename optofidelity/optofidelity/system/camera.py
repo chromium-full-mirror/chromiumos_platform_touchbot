@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """Abstract base class for a high speed camera API."""
 
-from abc import abstractmethod
+from abc import abstractmethod, abstractproperty
 from safetynet import InterfaceMeta, Optional
 
 from optofidelity.videoproc import VideoReader
@@ -12,6 +12,13 @@ from optofidelity.videoproc import VideoReader
 class HighSpeedCamera(object):
   """Interface definition for High Speed Camera API."""
   __metaclass__ = InterfaceMeta
+
+  def __init__(self, is_relative):
+    self._is_relative = False
+
+  @property
+  def is_relative(self):
+    return self._is_relative
 
   @abstractmethod
   def Prepare(self, duration, fps=None, exposure=None):

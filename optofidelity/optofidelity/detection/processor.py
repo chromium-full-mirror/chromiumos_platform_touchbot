@@ -5,7 +5,7 @@
 
 from abc import abstractmethod, abstractproperty
 
-from safetynet import InterfaceMeta, List
+from safetynet import InterfaceMeta, List, Optional
 import numpy as np
 
 from optofidelity.videoproc import VideoReader
@@ -51,7 +51,7 @@ class VideoProcessor(object):
     """Process video and return list of detected events.
 
     :param VideoReader video_reader: Video to process
-    :type screen_calibration: ScreenCalibration
+    :type screen_calibration: Optional[ScreenCalibration]
     :param List[str] debug_flags: List of debug flags
     :returns Trace: List of events generated
     """
@@ -63,7 +63,7 @@ class VideoProcessor(object):
 
     :param np.ndarray frame: Frame to process
     :param np.ndarray prev_frame: Previous frame
-    :type screen_calibration: ScreenCalibration
+    :type screen_calibration: Optional[ScreenCalibration]
     :param List[str] debug_flags: List of debug flags
     :returns List[Event]: List of events generated
     """

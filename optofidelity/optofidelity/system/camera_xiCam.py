@@ -27,9 +27,11 @@ class XiCamCamera(HighSpeedCamera):
   DEF_FPS = 300
   DEF_EXP = 3200
   DEF_GAIN = 3.5
+
   def __init__(self, default_fps=None, exposure=None, gain=None):
     if xiCam is None:
       raise Exception('Must compile xiCam module before using camera.')
+    super(XiCamCamera, self).__init__(True)
     self.default_fps = default_fps or self.DEF_FPS
     self.default_exp = exposure or self.DEF_EXP
     self.default_gain = gain or self.DEF_GAIN
@@ -38,10 +40,14 @@ class XiCamCamera(HighSpeedCamera):
     self.last_frame_set = None
     self.trigger_lock = threading.Lock()
 
-  def Prepare(self, duration, fps=None):
-    self._handle = xiCam.initCam(self.default_fps, self.default_exp, self.default_gain)
+  @classmethod
+  def FromConfig(cls, attrib, children):
+    return cls(gain=attrib.get("gain", cls.DEF_GAIN))
+
+  def Prepare(self, duration, fps=None, exposure=None):
+    exposure = exposure * 1000 if exposure else self.default_exp
     self._fps = fps or self.default_fps
-    xiCam.setFPS(self._fps, self._handle)
+    self._handle = xiCam.initCam(self._fps, exposure, self.default_gain)
     self._num_frames = duration * self._fps / 1000
     if self._num_frames > self.MAX_PTFRAMES:
       raise ValueError("Cannot record more than %d frames" % self.MAX_PTFRAMES)
@@ -62,7 +68,8 @@ class XiCamCamera(HighSpeedCamera):
     if not self._triggered:
       raise Exception("Camera needs to be triggered before receiving video.")
     with self.trigger_lock:
-      return XiCamVideoReader(self.last_frame_set, self._num_frames, self._fps, self._handle)
+      return XiCamVideoReader(self.last_frame_set, self._num_frames, self._fps,
+                              self._handle)
 
 
 class XiCamVideoReader(VideoReader):
@@ -89,7 +96,8 @@ class XiCamVideoReader(VideoReader):
     return True
 
   def _Read(self):
-    data = np.array(self.frameSet.getFrame(self.current_frame)[self.IMG_IDX], np.uint8)
+    data = np.array(self.frameSet.getFrame(self.current_frame)[self.IMG_IDX],
+                    np.uint8)
     return skimage.img_as_float(data)
 
   def _ReadGPIO(self):

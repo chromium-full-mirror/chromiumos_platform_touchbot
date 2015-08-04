@@ -6,15 +6,16 @@ import logging
 import time
 import traceback
 
-from safetynet import Any, Dict, InterfaceMeta, List
+from safetynet import Any, Dict, InterfaceMeta, List, Optional
 
 from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
-from optofidelity.util import LogCapture, ProgressPrinter, GSFindUniqueFilename
+from optofidelity.util import GSFindUniqueFilename, LogCapture, ProgressPrinter
 
-from .benchmark import Benchmark
 from ._line_delegates import LineDrawDelegate, LineDrawStartDelegate
+from ._open_delegates import OpenStuffDelegate
 from ._tap_delegate import TapDelegate
+from .benchmark import Benchmark
 
 _log = logging.getLogger(__name__)
 
@@ -34,7 +35,8 @@ class BenchmarkRunner(object):
   BENCHMARK_TYPES = {
     "line_draw": LineDrawDelegate,
     "line_draw_start": LineDrawStartDelegate,
-    "tap": TapDelegate
+    "tap": TapDelegate,
+    "open": OpenStuffDelegate
   }
 
   def __init__(self, benchmark_system, video_processor):
@@ -108,7 +110,7 @@ class BenchmarkRunner(object):
     """Open a subject and calibrate screen.
 
     :type subject: BenchmarkSubject
-    :rtype: ScreenCalibration
+    :rtype: Optional[ScreenCalibration]
     """
     try:
       self._progress.Info(subject.name, "Opening and calibrating")
@@ -156,10 +158,12 @@ class BenchmarkRunner(object):
     """Execute the screen calibration process.
 
     :type subject: BenchmarkSubject
-    :rtype ScreenCalibration
+    :rtype Optional[ScreenCalibration]
     """
     try:
       self._progress.Info(subject.name, "Calibrating screen")
+      if subject.camera.is_relative:
+        return None
       video_reader = subject.RecordCalibrationVideo()
       screen_calibration = self.video_processor.CreateScreenCalibration(
           video_reader)
@@ -176,4 +180,3 @@ class BenchmarkRunner(object):
         video_reader.Save(unique_file)
 
       raise
-

@@ -29,6 +29,7 @@ from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
+from .system.camera_xiCam import XiCamCamera
 from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
 from .system.navigator import (ManualNavigator, NativeADBNavigator,
                                RobotNavigator, WebADBNavigator)
@@ -98,6 +99,7 @@ class SystemBuilder(object):
     },
     HighSpeedCamera: {
       "phantom": PhantomCamera,
+      "xicam": XiCamCamera,
       "fake": FakeHighSpeedCamera
     },
     Updater: {

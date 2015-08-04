@@ -87,7 +87,8 @@ class FakeRobotBackend(RobotBackend):
 
 class FakeHighSpeedCamera(HighSpeedCamera):
   """Fake implementation of a HighSpeedCamera."""
-  def __init__(self):
+  def __init__(self, is_relative=False):
+    super(FakeHighSpeedCamera, self).__init__(is_relative)
     self.num_frames = None
     self.fps = 300
     self.frame_size = (1280, 720)

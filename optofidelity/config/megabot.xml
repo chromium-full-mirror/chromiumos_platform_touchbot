@@ -1,0 +1,18 @@
+<optofidelity>
+  <benchmark-system>
+    <backend type="tnt" host="192.168.0.12" port="8000" />
+    <camera type="xicam" />
+  </benchmark-system>
+
+  <orchestrator results="file:results"
+                save-video="option:save_video" quick="option:quick" />
+
+  <dut name="temp1">
+    <subject name="test">
+      <navigator type="manual" />
+      <updater type="manual" version="0.0" />
+      <benchmark name="app_drawer" type="open" activity="home" />
+    </subject>
+  </dut>
+
+</optofidelity>

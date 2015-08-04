@@ -75,6 +75,8 @@ class PhantomCamera(HighSpeedCamera):
     The debug flag will enable debug printouts during the operation
     of this class.
     """
+    super(PhantomCamera, self).__init__(is_relative=False)
+
     self.default_fps = default_fps or 300
     port = port or 7115
 
