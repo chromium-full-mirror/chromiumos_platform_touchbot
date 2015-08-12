@@ -382,6 +382,10 @@ class NativeADBNavigator(BaseADBNavigator):
     self._adb.InstallAPK(self._apk_file)
 
   def AddActivity(self, activity_name, parameters):
-    component = self._package_name + "/." + parameters["intent"]
-    intent_params = dict(component=component)
+    if "class-name" in parameters:
+      component = self._package_name + "/." + parameters["class-name"]
+      intent_params = dict(component=component)
+    else:
+      intent_params = {k: v for k, v in parameters.iteritems()
+                            if k in ("action", "component", "uri", "category")}
     super(NativeADBNavigator, self).AddActivity(activity_name, intent_params)
