@@ -169,6 +169,15 @@ class Orchestrator(object):
       self._progress.Info(subject.name, "Preparing")
       subject.Prepare()
 
+  def VerifySubjects(self):
+    """Gets all subjects into testable state.
+
+    :type subject: OrchestratorSubject
+    """
+    for subject in self._subjects.itervalues():
+      self._progress.Info(subject.name, "Verifying")
+      subject.Verify()
+
   def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
     """Runs updates and benchmarks on all bencharks matching 'match'
 

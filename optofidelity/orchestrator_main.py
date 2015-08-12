@@ -54,14 +54,17 @@ def RunBenchmarks(matches, options):
 
   if options.prepare:
     builder.orchestrator.PrepareSubjects()
-  for match in matches:
-    if options.info:
-      builder.orchestrator.PrintInfo(match)
-    elif options.setup:
-      builder.orchestrator.SetUpSubjects(match, options.versions)
-    else:
-      builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
-                                                  options.skip_installed)
+  elif options.verify:
+    builder.orchestrator.VerifySubjects()
+  else:
+    for match in matches:
+      if options.info:
+        builder.orchestrator.PrintInfo(match)
+      elif options.setup:
+        builder.orchestrator.SetUpSubjects(match, options.versions)
+      else:
+        builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
+                                                    options.skip_installed)
   builder.SaveState()
 
 def Main():
@@ -85,6 +88,9 @@ def Main():
   parser.add_option("--setup",
                     dest="setup", default=False, action="store_true",
                     help="Setup specified devices.")
+  parser.add_option("--verify",
+                    dest="verify", default=False, action="store_true",
+                    help="Verify availability of devices.")
   parser.add_option("--save-video",
                     dest="save_video", default=False, action="store_true",
                     help="Save video of each benchmark.")
