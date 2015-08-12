@@ -1,0 +1,28 @@
+<optofidelity>
+  <include file="base.xml" />
+
+  <dut-type type-name="android_phone">
+    <subject name="native" type="android_native" />
+  </dut-type>
+
+  <dut-type type-name="iphone">
+    <subject name="native" type="ios" />
+  </dut-type>
+
+  <!-- 1st row -->
+  <dut name="s6edge" adb="05157df5896eca3b" type="android_phone" />
+  <dut name="m9" adb="FA53MYJ11555" type="android_phone" />
+  <dut name="nexus4" adb="04f6cafb8c976e5a" type="android_phone" />
+
+  <!-- 2nd row -->
+  <dut name="iphone6" type="iphone" />
+  <dut name="nexus5" adb="08a9896c255d540b" type="android_phone" />
+  <dut name="s6" adb="03157df3ed181307" type="android_phone" exposure="2.5" />
+
+  <!-- 3rd row -->
+  <dut name="iphone6plus" type="iphone" />
+  <dut name="nexus6" adb="NP5A340401" type="android_phone" exposure="2" />
+
+  <!-- 4th row -->
+  <dut name="bullhead" adb="00656e9429c02d0f" type="android_phone" />
+</optofidelity>
