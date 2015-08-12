@@ -1,6 +1,6 @@
 <optofidelity log-config="file:log.json"
-              results="gs://touchbot/optofidelity/benchmark_results"
-              database="filecontents:results_database.url"
+              results="gs://touchbot/optofidelity/benchmark_results/"
+              reports="http://crostouchlatency.appspot.com/reports/"
               state-file="file:optofidelity.state">
   <benchmark-system>
     <backend type="tnt" host="192.168.0.11" port="8000" />
@@ -12,7 +12,8 @@
   <benchmark-runner led-calibration-down="-4" led-calibration-up="4"
                     calibration-video-path="file:failed_calibrations"/>
 
-  <orchestrator results="{results}" database="{database}" save-video="option:save_video" quick="option:quick" />
+  <orchestrator results="{results}" database="{database}" reports="{reports}"
+                save-video="option:save_video" quick="option:quick" />
 
   <subject-type type-name="base" margin="(15, 15)" exposure="{exposure}">
     <benchmark name="tap" type="tap" activity="tap" />

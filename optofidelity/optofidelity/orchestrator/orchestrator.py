@@ -42,7 +42,7 @@ class Orchestrator(object):
 
   def __init__(self, benchmark_system, benchmark_runner, results_url,
                results_db_url, generate_reports=True, xkcd=False,
-               save_video=False, quick=False):
+               save_video=False, quick=False, reports_url=None):
     """
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
@@ -54,6 +54,7 @@ class Orchestrator(object):
     self._system = benchmark_system
     self._runner = benchmark_runner
     self.results_url = results_url
+    self.reports_url = reports_url
 
     self._results_db = None
     self._results_table = None
@@ -88,12 +89,14 @@ class Orchestrator(object):
     """
     xkcd = parameters.get("xkcd") is not None
     results = parameters["results"]
-    database = parameters["database"]
+    reports = parameters.get("reports")
+    database = parameters.get("database")
+
     true_values = ("True", "true", "1")
     save_video = parameters.get("save-video", "") in true_values
     quick = parameters.get("quick", "") in true_values
     return cls(system, runner, results, database, xkcd=xkcd,
-               save_video=save_video, quick=quick)
+               save_video=save_video, quick=quick, reports_url=reports)
 
   def PrintInfo(self, match):
     for subject in self._subjects.itervalues():
@@ -388,8 +391,9 @@ class Orchestrator(object):
     return self._results_table.all()
 
   def _GetPublicReportUrl(self, url):
-    public_url = url.replace("gs://", "http://storage.googleapis.com/")
-    return os.path.join(public_url, "report.html")
+    if self.reports_url:
+      url = url.replace(self.results_url, self.reports_url)
+    return os.path.join(url, "report.html")
 
   def _FindUniqueResultsURL(self, time):
     """Find a unique folder to store results into.

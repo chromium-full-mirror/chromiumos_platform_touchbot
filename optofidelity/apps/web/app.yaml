@@ -9,10 +9,13 @@ handlers:
   static_files: index.html
   upload: index.html
 
+- url: /reports/(.*)
+  script: report_viewer.app
+
 - url: /jquery.min.js
   static_files: jquery.min.js
   upload: jquery.min.js
 
 - url: /(.*)
   static_files: \1.html
-  upload: (.*)
+  upload: (.*).html
