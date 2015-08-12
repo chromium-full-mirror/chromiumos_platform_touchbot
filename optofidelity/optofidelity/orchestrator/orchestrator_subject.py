@@ -59,6 +59,7 @@ class OrchestratorSubject(BenchmarkSubject):
 
   def Prepare(self):
     with self._progress.LogExceptions(self.name, "Preparing subject"):
+      self.navigator.Prepare()
       for preparer in self.preparer:
         preparer.Prepare()
 

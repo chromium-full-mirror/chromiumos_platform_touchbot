@@ -27,6 +27,9 @@ class Navigator(object):
   def SetUp(self):
     pass
 
+  def Prepare(self):
+    pass
+
   def Verify(self):
     pass
 
@@ -190,6 +193,9 @@ class RobotNavigator(Navigator):
       if coords is None:
         raise Exception("Cannot detect icon '%s'" % (icon_file,))
       self._activity_coords[activity] = coords
+
+  def Prepare(self):
+    self._CloseActivity()
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):

@@ -28,7 +28,7 @@ CACHE_DIR = os.path.join(os.path.dirname(__file__), ".cache")
 def ProcessBenchmark(url_or_uid, what, debug_flags):
   if len(debug_flags):
     debug_flags += ["viewer"]
-  builder = SystemBuilder.FromFile("config/base.xml")
+  builder = SystemBuilder.FromFile("config/base.xml", object())
 
   if os.path.exists(url_or_uid) or url_or_uid.startswith("gs://"):
     url = url_or_uid

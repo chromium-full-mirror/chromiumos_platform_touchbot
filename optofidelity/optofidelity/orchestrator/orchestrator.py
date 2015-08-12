@@ -47,7 +47,7 @@ class Orchestrator(object):
     :type benchmark_system: BenchmarkSystem
     :type benchmark_runner: BenchmarkRunner
     :type results_url: str
-    :type results_db_url: str
+    :type results_db_url: Optional[str]
     :param bool generate_reports: Generate reports for each benchmark
     :param bool xkcd: Give reports more authority
     """
@@ -353,6 +353,8 @@ class Orchestrator(object):
     results_url, uid = self._FindUniqueResultsURL(benchmark_time)
     if self._generate_reports:
       with GSFolder(results_url) as report_path:
+        if not os.path.exists(report_path):
+          os.mkdir(report_path)
         pickle_file = open(os.path.join(report_path, "results.pickle"), "wb")
         pickle.dump(aggregate, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -444,6 +446,8 @@ class Orchestrator(object):
     :type results: BenchmarkResults
     :raises Exception: If database connection is lost.
     """
+    if not self._results_table:
+      return
     dump = lambda array: ", ".join(str(array))
 
     for series_name in results.measurements.series_infos:

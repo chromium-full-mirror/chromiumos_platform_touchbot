@@ -264,7 +264,7 @@ class Trace(list):
 
     # Find area in which the robot continuously has this speed.
     start = 0
-    end = len(self.finger_speed)
+    end = len(self.finger_speed) - 1
     for i, speed in enumerate(self.finger_speed):
       if speed > min_speed:
         if not start:

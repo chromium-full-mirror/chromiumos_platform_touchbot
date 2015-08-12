@@ -14,7 +14,7 @@ class HighSpeedCamera(object):
   __metaclass__ = InterfaceMeta
 
   def __init__(self, is_relative):
-    self._is_relative = False
+    self._is_relative = is_relative
 
   @property
   def is_relative(self):
