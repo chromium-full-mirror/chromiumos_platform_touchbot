@@ -32,9 +32,6 @@ class BenchmarkSubject(object):
   """
   __metaclass__ = TypecheckMeta
 
-  TEST_PLANE_MARGIN = 10.0
-  """Margin from the edge to keep for 1D line gestures."""
-
   ORIENTATION_THRESHOLD = 0.5
   """Threshold by how much a devices orientation is allowed to deviate from
      right angles."""
@@ -57,6 +54,7 @@ class BenchmarkSubject(object):
     self.exposure = None
     self.navigator = None
     self.margin = (0.0, 0.0)
+    self.test_plane_location = 0.2
     self._dut_backend = dut_backend
 
   @const_property
@@ -66,11 +64,12 @@ class BenchmarkSubject(object):
       dist = min(dist, (2 * np.pi) - dist)
       return dist < self.ORIENTATION_THRESHOLD
 
+    abs_test_plane_location = self.test_plane_location * self.width
     orientation = self._dut_backend.orientation
     if is_oriented(orientation, np.pi / 2):
-      return self.TEST_PLANE_MARGIN
+      return abs_test_plane_location
     elif is_oriented(orientation, np.pi / 2 * 3):
-      return self.right - self.TEST_PLANE_MARGIN
+      return self.width - abs_test_plane_location
     else:
       raise Exception("DUTs need to be oriented at 90 or 270 degrees.")
 

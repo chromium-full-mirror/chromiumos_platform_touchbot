@@ -308,6 +308,12 @@ class SystemBuilder(object):
     if exposure:
       subject.exposure = float(exposure)
 
+    test_plane = self._ParseValue(subject_elem.get("test-plane"),
+                                  dut_elem.attrib)
+    if test_plane:
+      subject.test_plane_location = float(test_plane)
+
+
     if margin_attrib:
       margin_attrib = self._ParseValue(margin_attrib, context)
       subject.margin = self._ParseCoord(margin_attrib)
