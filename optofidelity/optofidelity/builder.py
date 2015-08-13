@@ -3,10 +3,8 @@
 # found in the LICENSE file.
 """Implementation of the BenchmarkSystem class."""
 
-from collections import namedtuple
 from copy import deepcopy
 import cPickle as pickle
-import itertools
 import json
 import logging
 import logging.config
@@ -18,21 +16,10 @@ from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
                        typecheck)
 
 from .benchmark import BenchmarkRunner
-from .detection import (MultithreadedVideoProcessor,
-                        SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ADBScreenOffPreparer, ADBSettingsSetup,
-                           AndroidUpdater, ChromePerfDashboard, ChromeUpdater,
-                           Dashboard, FakeUpdater, ManualUpdater, Orchestrator,
-                           OrchestratorSubject, SpreadsheetDashboard,
-                           SubjectPreparer, SubjectSetup, Updater)
-from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
-                     Navigator, RobotBackend)
-from .system.backend_tnt import TnTRobotBackend
-from .system.camera_phantom import PhantomCamera
-from .system.camera_xiCam import XiCamCamera
-from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
-from .system.navigator import (ManualNavigator, NativeADBNavigator,
-                               RobotNavigator, WebADBNavigator)
+from .components import COMPONENTS
+from .detection import VideoProcessor
+from .orchestrator import Dashboard, Orchestrator, OrchestratorSubject, Updater
+from .system import BenchmarkSystem, HighSpeedCamera, Navigator, RobotBackend
 from .system.system import FingerCalibDelay
 from .util import const_property
 
@@ -91,51 +78,6 @@ class SystemBuilder(object):
   creation.
   """
   __metaclass__ = TypecheckMeta
-
-  COMPONENTS = {
-    RobotBackend: {
-      "tnt": TnTRobotBackend,
-      "fake": FakeRobotBackend
-    },
-    HighSpeedCamera: {
-      "phantom": PhantomCamera,
-      "xicam": XiCamCamera,
-      "fake": FakeHighSpeedCamera
-    },
-    Updater: {
-      "chrome": ChromeUpdater,
-      "android": AndroidUpdater,
-      "manual": ManualUpdater,
-      "fake": FakeUpdater
-    },
-    Navigator: {
-      "robot": RobotNavigator,
-      "web_adb": WebADBNavigator,
-      "native_adb": NativeADBNavigator,
-      "manual": ManualNavigator
-    },
-    VideoProcessor: {
-      "multithreaded": MultithreadedVideoProcessor,
-      "singlethreaded": SinglethreadedVideoProcessor,
-      "default": MultithreadedVideoProcessor
-    },
-    Dashboard: {
-      "chromeperf": ChromePerfDashboard,
-      "spreadsheet": SpreadsheetDashboard
-    },
-    Orchestrator: {
-      "default": Orchestrator
-    },
-    BenchmarkRunner: {
-      "default": BenchmarkRunner
-    },
-    SubjectSetup: {
-      "adb_settings": ADBSettingsSetup
-    },
-    SubjectPreparer: {
-      "adb_screen_off": ADBScreenOffPreparer
-    }
-  }
 
   def __init__(self, config_element, root_dir, options):
     """Initialize all components from the configuration in config_element.
@@ -417,7 +359,7 @@ class SystemBuilder(object):
     :param List[Any] extra_args: Extra arguments passes to FromConfig.
     """
     if element is None:
-      if "default" in self.COMPONENTS[interface_type]:
+      if "default" in COMPONENTS[interface_type]:
         attrib, children = {}, []
       else:
         return None
@@ -425,7 +367,7 @@ class SystemBuilder(object):
       attrib, children = self._GetElementAttribs(element, context)
     type_name = attrib.get("type") or "default"
 
-    available = self.COMPONENTS[interface_type]
+    available = COMPONENTS[interface_type]
     if type_name not in available:
       raise Exception("Invalid type '%s' for interface '%s'" %
                       (type_name, interface_type))
