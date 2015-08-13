@@ -21,7 +21,7 @@ from .detection import VideoProcessor
 from .orchestrator import Dashboard, Orchestrator, OrchestratorSubject, Updater
 from .system import BenchmarkSystem, HighSpeedCamera, Navigator, RobotBackend
 from .system.system import FingerCalibDelay
-from .util import const_property
+from .util import CreateComponent, const_property
 
 
 @typecheck
@@ -310,22 +310,6 @@ class SystemBuilder(object):
     element.attrib = dict((k, v) for k, v in element.attrib.items()
                                  if k not in remove_keys)
 
-  def _GetElementAttribs(self, element, context):
-    """Collects attributes and children attributes of an element.
-
-    :type element: ElementTree.Element
-    :rtype Tuple[Dict[str, str], List[(str, Dict[str, str])]]
-    """
-    attrib = dict()
-    attrib.update(element.attrib)
-    children = []
-    for child in element:
-      child_attrib = {k: self._ParseValue(v)
-                      for k, v in child.attrib.iteritems()}
-      children.append((child.tag, child_attrib))
-    attrib = {k: self._ParseValue(v, context) for k, v in attrib.iteritems()}
-    return attrib, children
-
   def _ParseValue(self, value, context=dict()):
     if value is None:
       return value
@@ -360,19 +344,19 @@ class SystemBuilder(object):
     """
     if element is None:
       if "default" in COMPONENTS[interface_type]:
-        attrib, children = {}, []
+        type_name = "default"
       else:
         return None
     else:
-      attrib, children = self._GetElementAttribs(element, context)
-    type_name = attrib.get("type") or "default"
+      type_name = element.attrib.get("type", "default")
 
-    available = COMPONENTS[interface_type]
-    if type_name not in available:
+    available_types = COMPONENTS[interface_type]
+    if type_name not in available_types:
       raise Exception("Invalid type '%s' for interface '%s'" %
                       (type_name, interface_type))
-    impl_type = available[type_name]
-    return impl_type.FromConfig(attrib, children, *extra_args)
+    impl_type = available_types[type_name]
+    value_filter = lambda v: self._ParseValue(v, context)
+    return CreateComponent(impl_type, element, extra_args, value_filter)
 
   def _ParseCoord(self, string):
     if string:
