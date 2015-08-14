@@ -6,4 +6,4 @@ from .gsutil import (GSDownload, GSFile, GSFindUniqueFilename, GSFolder,
                      GSOpenFile, GSPathExists, GSTouch)
 from .tools import (AskUserContinue, LogCapture, PrintTime, ProgressBar,
                     ProgressPrinter, SingleInstanceLock, const_property)
-from .component import CreateComponent
+from .component import CreateComponent, CreateComponentFromXML

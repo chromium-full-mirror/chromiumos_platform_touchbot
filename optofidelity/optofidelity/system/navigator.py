@@ -7,7 +7,7 @@ from abc import abstractmethod, abstractproperty
 import os
 import time
 
-from safetynet import Any, Dict, InterfaceMeta, List
+from safetynet import Any, Dict, TypecheckMeta, List
 
 from optofidelity.util import ADB, AskUserContinue, const_property
 
@@ -18,60 +18,80 @@ _script_dir = os.path.dirname(os.path.realpath(__file__))
 
 class Navigator(object):
   """Backend class to navigate a device to open subjects and pages."""
-  __metaclass__ = InterfaceMeta
+  __metaclass__ = TypecheckMeta
 
-  def __init__(self):
-    self._is_open = False
-    self._current_activity = None
-
-  def SetUp(self):
-    pass
-
-  def Prepare(self):
-    pass
-
-  def Verify(self):
-    pass
-
-  @abstractproperty
-  def activities(self):
-    """List of supported activity names.
-
-    :rtype List[str]
-    """
-
-  @abstractproperty
+  @property
   def state(self):
     """State information. (e.g. coordinates of detected buttons)"""
+    return {}
+
+  def SetUp(self):
+    """SetUp the navigator to run on a device."""
+
+  def Prepare(self):
+    """Prepare the underlying device for a benchmark run."""
+
+  def Verify(self):
+    """Verify that the device is accessible for a benchmark run."""
 
   @abstractmethod
-  def AddActivity(self, activity_name, parameters):
-    """Register an activity with sub-class specific parameters."""
+  def Open(self):
+    """Open the subject."""
 
-  def Open(self, safe):
-    """Open the subject.
-
-    :param bool safe: True instructs the backend to take extra precautions. At
-           the expense of more time to complete the task.
-    """
-    if self._is_open:
-      raise Exception("Subject already open.")
-    self._Open(safe)
-    self._is_open = True
-
+  @abstractmethod
   def Close(self):
     """Close the subject."""
-    if not self._is_open:
-      raise Exception("Subject has not been opened.")
-    self._Close()
-    self._is_open = False
 
+  @abstractmethod
   def Reset(self):
     """Reset the underlying DUT.
 
     This is a last resort after issues with opening the subject. This 'should'
     return the DUT into a state where the subject can be opened again.
     """
+
+  @abstractmethod
+  def Cleanup(self):
+    """Get device back into a clean state."""
+
+  @abstractmethod
+  def HasActivity(self, activity_name):
+    """:returns bool: True if the activity can be opened."""
+
+  @abstractmethod
+  def OpenActivity(self, activity_name):
+    """Open activity.
+
+    :type activity_name: str
+    """
+
+  @abstractmethod
+  def CloseActivity(self):
+    """Close previously opened activity."""
+
+
+class BaseNavigator(Navigator):
+  """Basic implementation to keep track of the device state."""
+
+  def __init__(self):
+    self._is_open = False
+    self._current_activity = None
+
+  def Open(self):
+    if self._is_open:
+      raise Exception("Subject already open.")
+    self._Open()
+    self._is_open = True
+
+  def Close(self):
+    if not self._is_open:
+      raise Exception("Subject has not been opened.")
+    if self._current_activity:
+      raise Exception("Activity still open.")
+    self._Close()
+    self._is_open = False
+
+  def Reset(self):
     self._Reset()
     self._is_open = False
     self._current_activity = None
@@ -83,15 +103,11 @@ class Navigator(object):
       self.Close()
 
   def OpenActivity(self, activity_name):
-    """Open activity.
-
-    :type activity_name: str
-    """
     if not self._is_open:
       raise Exception("Can't open activity if subject has not been opened.")
     if self._current_activity:
       raise Exception("Another activity is already open.")
-    if activity_name not in self.activities:
+    if not self.HasActivity(activity_name):
       raise ValueError("Unknown activity name '%s'" % activity_name)
 
     self._OpenActivity(activity_name)
@@ -104,60 +120,37 @@ class Navigator(object):
     self._CloseActivity()
     self._current_activity = None
 
-  def _Open(safe=False):
-    pass
+  def _Open(self):
+    """Private implementation of Open"""
 
   def _Close(self):
-    pass
+    """Private implementation of Close"""
 
   def _Reset(self):
-    pass
+    """Private implementation of Reset"""
 
-  def _OpenActivity(self):
-    pass
+  def _OpenActivity(self, activity_name):
+    """Private implementation of OpenActivity"""
 
   def _CloseActivity(self):
-    pass
+    """Private implementation of CloseActivity"""
 
 
-class ManualNavigator(Navigator):
+class ManualNavigator(BaseNavigator):
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
     return cls()
 
-  @property
-  def activities(self):
-    return []
+  def HasActivity(self, activity_name):
+    return True
 
-  @property
-  def state(self):
-    return {}
-
-  def AddActivity(self, activity_name, parameters):
-    pass
-
-  def Open(self, safe):
-    pass
-
-  def Close(self):
-    pass
-
-  def Reset(self):
-    pass
-
-  def Cleanup(self):
-    pass
-
-  def OpenActivity(self, activity_name):
+  def _OpenActivity(self, activity_name):
     if self._current_activity != activity_name:
       AskUserContinue("Open the '%s' activity" % activity_name)
       self._current_activity = activity_name
 
-  def CloseActivity(self):
-    pass
 
-
-class RobotNavigator(Navigator):
+class RobotNavigator(BaseNavigator):
   """A navigation backend that uses the robot and OCR/Icon Detection.
 
   This backend will use icon detection and OCR to navigate a device.
@@ -175,6 +168,33 @@ class RobotNavigator(Navigator):
     self._dut_backend = dut_backend
     self._activity_targets = {}
     self._activity_coords = {}
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    self = cls(dut_backend)
+    for child_name, parameters in children:
+      if child_name == "activity":
+        self.AddActivity(parameters["name"], parameters.get("text"),
+                         parameters.get("icon"))
+    return self
+
+  @property
+  def state(self):
+    return {
+      "activity_coords": self._activity_coords
+    }
+
+  @state.setter
+  def state(self, value):
+    self._activity_coords = value["activity_coords"]
+
+  def AddActivity(self, name, text=None, icon=None):
+    if text is None and icon is None:
+      raise ValueError("Specify either 'text' or 'icon'")
+    self._activity_targets[name] = (text, icon)
+
+  def HasActivity(self, activity_name):
+    return activity_name in self._activity_targets
 
   def SetUp(self):
     icons = {i: a for a, (w, i) in self._activity_targets.iteritems()
@@ -197,45 +217,14 @@ class RobotNavigator(Navigator):
   def Prepare(self):
     self._CloseActivity()
 
-  @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
-    self = cls(dut_backend)
-    for child_name, child_attrib in children:
-      if child_name == "activity":
-        self.AddActivity(child_attrib["name"], child_attrib)
-    return self
-
-  @property
-  def activities(self):
-    return self._activity_targets.keys()
-
-  @property
-  def state(self):
-    return {
-      "activity_coords": self._activity_coords
-    }
-
-  @state.setter
-  def state(self, value):
-    self._activity_coords = value["activity_coords"]
-
-  def AddActivity(self, activity_name, parameters):
-    self._activity_targets[activity_name] = (parameters.get("text"),
-                                             parameters.get("icon"))
-
-  def _Open(self, safe):
+  def _Open(self):
     if len(self._activity_targets) != len(self._activity_coords):
       raise Exception("You need to run --setup before using this navigator.")
-
-  def _Close(self):
-    pass
 
   def _Reset(self):
     self._CloseActivity()
 
   def _OpenActivity(self, activity_name):
-    if activity_name not in self._activity_coords:
-      raise Exception("Unknown activity %s" % activity_name)
     coords = self._activity_coords[activity_name]
     self._dut_backend.Tap(*coords)
 
@@ -245,7 +234,7 @@ class RobotNavigator(Navigator):
       self._dut_backend.Tap(*coords)
 
 
-class BaseADBNavigator(Navigator):
+class BaseADBNavigator(BaseNavigator):
   """Navigation backend that uses ADB.
 
   This backend will use the ADB command line tool to communicate with a device
@@ -262,27 +251,17 @@ class BaseADBNavigator(Navigator):
     self._stay_alive = stay_alive
     self._activity_intents = {}
 
-  @property
-  def activities(self):
-    return self._activity_intents.keys()
+  def AddActivity(self, activity_name, intent_params):
+    self._activity_intents[activity_name] = intent_params
 
-  @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
-    return cls(attributes.get("adb"))
-
-  @property
-  def state(self):
-    return {}
-
-  @state.setter
-  def state(self, value):
-    pass
+  def HasActivity(self, activity_name):
+    return activity_name in self._activity_intents
 
   def Verify(self):
-    self.Open(False)
+    self.Open()
     self.Close()
 
-  def _Open(self, safe):
+  def _Open(self):
     if not self._stay_alive:
       self._adb.PowerOn()
 
@@ -304,9 +283,6 @@ class BaseADBNavigator(Navigator):
     if not self._stay_alive:
       self._adb.PowerOff()
 
-  def AddActivity(self, activity_name, parameters):
-    self._activity_intents[activity_name] = parameters
-
 
 class WebADBNavigator(BaseADBNavigator):
   """Navigation backend that uses ADB to navigate to websites.
@@ -322,35 +298,35 @@ class WebADBNavigator(BaseADBNavigator):
     """
     super(WebADBNavigator, self).__init__(adb_device, stay_alive)
     self._component = component
-    self._activity_files = {}
     self._resources = []
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    self = cls(attributes["adb"], attributes["component"])
-    for child_name, child_attrib in children:
+    self = cls(attributes["adb"], attributes["component"],
+               attributes.get("stay-alive", False))
+    for child_name, parameters in children:
       if child_name == "activity":
-        self.AddActivity(child_attrib["name"], child_attrib)
+        activity_name = parameters["name"]
+        html_file = parameters["file"]
+        self.AddHTMLActivity(activity_name, html_file)
       if child_name == "resource":
-        self._resources.append(child_attrib["file"])
+        self._resources.append(parameters["file"])
     return self
 
   def SetUp(self):
     self._adb.ExecuteShell(["mkdir", "-p", self.REMOTE_DIR])
-    for filename in (self._resources + self._activity_files.values()):
+    for filename in self._resources:
       basename = os.path.basename(filename)
       remote_file = os.path.join(self.REMOTE_DIR, basename)
       self._adb.PushFile(filename, remote_file)
 
-  def AddActivity(self, activity_name, parameters):
-    html_file = parameters["file"]
-    self._activity_files[activity_name] = html_file
+  def AddHTMLActivity(self, activity_name, html_file):
+    self._resources.append(html_file)
     basename = os.path.basename(html_file)
-
     remote_file = os.path.join(self.REMOTE_DIR, basename)
     uri = "file://%s" % remote_file
     intent_params = dict(component=self._component, uri=uri)
-    super(WebADBNavigator, self).AddActivity(activity_name, intent_params)
+    self.AddActivity(activity_name, intent_params)
 
 
 class NativeADBNavigator(BaseADBNavigator):
@@ -370,22 +346,28 @@ class NativeADBNavigator(BaseADBNavigator):
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    self = cls(attributes["adb"], attributes["apk"], attributes["package"])
-    for child_name, child_attrib in children:
+    self = cls(attributes["adb"], attributes["apk"], attributes["package"],
+               attributes.get("stay-alive", False))
+    for child_name, parameters in children:
       if child_name == "activity":
-        self.AddActivity(child_attrib["name"], child_attrib)
+        if "class-name" in parameters:
+          component = self._package_name + "/." + parameters["class-name"]
+          intent_params = dict(component=component, force_stop=True)
+        else:
+          intent_params = dict()
+          for key in ("action", "component", "uri", "category"):
+            if key in parameters:
+              intent_params[key] = parameters[key]
+          for flag in ("wait", "force_stop"):
+            attrib = parameters.get(flag.replace("_", "-"))
+            if attrib  in ("True", "true"):
+              intent_params[flag] = True
+            if attrib  in ("False", "false"):
+              intent_params[flag] = False
+        self.AddActivity(parameters["name"], intent_params)
     return self
 
   def SetUp(self):
     if self._adb.GetPackageVersion(self._package_name):
       self._adb.UninstallPackage(self._package_name)
     self._adb.InstallAPK(self._apk_file)
-
-  def AddActivity(self, activity_name, parameters):
-    if "class-name" in parameters:
-      component = self._package_name + "/." + parameters["class-name"]
-      intent_params = dict(component=component)
-    else:
-      intent_params = {k: v for k, v in parameters.iteritems()
-                            if k in ("action", "component", "uri", "category")}
-    super(NativeADBNavigator, self).AddActivity(activity_name, intent_params)

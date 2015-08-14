@@ -80,13 +80,18 @@ class ADB(object):
   def PushFile(self, local_file, remote_file):
     self.Execute(["push", local_file, remote_file], timeout=240)
 
-  def StartActivity(self, action=None, component=None, uri=None, category=None):
+  def StartActivity(self, action=None, component=None, uri=None, category=None,
+                    wait=True, force_stop=False):
     """Start an activity via the adb activity manager.
 
     The parameters are directly passed to the am start command to specify the
     intent to start.
     """
-    cmd = ["am", "start", "-W", "-S"]
+    cmd = ["am", "start"]
+    for flag, value in [("-W", wait), ("-S", force_stop)]:
+      if value:
+        cmd += [flag]
+
     for flag, value in [("-a", action), ("-n", component),
                         ("-d", uri), ("-c", category)]:
       if value:
@@ -114,12 +119,12 @@ class ADB(object):
       error_message = None
       if stdout is False:
         error_message = "'%s' timed out." % (" ".join(command),)
-      if process.returncode > 0:
+      elif process.returncode > 0:
         error_message = "'%s' returned with %d" % (" ".join(command),
                                                    process.returncode)
-      if ((check_success and not "Success" in stdout) or
-          (check_error and "Error" in stdout) or
-          (process.returncode > 0)):
+      elif ((check_success and not "Success" in stdout) or
+            (check_error and "Error" in stdout) or
+            (process.returncode > 0)):
         error_message = "'%s' failed" % (" ".join(command))
       if error_message:
         if stdout:

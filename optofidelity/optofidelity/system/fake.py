@@ -9,7 +9,7 @@ from optofidelity.videoproc import FakeVideoReader
 
 from .backend import DUTBackend, RobotBackend
 from .camera import HighSpeedCamera
-from .navigator import Navigator
+from .navigator import BaseNavigator
 from .subject import BenchmarkSubject
 from .system import BenchmarkSystem
 
@@ -113,36 +113,13 @@ class FakeHighSpeedCamera(HighSpeedCamera):
     return FakeVideoReader(self.num_frames, self.frame_size, self.fps)
 
 
-class FakeNavigator(Navigator):
+class FakeNavigator(BaseNavigator):
   def __init__(self):
     super(FakeNavigator, self).__init__()
     self._activites = ["fake", "calibration"]
 
-  @property
-  def activities(self):
-    return self._activites
-
-  @property
-  def state(self):
-    return {}
-
-  def AddActivity(self, activity_name, parameters):
-    self._activites.append(activity_name)
-
-  def _Open(self, safe):
-    pass
-
-  def _Close(self):
-    pass
-
-  def _Reset(self):
-    pass
-
-  def _OpenActivity(self, activity_name):
-    pass
-
-  def _CloseActivity(self):
-    pass
+  def HasActivity(self, activity_name):
+    return activity_name in self._activites
 
 
 class FakeBenchmarkSystem(BenchmarkSystem):

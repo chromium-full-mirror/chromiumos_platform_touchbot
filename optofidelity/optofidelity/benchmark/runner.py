@@ -103,7 +103,6 @@ class BenchmarkRunner(object):
     """
     if not self._current_subject:
       raise Exception("Must be executed within the context of UseSubject.")
-
     self._ExecuteBenchmark(benchmark)
 
   def _OpenAndCalibrateSubject(self, subject):
@@ -112,23 +111,9 @@ class BenchmarkRunner(object):
     :type subject: BenchmarkSubject
     :rtype: Optional[ScreenCalibration]
     """
-    try:
-      self._progress.Info(subject.name, "Opening and calibrating")
-      subject.navigator.Open(False)
-      return self._CalibrateScreen(subject)
-    except KeyboardInterrupt:
-      raise
-    except:
-      self._progress.Exception(subject.name,
-                               "Caught Exception. Retrying in safe mode.")
-      # Failed? Re-try using safe-mode Open.
-      try:
-        subject.navigator.Reset()
-        subject.navigator.Open(True)
-        return self._CalibrateScreen(subject)
-      except:
-        subject.navigator.Cleanup()
-        raise
+    self._progress.Info(subject.name, "Opening and calibrating")
+    subject.navigator.Open()
+    return self._CalibrateScreen(subject)
 
   def _ExecuteBenchmark(self, benchmark):
     """Execute all steps of benchmark processing.
