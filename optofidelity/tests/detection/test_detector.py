@@ -21,12 +21,13 @@ class DetectorTest(TestCase):
     return ScreenCalibration(test_data.CalibrationBlackImage(),
                              test_data.CalibrationWhiteImage())
 
-  def calibratedFrame(self, image_name, prev_image_name=None):
+  def calibratedFrame(self, image_name, prev_image_name=None, calibration=None):
     image = test_data.LoadImage(image_name)
     prev_image = None
     if prev_image_name:
-        prev_image = test_data.LoadImage(prev_image_name)
-    return CalibratedFrame(image, prev_image, self.calibration, 0)
+      prev_image = test_data.LoadImage(prev_image_name)
+    calibration = calibration or self.calibration
+    return CalibratedFrame(image, prev_image, calibration, 0)
 
   def uncalibratedFrame(self, image_name, prev_image_name=None):
     image = test_data.LoadImage(image_name)

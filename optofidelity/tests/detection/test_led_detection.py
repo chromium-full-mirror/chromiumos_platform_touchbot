@@ -5,10 +5,13 @@
 
 import numpy as np
 
-from optofidelity.detection._led_detector import LEDDetector, Flash
+from optofidelity.detection._led_detector import Flash, LEDDetector
 from optofidelity.detection.events import LEDEvent
+from optofidelity.detection.screen_calibration import ScreenCalibration
 
+from . import test_data
 from .test_detector import DetectorTest
+
 
 class LEDDetectorTest(DetectorTest):
   def executeLEDPreprocessingTest(self, on_image, off_image):
@@ -29,8 +32,14 @@ class LEDDetectorTest(DetectorTest):
     flashes = LEDDetector().Preprocess(frame, None)
     assertLEDFlash(flashes, False)
 
-  def executeFalsePositiveTest(self, on_image, off_image):
-    frame = self.uncalibratedFrame(on_image, off_image)
+  def executeFalsePositiveTest(self, on_image, off_image, black_image=None,
+                               white_image=None):
+    if black_image is not None and white_image is not None:
+      calibration = ScreenCalibration(test_data.LoadImage(black_image),
+                                      test_data.LoadImage(white_image))
+      frame = self.calibratedFrame(on_image, off_image, calibration)
+    else:
+      frame = self.uncalibratedFrame(on_image, off_image)
     flashes = LEDDetector().Preprocess(frame, None)
     self.assertEqual(len(flashes), 0)
 
@@ -48,6 +57,11 @@ class LEDDetectorTest(DetectorTest):
 
   def testFalsePositive0(self):
     self.executeFalsePositiveTest("led_fp_0.png", "led_fp_0_prev.png")
+
+  def testFalsePositive1(self):
+    self.executeFalsePositiveTest("led_fp_1.png", "led_fp_1_prev.png",
+                                  "led_fp_1_calib_black.png",
+                                  "led_fp_1_calib_white.png")
 
   def testEventGeneration(self):
     def flash(coords, color):
