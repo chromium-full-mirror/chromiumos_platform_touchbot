@@ -66,43 +66,6 @@ class Shape(object):
       mask = MorphFn(col_margin)(mask, col_kernel)
     return Shape(mask.astype(np.bool))
 
-  def FindExtreme(self, direction):
-    """Find extreme this shape in any direction.
-
-    Direction can be top, bottom, left or right. This method will return
-    the coordinates of the (top, bottom, left, right)-most pixel of the shape.
-    If the extreme consists of multiple pixels, the middle pixel will be picked.
-
-    :param str direction: top, bottom, left or right
-    :rtype Tuple[float, float]
-    """
-    if direction == "top":
-      extreme_axis = 0
-      extreme_func = min
-    elif direction == "bottom":
-      extreme_axis = 0
-      extreme_func = max
-    elif direction == "left":
-      extreme_axis = 1
-      extreme_func = min
-    elif direction == "right":
-      extreme_axis = 1
-      extreme_func = max
-    else:
-      raise ValueError("direction has to be top, bottom, left or right.")
-
-    avg_axis = (extreme_axis + 1) % 2
-
-    coords = self.coords
-    extreme_value = extreme_func(coords[:, extreme_axis])
-    avg_axis_coords = coords[coords[:, extreme_axis] == extreme_value, :]
-    avg_value = avg_axis_coords[:, avg_axis].mean()
-
-    res = (0, 0)
-    res[extreme_axis] = extreme_value
-    res[avg_axis] = avg_value
-    return res
-
   def ApproximatePolygon(self, num_verticies):
     """Return polygon approximation with num_verticies verticies.
 
@@ -166,10 +129,6 @@ class Shape(object):
     return res
 
   @property
-  def cropped_shape(self):
-    return Shape(self.Cropped(self.mask))
-
-  @property
   def area(self):
     return self.props.area
 
@@ -231,62 +190,6 @@ class Shape(object):
       self._contour = self.mask & (~self._contour)
       self._contour = self._contour.astype(np.bool)
     return self._contour
-
-  @property
-  def horizontal_edges(self):
-    """The horizontal component of the inner contour.
-
-    :rtype BinaryImage
-    """
-    # Dilate with structure element:
-    # 1 0 1
-    # 1 0 1
-    # 1 0 1
-    elem = np.ones((3, 3), np.bool)
-    elem[:, 1] = 0
-    neigh1 = morphology.binary_dilation(self.contour, elem).astype(np.bool)
-
-    # Dilate with structure element:
-    # 1 0 0 0 1
-    # 1 0 0 0 1
-    # 1 0 0 0 1
-    elem = np.ones((3, 5), np.bool)
-    elem[:, 1:4] = 0
-    neigh2 = morphology.binary_dilation(self.contour, elem).astype(np.bool)
-
-    # combine all 3. This will result in a binary image that only contains
-    # pixels which have neighbours 1-2 pixels to the left and right that deviate
-    # vertically by 1 pixel at max.
-    return neigh1 & neigh2 & self.contour
-
-  @property
-  def vertical_edges(self):
-    """The vertical component of the inner contour.
-
-    :rtype BinaryImage
-    """
-    # Dilate with structure element:
-    # 1 1 1
-    # 0 0 0
-    # 1 1 1
-    elem = np.ones((3, 3), np.bool)
-    elem[1, :] = 0
-    neigh1 = morphology.binary_dilation(self.contour, elem).astype(np.bool)
-
-    # Dilate with structure element:
-    # 1 1 1
-    # 0 0 0
-    # 0 0 0
-    # 0 0 0
-    # 1 1 1
-    elem = np.ones((5, 3), np.bool)
-    elem[1:4, :] = 0
-    neigh2 = morphology.binary_dilation(self.contour, elem).astype(np.bool)
-
-    # combine all 3. This will result in a binary image that only contains
-    # pixels which have neighbours 1-2 pixels to the top and bottom that deviate
-    # horizontally by 1 pixel at max.
-    return neigh1 & neigh2 & self.contour
 
   @staticmethod
   @typecheck

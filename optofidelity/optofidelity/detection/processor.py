@@ -57,18 +57,6 @@ class VideoProcessor(object):
     """
 
   @abstractmethod
-  def ProcessFrame(self, frame, prev_frame, screen_calibration,
-                   debug_flags):
-    """Process single frame and return list of detected events.
-
-    :param np.ndarray frame: Frame to process
-    :param np.ndarray prev_frame: Previous frame
-    :type screen_calibration: Optional[ScreenCalibration]
-    :param List[str] debug_flags: List of debug flags
-    :returns List[Event]: List of events generated
-    """
-
-  @abstractmethod
   def CreateScreenCalibration(self, video_reader):
     """Create screen calibration from flashing video.
 

@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import skimage
 
-from optofidelity.videoproc import InteractiveVideoViewer, VideoReader
+from optofidelity.videoproc import InteractiveVideoViewer
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import DetectorDebugger
@@ -74,8 +74,8 @@ class SinglethreadedVideoProcessor(VideoProcessor):
       sys.stdout.write("\r" + msg)
       sys.stdout.flush()
 
-      events, debug_frame = self._ProcessFrame(i, frame, prev_frame, screen_calibration,
-                                               debug_flags)
+      events, debug_frame = self._ProcessFrame(i, frame, prev_frame,
+                                               screen_calibration, debug_flags)
       all_events.extend(events)
       if debug_frame is not None:
         if viewer is not None:
@@ -90,12 +90,6 @@ class SinglethreadedVideoProcessor(VideoProcessor):
 
     print
     return Trace(all_events, video_reader.ms_per_frame)
-
-  def ProcessFrame(self, frame, prev_frame, screen_calibration, debug_flags):
-    self._InitDetectors()
-    events, debug_frame =  self._ProcessFrame(0, frame, prev_frame,
-                                              screen_calibration, debug_flags)
-    return events
 
   def _ProcessFrame(self, frame_index, frame, prev_frame, screen_calibration,
                     debug_flags):
