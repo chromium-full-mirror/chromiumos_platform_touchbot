@@ -5,21 +5,28 @@
 
 from unittest import TestCase
 
+import numpy as np
+
 from optofidelity.detection._calibrated_frame import CalibratedFrame
+from optofidelity.detection._detector import DetectorDebugger
 from optofidelity.detection.screen_calibration import ScreenCalibration
+from optofidelity.videoproc import Canvas, ImageMatches
 
 from . import test_data
 
 
 class DetectorTest(TestCase):
+  @property
+  def calibration(self):
+    return ScreenCalibration(test_data.CalibrationBlackImage(),
+                             test_data.CalibrationWhiteImage())
+
   def calibratedFrame(self, image_name, prev_image_name=None):
-    calib = ScreenCalibration(test_data.CalibrationBlackImage(),
-                              test_data.CalibrationWhiteImage())
     image = test_data.LoadImage(image_name)
     prev_image = None
     if prev_image_name:
         prev_image = test_data.LoadImage(prev_image_name)
-    return CalibratedFrame(image, prev_image, calib, 0)
+    return CalibratedFrame(image, prev_image, self.calibration, 0)
 
   def uncalibratedFrame(self, image_name, prev_image_name=None):
     image = test_data.LoadImage(image_name)
@@ -48,3 +55,31 @@ class DetectorTest(TestCase):
       else:
         self.assertEqual(len(events), 0,
                          "%d: Did not expect events: %s" % (i, events))
+
+class DebuggerTests(DetectorTest):
+  def composeExampleDebugView(self, debug_flags):
+    debugger = DetectorDebugger(self.calibration, debug_flags)
+    frame = self.calibratedFrame("finger.png")
+
+    mask = (frame.screen_space_normalized < 0.5)
+    debugger.screen_space_canvas.DrawMask(Canvas.GREEN, mask)
+
+    half_height = frame.camera_space_shape[0] / 2
+    half_width = frame.camera_space_shape[1] / 2
+    debugger.camera_space_canvas.DrawHLine(Canvas.BLUE, half_height)
+    debugger.camera_space_canvas.DrawVLine(Canvas.BLUE, half_width)
+
+    profile = np.mean(frame.screen_space_normalized, 0)
+    debugger.screen_space_canvas.PlotProfile(Canvas.RED, profile)
+
+    return debugger.ComposeDebugFrame(frame)
+
+  def testDebuggerNormalizedCompose(self):
+    expected_image_path = test_data.Path("debugger_normalized.png")
+    actual = self.composeExampleDebugView(["normalized"])
+    self.assertTrue(ImageMatches(actual, expected_image_path))
+
+  def testDebuggerCameraSpaceCompose(self):
+    expected_image_path = test_data.Path("debugger_camera_space.png")
+    actual = self.composeExampleDebugView([])
+    self.assertTrue(ImageMatches(actual, expected_image_path))

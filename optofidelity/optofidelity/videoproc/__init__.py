@@ -5,5 +5,5 @@
 from .filter import Filter
 from .io import FakeVideoReader, FileVideoReader, SaveImage, VideoReader
 from .shape import Shape
-from .util import Canvas, DebugView
+from .util import Canvas, DebugView, ImageMatches
 from .viewer import InteractiveVideoViewer

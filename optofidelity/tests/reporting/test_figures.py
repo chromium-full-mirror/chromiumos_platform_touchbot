@@ -1,13 +1,9 @@
 # Copyright 2015 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-import os
 import unittest
 
 import numpy as np
-import skimage.color as color
-import skimage.feature as feature
-import skimage.io
 
 from optofidelity.benchmark.results import (AggregateMeasurements,
                                             BenchmarkMeasurements,
@@ -19,7 +15,7 @@ from optofidelity.reporting._hist_figure import LatencyHistogramFigure
 from optofidelity.reporting._trace_figures import (EventsMeasurementsFigure,
                                                    LocationMeasurementsFigure,
                                                    TraceOverviewFigure)
-from optofidelity.videoproc import DebugView
+from optofidelity.videoproc import ImageMatches
 
 from . import test_data
 
@@ -43,20 +39,9 @@ class FigureVerificationTests(unittest.TestCase):
 
   def assertImageMatches(self, image, expected_file_name, force_update=False):
     expected_image_path = test_data.Path(expected_file_name)
-    if (self.FORCE_UPDATE_ALL or force_update or
-        not os.path.exists(expected_image_path)):
-      skimage.io.imsave(expected_image_path, image)
-      DebugView(title=expected_file_name, created_image=image)
-      self.skipTest("Created expected image %s" % expected_file_name)
-
-    expected_image = test_data.LoadImage(expected_file_name)
-    actual_image = color.rgb2gray(image)
-    mse = np.mean((expected_image - actual_image) ** 2)
-    if mse > 0.01:
-      message = "Image not matching expected image: %s" % expected_file_name
-      print message
-      DebugView(actual_image=actual_image, expected_image=expected_image)
-      self.fail(message)
+    if not ImageMatches(image, expected_image_path,
+                        force_update or self.FORCE_UPDATE_ALL):
+      self.fail("Image not matching expected image: %s" % expected_file_name)
 
 
 class FigureTests(FigureVerificationTests):

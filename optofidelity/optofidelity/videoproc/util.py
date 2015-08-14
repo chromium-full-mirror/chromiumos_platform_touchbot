@@ -7,10 +7,13 @@ This file contains various tools for video processing, starting with reading
 video files, image filters and segmentation tools to detect objects in the
 video as well as tools for visualizing results of a video analysis process.
 """
-from safetynet import List, Tuple, TypecheckMeta, typecheck
-import cv2
-import numpy as np
+import os
 
+from safetynet import List, Tuple, TypecheckMeta, typecheck
+import numpy as np
+import skimage.color
+
+from .io import LoadImage, SaveImage
 from .types import BinaryImage, Image, RGBAImage, RGBImage
 
 
@@ -48,6 +51,22 @@ def DebugView(title="", cmap_name="gray", **kwargs):
     plt.title(arg[0])
   figure.canvas.set_window_title(title)
   plt.show()
+
+
+def ImageMatches(image, expected_image_path, force_update=False):
+  if force_update or not os.path.exists(expected_image_path):
+    SaveImage(expected_image_path, image)
+    DebugView(title=os.path.basename(expected_image_path), created_image=image)
+    return True
+
+  expected_image = LoadImage(expected_image_path, gray=True)
+  actual_image = skimage.color.rgb2gray(image)
+  mse = np.mean((expected_image - actual_image) ** 2)
+  if mse > 0.01:
+    print "Image not matching expected image: %s" % expected_image_path
+    DebugView(actual_image=actual_image, expected_image=expected_image)
+    return False
+  return True
 
 
 class Canvas(object):

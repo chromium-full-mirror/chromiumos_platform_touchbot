@@ -32,6 +32,13 @@ def SaveImage(filename, image):
     skimage.io.imsave(filename, skimage.img_as_ubyte(image))
 
 
+def LoadImage(filename, gray=False):
+  image = skimage.io.imread(filename)
+  if gray and len(image.shape) > 2:
+    image = skimage.color.rgb2gray(image)
+  return skimage.img_as_float(image)
+
+
 class PrefetchEnabled(object):
   """Helper object to be used in the with-statement.
 
