@@ -17,8 +17,10 @@ from optofidelity.benchmark._line_delegates import (LineDrawDelegate,
 from optofidelity.benchmark._tap_delegate import TapDelegate
 from optofidelity.benchmark.results import (BenchmarkMeasurements,
                                             BenchmarkResults)
-from optofidelity.system import BenchmarkSystem
-from optofidelity.system.fake import FakeBenchmarkSystem
+from optofidelity.system import BenchmarkSubject
+from optofidelity.system.backend_tnt import TnTRobotBackend
+from optofidelity.system.fake import FakeDUTBackend, FakeHighSpeedCamera
+from tests.config import TEST_DUT_NAME, TEST_ROBOT_IP
 
 from . import test_data
 
@@ -28,33 +30,21 @@ class AbstractDelegateTests(unittest.TestCase):
 
   Provides a methods for testing ExecuteOnSubject on a live robot as well as
   a method for testing the results of ProcessTrace.
-  In order to run tests on a live robot you have to update CONFIG_FILE to point
-  to the filename of an BenchmarkSystem config file and specify which
-  SUBJECT_NAME to use for the test.
   """
-  CONFIG_FILE = "optofidelity.xml"
-  SUBJECT_NAME = None
 
-  def createTestSubject(self, config_file, subject_name):
-    subject = None
-    if (subject_name is not None and config_file is not None and
-        os.path.exists(config_file)):
-      system = BenchmarkSystem(config_file)
-      subject = system.subjects.get(subject_name, None)
-    if not subject:
-      print ("Running test offline. Update CONFIG_FILE and SUBJECT_NAME in " +
-             "optofidelity.benchmark.test_delegate to run live tests.")
-      system = FakeBenchmarkSystem()
-      subject = system.fake_subject
-    return subject
+  def createTestSubject(self):
+    if TEST_DUT_NAME is not None:
+      backend = TnTRobotBackend(TEST_ROBOT_IP).GetDUTBackend(TEST_DUT_NAME)
+      return BenchmarkSubject(TEST_DUT_NAME, backend, FakeHighSpeedCamera())
+    else:
+      print "Running test offline."
+      print "Set TEST_ROBOT_IP and TEST_DUT_NAME to run on robot."
+      return BenchmarkSubject("fake", FakeDUTBackend("fake"),
+                              FakeHighSpeedCamera())
 
   def runExecuteOnSubjectTest(self, delegate):
-    subject = self.createTestSubject(self.CONFIG_FILE, self.SUBJECT_NAME)
-    subject.navigator.Open(False)
-    subject.navigator.OpenActivity(delegate.activity)
+    subject = self.createTestSubject()
     delegate.ExecuteOnSubject(subject)
-    subject.navigator.CloseActivity()
-    subject.navigator.Close()
 
   def runTraceProcessingTest(self, delegate, trace_file, expected_latencies):
     trace_path = test_data.Path(trace_file)
@@ -72,6 +62,7 @@ class AbstractDelegateTests(unittest.TestCase):
       print "Calculated Latencies:", latencies
       print "Expected Latencies:", expected_latencies[series_name]
       self.assertTrue(np.allclose(latencies, expected_latencies[series_name]))
+
 
 class LineDrawDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
@@ -101,7 +92,7 @@ class LineDrawStartDelegateTests(AbstractDelegateTests):
   }
 
   def testExecuteOnSubject(self):
-    self.runExecuteOnSubjectTest(LineDrawDelegate("fake", {}))
+    self.runExecuteOnSubjectTest(LineDrawStartDelegate("fake", {}))
 
   def testTraceProcessing(self):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
@@ -128,6 +119,7 @@ class TapDelegateTests(AbstractDelegateTests):
     for trace_file, expected_latencies in self.TRACE_EXPECTED_LATENCIES.items():
       delegate = TapDelegate("fake", {})
       self.runTraceProcessingTest(delegate, trace_file, expected_latencies)
+
 
 class TestResultsCompability(unittest.TestCase):
   def generateResults(self):

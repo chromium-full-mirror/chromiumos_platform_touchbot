@@ -17,18 +17,21 @@ from . import test_data
 
 class BenchmarkRunnerTests(TestCase):
   def setUp(self):
-    fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
     self.tempdir = tempfile.mkdtemp()
+
+  def CreateBenchmark(self):
+    fake_trace = test_data.LoadTrace("tap_basic.trace")
+    return FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
 
   def tearDown(self):
     shutil.rmtree(self.tempdir)
 
   def testRun(self):
-    self.assertBenchmarkComplete(self.benchmark)
+    self.assertBenchmarkComplete(self.CreateBenchmark())
 
   def testSaveDebugInfo(self):
-    self.benchmark.Save(self.tempdir, debug_info=True)
+    benchmark = self.CreateBenchmark()
+    benchmark.Save(self.tempdir, debug_info=True)
     after = Benchmark.Load(self.tempdir)
     self.assertBenchmarkComplete(after)
 
@@ -44,12 +47,42 @@ class BenchmarkRunnerTests(TestCase):
     root_logger.setLevel(logging.DEBUG)
 
     fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
+    benchmark = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
 
-    self.assertIn("Trigger Camera", self.benchmark.log)
-    self.assertIn("Tap", self.benchmark.log)
+    self.assertIn("Trigger Camera", benchmark.log)
+    self.assertIn("Tap", benchmark.log)
 
     root_logger.setLevel(original_level)
+
+  def testExceptionCapture(self):
+    def FakeProcessTrace():
+      raise Exception("Error42")
+
+    fake_trace = test_data.LoadTrace("tap_basic.trace")
+    runner = FakeBenchmarkRunner(fake_trace=fake_trace)
+    with runner.UseSubject(runner.benchmark_system.fake_subject):
+      benchmark = runner.CreateBenchmark("fake", "tap", "fake", {}, {})
+      benchmark.ProcessTrace = FakeProcessTrace
+      runner.RunBenchmark(benchmark)
+      self.assertIn("Error42", benchmark.results.error)
+
+  def testCalibrationError(self):
+    def FakeCreateScreenCalibration(video_reader):
+      raise Exception("Error42")
+
+    runner = FakeBenchmarkRunner()
+    runner._calib_video_path = self.tempdir
+    # Inject Exception into screen calibration
+    runner.video_processor.CreateScreenCalibration = FakeCreateScreenCalibration
+
+    # Exception has to be passed up
+    try:
+      runner.OpenAndCalibrateSubject(runner.benchmark_system.fake_subject)
+    except Exception, e:
+      self.assertEqual(str(e), "Error42")
+
+    # And a calibration video has to be stored
+    self.assertIn("calibration_000.avi", os.listdir(self.tempdir))
 
   def assertBenchmarkComplete(self, benchmark):
     num_taps = 4
