@@ -224,7 +224,7 @@ class SystemBuilder(object):
     navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
                                       context, dut_backend)
     updater = self._CreateComponent(Updater, subject_elem.find("updater"),
-                                    context, dut_backend)
+                                    context)
     dashboard = self._CreateComponent(Dashboard, subject_elem.find("dashboard"),
                                       context, name)
 

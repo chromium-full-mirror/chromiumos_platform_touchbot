@@ -58,7 +58,7 @@ class ManualUpdater(Updater):
     self._version = version
 
   @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
+  def FromConfig(cls, attributes, children):
     return cls(attributes["version"])
 
   @property
@@ -106,7 +106,7 @@ class ChromeUpdater(Updater):
       raise Exception("No versions available for chrome %s" % self._channel)
 
   @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
+  def FromConfig(cls, attributes, children):
     return cls(attributes["adb"], attributes["channel"])
 
   @property
@@ -160,7 +160,7 @@ class AndroidUpdater(Updater):
     self._adb = ADB(adb_device)
 
   @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
+  def FromConfig(cls, attributes, children):
     return cls(attributes["adb"])
 
   @property
@@ -192,7 +192,7 @@ class FakeUpdater(Updater):
     self._installed_version = None
 
   @classmethod
-  def FromConfig(cls, attributes, children, dut_backend):
+  def FromConfig(cls, attributes, children):
     return cls()
 
   @property
