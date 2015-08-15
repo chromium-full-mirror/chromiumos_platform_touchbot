@@ -261,6 +261,9 @@ class BaseADBNavigator(BaseNavigator):
     self.Open()
     self.Close()
 
+  def Prepare(self):
+    self._adb.PowerOff()
+
   def _Open(self):
     if not self._stay_alive:
       self._adb.PowerOn()

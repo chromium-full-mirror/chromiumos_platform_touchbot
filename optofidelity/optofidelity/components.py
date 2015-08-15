@@ -5,11 +5,11 @@
 from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ADBScreenOffPreparer, ADBSettingsSetup,
+from .orchestrator import (ADBSettingsSetup,
                            AndroidUpdater, ChromePerfDashboard, ChromeUpdater,
                            Dashboard, FakeUpdater, ManualUpdater, Orchestrator,
                            OrchestratorSubject, SpreadsheetDashboard,
-                           SubjectPreparer, SubjectSetup, Updater)
+                           SubjectSetup, Updater)
 from .system import HighSpeedCamera, Navigator, RobotBackend
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
@@ -58,7 +58,4 @@ COMPONENTS = {
   SubjectSetup: {
     "adb_settings": ADBSettingsSetup
   },
-  SubjectPreparer: {
-    "adb_screen_off": ADBScreenOffPreparer
-  }
 }
