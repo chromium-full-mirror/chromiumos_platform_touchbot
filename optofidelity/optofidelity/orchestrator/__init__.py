@@ -6,9 +6,8 @@
 This module is responsible for managing multiple devices, updating them and
 running benchmarks.
 """
-from .dashboard import ChromePerfDashboard, Dashboard, SpreadsheetDashboard
+from .dashboard import Dashboard
 from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject
-from .subject_setup import ADBSettingsSetup, FakeSubjectSetup, SubjectSetup
-from .updater import (AndroidUpdater, ChromeUpdater, FakeUpdater,
-                      ManualUpdater, Updater)
+from .subject_setup import SubjectSetup
+from .updater import Updater

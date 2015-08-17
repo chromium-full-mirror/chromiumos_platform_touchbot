@@ -9,99 +9,157 @@ import tempfile
 
 from optofidelity.benchmark import Benchmark, DrawEventLatencySeries
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import (Dashboard, FakeUpdater, Orchestrator,
+from optofidelity.builder import SystemBuilder
+from optofidelity.orchestrator import (Dashboard, Orchestrator,
                                        OrchestratorSubject)
+from optofidelity.system.fake import FakeDUTBackend, FakeHighSpeedCamera
+from optofidelity.util import AskUserContinue
+from tests.config import ALLOW_USER_INTERACTION
 
 from . import test_data
 
 
+unit_test_config = """\
+<config>
+  <benchmark-system>
+    <backend type="fake" />
+    <camera type="fake" />
+  </benchmark-system>
+  <benchmark-runner type="fake" />
+  <video-processor type="fake" />
+
+  <orchestrator results="{tempdir}" generate-reports="False" />
+
+  <dut name="test_dut">
+    <subject name="test_subject">
+      <navigator type="fake" />
+      <updater type="fake" />
+      <dashboard type="fake" />
+      <benchmark name="tap" type="tap" activity="tap" />
+      <benchmark name="tap2" type="tap" activity="tap" />
+    </subject>
+  </dut>
+</config>
+"""
+
+def AlwaysRaiseException(*args, **kwargs):
+  raise Exception("Error42")
+
 class OrchestratorTests(TestCase):
   def setUp(self):
-    self.fake_trace = test_data.LoadTrace("tap_basic.trace")
-    self.runner = FakeBenchmarkRunner(fake_trace=self.fake_trace)
-    subject = self.runner.benchmark_system.fake_subject
-    self.subject = OrchestratorSubject.FromBenchmarkSubject(subject)
-    self.subject.DefineBenchmark("tap", "tap", "fake", {})
-    self.subject.updater = FakeUpdater()
-    self.subject.updater.Install("1.0")
-    self.subject.updater._available_versions = ["1.0", "2.0"]
     self.tempdir = tempfile.mkdtemp()
+    config = unit_test_config.format(tempdir=self.tempdir)
+    builder = SystemBuilder.FromString(config)
 
-  def createOrchestrator(self):
-    db_url = "sqlite:///" + os.path.join(self.tempdir, "results.db")
-    orchestrator = Orchestrator(self.runner.benchmark_system, self.runner,
-                                self.tempdir, db_url,
-                                generate_reports=False)
-    orchestrator.AddSubject(self.subject)
-    DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 0
-    return orchestrator
+    self.video_processor = builder.video_processor
+    self.runner = builder.benchmark_runner
+    self.orchestrator = builder.orchestrator
+
+    fake_trace = test_data.LoadTrace("tap_basic.trace")
+    self.video_processor.fake_trace = fake_trace
+
+    self.successful = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
+    self.failed = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
+    self.failed.results.error = "Error42"
+
+    self.subject = self.orchestrator._subjects.values()[0]
+    self.subject.updater.Install("2.0")
+    self.subject.updater._available_versions = ["1.0", "2.0", "3.0", "4.0"]
+
+    self.benchmark_def = self.subject.benchmark_defs["tap"]
 
   def tearDown(self):
     shutil.rmtree(self.tempdir)
 
-  def testResultsDatabase(self):
-    orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
-    results = list(orchestrator.QueryResults())
-    self.assertEqual(len(results), 2)
-    for result in results:
-      data_folder = os.path.join(self.tempdir, str(result["uid"]))
-      self.assertTrue(os.path.exists(data_folder))
-
-      # Load and attempt to extract debug info for this benchmark to make sure
-      # the stored data is consistent.
-      benchmark = Benchmark.Load(data_folder)
-      benchmark.Save(data_folder, debug_info=True)
-
-  def testMinSamples(self):
-    orchestrator = self.createOrchestrator()
-    DrawEventLatencySeries.DEFAULT_MIN_NUM_SAMPLES = 8
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
-    results = list(orchestrator.QueryResults())
-    # Should repeat test 2 times, with 2 measurement id's each
-    # resulting in 4 entries in the database.
-    self.assertEqual(len(results), 4)
-
-  def testResultsPersistence(self):
-    orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
-
-    # Create new instance to test if data is stored persistently
-    orchestrator = self.createOrchestrator()
-    results = list(orchestrator.QueryResults())
-    self.assertEqual(len(results), 2)
-
-  def testErrorRepetition(self):
-    # Create benchmark results and set an error message.
-    benchmark = FakeBenchmarkRunner.FromTrace(self.fake_trace, "tap", {})
-    benchmark.results.error = "Error Message"
-    # Return this errornous benchmark with this runner.
-    self.runner.fake_benchmark = benchmark
-
-    orchestrator = self.createOrchestrator()
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "installed")
-    results = list(orchestrator.QueryResults())
-    self.assertEqual(len(results), 6)
-    for result in results:
-      self.assertEqual(result["error"], "Error Message")
-
-  def testUpdateAndRun(self):
-    orchestrator = self.createOrchestrator()
-
-    # The subject should be updated to 2.0 then have tests run
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "2.0")
-    self.assertEqual(self.subject.updater.installed_version, "2.0")
-
-    # Force test run with version 1.0
-    orchestrator.UpdateAndRunBenchmarks("*/tap", "1.0")
+  def testSetup(self):
+    self.orchestrator.SetUpSubjects("*", "1")
     self.assertEqual(self.subject.updater.installed_version, "1.0")
 
-    results = list(orchestrator.QueryResults())
-    self.assertEqual(len(results), 4)
+  def testPrepareSubjects(self):
+    self.orchestrator.PrepareSubjects()
 
-    versions_tested = [r["subject_version"] for r in results]
-    self.assertIn("1.0", versions_tested)
-    self.assertIn("2.0", versions_tested)
+  def testVerifySubjects(self):
+    self.orchestrator.VerifySubjects()
+
+  def testPrintInfo(self):
+    self.orchestrator.PrintInfo("*")
+    if ALLOW_USER_INTERACTION:
+      AskUserContinue("Verify the printed output")
+
+  def testVideoProcessingErrorHandling(self):
+    self.video_processor.ProcessVideo = AlwaysRaiseException
+    self.orchestrator.UpdateAndRunBenchmarks("*", "3.0", True)
+    # Should save reports of 3 tries of 2 benchmarks
+    self.assertEqual(len(os.listdir(self.tempdir)), 6)
+    # Nothing should be reported to the dashboard
+    self.assertEqual(len(self.subject.dashboard.results), 0)
+
+  def testDashboardErrorHandling(self):
+    self.subject.dashboard.ReportResults = AlwaysRaiseException
+    self.orchestrator.UpdateAndRunBenchmarks("*", "3.0", True)
+    # Should save benchmarks regardless of dashboard error
+    self.assertGreater(len(os.listdir(self.tempdir)), 0)
+
+  def testCalibrationErrorHandling(self):
+    self.video_processor.CreateScreenCalibration = AlwaysRaiseException
+    self.orchestrator.UpdateAndRunBenchmarks("*", "installed:", True)
+    # Does not run benchmarks, so there is nothing to save.
+    self.assertEqual(len(os.listdir(self.tempdir)), 0)
+
+  def testVerificationErrorHandling(self):
+    self.subject.navigator.Verify = AlwaysRaiseException
+    self.orchestrator.UpdateAndRunBenchmarks("*", "installed:", True)
+    # Does not run benchmarks, so there is nothing to save.
+    self.assertEqual(len(os.listdir(self.tempdir)), 0)
+
+  def testUpdateAndRunBenchmarks(self):
+    self.orchestrator.UpdateAndRunBenchmarks("*", "installed:", True)
+    # 2 versions with 2 benchmarks each
+    self.assertEqual(len(self.subject.dashboard.results), 4)
+
+  def testRunSubjectVersion(self):
+    self.runner.fake_benchmarks = [self.successful]
+    benchmark_defs = self.subject.benchmark_defs.values()
+    self.orchestrator.RunSubjectVersion(self.subject, benchmark_defs, "3.0")
+    self.assertEqual(self.subject.updater.installed_version, "3.0")
+    self.assertEqual(len(self.subject.dashboard.results), 2)
+
+  def testAggregation(self):
+    self.runner.fake_benchmarks = [self.successful]
+    aggregate = self.orchestrator.RunSubjectVersionBenchmark(
+        self.subject, self.benchmark_def, "1.0")
+    self.assertTrue(aggregate.measurements.HasMinNumSamples())
+    self.assertEqual(len(aggregate.repetitions), 9)
+
+    results_path = os.path.join(self.tempdir, aggregate.uid, "results.pickle")
+    self.assertTrue(os.path.exists(results_path))
+
+    reported_results = self.subject.dashboard.results[0]
+    self.assertEqual(reported_results, aggregate)
+
+  def testErrorRepetition(self):
+    """Failing benchmarks should be repeated and saved as well."""
+    self.runner.fake_benchmarks = [self.failed, self.failed, self.successful]
+    benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+        self.subject, self.benchmark_def, {})
+    self.assertEqual(benchmark, self.successful)
+    self.assertEqual(len(os.listdir(self.tempdir)), 3)
+
+  def testTooManyErrors(self):
+    """Failing benchmarks should be repeated and saved as well."""
+    self.runner.fake_benchmarks = [self.failed]
+    benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+        self.subject, self.benchmark_def, {})
+    self.assertIsNone(benchmark)
+
+  def testRepetitionSaving(self):
+    with self.runner.UseSubject(self.subject):
+      benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+          self.subject, self.benchmark_def, {})
+
+    self.assertEqual(os.listdir(self.tempdir), [benchmark.results.uid])
+    loaded = benchmark.Load(os.path.join(self.tempdir, benchmark.results.uid))
+    self.assertEqual(loaded.results.uid, benchmark.results.uid)
 
   def testVersionParsing(self):
     available = ["1.0", "1.1", "1.2", "2.0", "2.2", "3.0"]

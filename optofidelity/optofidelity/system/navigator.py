@@ -144,13 +144,19 @@ class BaseNavigator(Navigator):
     """Private implementation of CloseActivity"""
 
 
-class ManualNavigator(BaseNavigator):
+class FakeNavigator(BaseNavigator):
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
     return cls()
 
   def HasActivity(self, activity_name):
     return True
+
+
+class ManualNavigator(FakeNavigator):
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls()
 
   def _OpenActivity(self, activity_name):
     if self._current_activity != activity_name:

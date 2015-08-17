@@ -19,7 +19,6 @@ from optofidelity.reporting import AggregateReport, BenchmarkReport
 from optofidelity.system import BenchmarkSystem
 from optofidelity.util import (GSFindUniqueFilename, GSFolder, GSPathExists,
                                ProgressPrinter)
-import dataset
 
 from .dashboard import Dashboard
 from .orchestrator_subject import BenchmarkDefinition, OrchestratorSubject
@@ -41,7 +40,7 @@ class Orchestrator(object):
   FILED_BENCHMARKS_FILE = "failed_benchmarks.log"
 
   def __init__(self, benchmark_system, benchmark_runner, results_url,
-               results_db_url, generate_reports=True, xkcd=False,
+               generate_reports=True, xkcd=False,
                save_video=False, quick=False, reports_url=None):
     """
     :type benchmark_system: BenchmarkSystem
@@ -58,9 +57,6 @@ class Orchestrator(object):
 
     self._results_db = None
     self._results_table = None
-    if results_db_url:
-      self._results_db = dataset.connect(results_db_url)
-      self._results_table = self._results_db["benchmark_results"]
 
     self._progress = ProgressPrinter(_log)
     self._generate_reports = generate_reports
@@ -90,13 +86,14 @@ class Orchestrator(object):
     xkcd = parameters.get("xkcd") is not None
     results = parameters["results"]
     reports = parameters.get("reports")
-    database = parameters.get("database")
 
     true_values = ("True", "true", "1")
     save_video = parameters.get("save-video", "") in true_values
     quick = parameters.get("quick", "") in true_values
-    return cls(system, runner, results, database, xkcd=xkcd,
-               save_video=save_video, quick=quick, reports_url=reports)
+    generate_reports = parameters.get("generate-reports", "") in true_values
+    return cls(system, runner, results, xkcd=xkcd,
+               save_video=save_video, quick=quick, reports_url=reports,
+               generate_reports=generate_reports)
 
   def PrintInfo(self, match):
     for subject in self._subjects.itervalues():
@@ -148,11 +145,8 @@ class Orchestrator(object):
         versions = subject.GetMatchingVersions(versions_string, False)
         if len(versions) > 1:
           self._progress.Error(subject.name, "Pick a single version.")
-        elif len(versions) == 0:
-          self._progress.Error(subject.name, "Cannot find version.")
-        else:
-          if not subject.Update(versions[0]):
-            self._progress.Error(subject.name, "Cannot update subject.")
+        if not subject.Update(versions[0]):
+          self._progress.Error(subject.name, "Cannot update subject.")
 
       if not subject.Verify():
         self._progress.Error(subject.name, "Subject is in a bad state.")
@@ -240,10 +234,10 @@ class Orchestrator(object):
     try:
       if not subject.Update(version):
         self._progress.Error(subject.name, "Update failed.")
-        return
+        return dict()
       if not self.OpenAndCalibrateSubject(subject):
         self._progress.Error(subject.name, "Cannot open subject.")
-        return
+        return dict()
 
       with self._progress.LogPerf(subject.name):
         for benchmark_def in benchmark_defs:
@@ -289,6 +283,7 @@ class Orchestrator(object):
     with self._progress.LogExceptions(full_name, "Fatal Exception"):
       self.PublishAggregateResults(subject, aggregate, version)
     self._progress.Info(full_name, "Aggregate Results:\n%s" % aggregate)
+    return aggregate
 
   def RunSubjectVersionBenchmarkRepetition(self, subject, benchmark_def,
                                            metadata):
@@ -351,17 +346,19 @@ class Orchestrator(object):
 
     benchmark_time = datetime.now()
     results_url, uid = self._FindUniqueResultsURL(benchmark_time)
-    if self._generate_reports:
-      with GSFolder(results_url) as report_path:
-        if not os.path.exists(report_path):
-          os.mkdir(report_path)
-        pickle_file = open(os.path.join(report_path, "results.pickle"), "wb")
-        pickle.dump(aggregate, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
 
+    with GSFolder(results_url) as report_path:
+      if not os.path.exists(report_path):
+        os.mkdir(report_path)
+      pickle_file = open(os.path.join(report_path, "results.pickle"), "wb")
+      pickle.dump(aggregate, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
+      if self._generate_reports:
         report = AggregateReport(report_path, xkcd=self._xkcd)
         report.GenerateReport(aggregate)
 
     public_url = self._GetPublicReportUrl(results_url)
+    aggregate.report_url = public_url
+    aggregate.uid = uid
     self._progress.Info(name,
                         "Aggregate report available at: %s" % public_url)
 
@@ -394,12 +391,6 @@ class Orchestrator(object):
                               benchmark.screen_calibration, benchmark.video)
       self._progress.Info(benchmark.name, "Repetition report available at: %s"
                                           % public_url)
-
-    self._InsertResults(time, uid, subject, benchmark.results)
-
-  def QueryResults(self):
-    """Return iterator over all results in database."""
-    return self._results_table.all()
 
   def _GetPublicReportUrl(self, url):
     if self.reports_url:
@@ -436,32 +427,3 @@ class Orchestrator(object):
       subject, definition = benchmarks[match]
       grouped[subject].append(definition)
     return grouped.iteritems()
-
-  def _InsertResults(self, time, uid, subject, results):
-    """Inserts results into database
-
-    :type time: datetime
-    :type uid: str
-    :type subject: OrchestratorSubject
-    :type results: BenchmarkResults
-    :raises Exception: If database connection is lost.
-    """
-    if not self._results_table:
-      return
-    dump = lambda array: ", ".join(str(array))
-
-    for series_name in results.measurements.series_infos:
-      values = results.measurements.SummarizeValues(series_name)
-      row_data = dict(
-          time=time,
-          uid=uid,
-          subject_name=subject.name,
-          subject_version=subject.updater.installed_version,
-          benchmark_name=results.benchmark_name,
-          error=results.error,
-          series_name=series_name,
-          mean=np.mean(values),
-          std=np.std(values),
-          values=dump(values)
-      )
-      self._results_table.insert(row_data)

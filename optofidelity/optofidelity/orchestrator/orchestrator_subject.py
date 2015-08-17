@@ -26,12 +26,6 @@ class OrchestratorSubject(BenchmarkSubject):
     self.setups = []
     self._progress = ProgressPrinter(_log)
 
-  @classmethod
-  def FromBenchmarkSubject(cls, other):
-    self = cls(other.name, other._dut_backend, other.camera)
-    self.__dict__.update(other.__dict__)
-    return self
-
   def DefineBenchmark(self, name, benchmark_type, activity, params):
     self.benchmark_defs[name] = BenchmarkDefinition(name, benchmark_type,
                                                     activity, params)

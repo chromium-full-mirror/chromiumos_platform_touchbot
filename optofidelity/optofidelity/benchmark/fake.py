@@ -35,8 +35,12 @@ class FakeBenchmarkRunner(BenchmarkRunner):
     super(FakeBenchmarkRunner, self).__init__(
         benchmark_system or FakeBenchmarkSystem(),
         video_processor or FakeVideoProcessor())
-    self.fake_benchmark = fake_benchmark
+    self.fake_benchmarks = [fake_benchmark] if fake_benchmark else []
     self.video_processor.fake_trace = fake_trace
+
+  @classmethod
+  def FromConfig(cls, parameters, children, benchmark_system, video_processor):
+    return cls(benchmark_system, video_processor)
 
   @classmethod
   def FromTrace(cls, fake_trace, benchmark_type, metadata):
@@ -49,12 +53,16 @@ class FakeBenchmarkRunner(BenchmarkRunner):
 
   def CreateBenchmark(self, name, benchmark_type, activity, parameters,
                       metadata):
-    if self.fake_benchmark:
-      return self.fake_benchmark
+    if len(self.fake_benchmarks):
+      if len(self.fake_benchmarks) > 1:
+        next_benchmark = self.fake_benchmarks.pop(0)
+      else:
+        next_benchmark = self.fake_benchmarks[0]
+      return next_benchmark
     return super(FakeBenchmarkRunner, self).CreateBenchmark(name,
         benchmark_type, activity, parameters, metadata)
 
   def RunBenchmark(self, benchmark):
-    if self.fake_benchmark:
+    if len(self.fake_benchmarks):
       return
     super(FakeBenchmarkRunner, self).RunBenchmark(benchmark)

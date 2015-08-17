@@ -4,8 +4,8 @@
 """Tests for the Orchestrator class."""
 from unittest import TestCase
 
-from optofidelity.orchestrator import (AndroidUpdater, ChromeUpdater,
-                                       FakeUpdater, ManualUpdater)
+from optofidelity.orchestrator.updater import (AndroidUpdater, ChromeUpdater,
+                                               FakeUpdater, ManualUpdater)
 from optofidelity.util import AskUserContinue, CreateComponentFromXML
 from tests.config import ALLOW_USER_INTERACTION, TEST_ADB_DEVICE_ID
 

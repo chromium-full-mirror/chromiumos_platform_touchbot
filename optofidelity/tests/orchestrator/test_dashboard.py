@@ -5,7 +5,8 @@
 from unittest import TestCase
 
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
-from optofidelity.orchestrator import ChromePerfDashboard, SpreadsheetDashboard
+from optofidelity.orchestrator.dashboard import (ChromePerfDashboard,
+                                                 SpreadsheetDashboard)
 from optofidelity.orchestrator.omaha import GetLatestChromeVersions
 from optofidelity.util import AskUserContinue
 from tests.config import (TEST_CHROMEPERF_ENDPOINT, TEST_OAUTH_KEY_FILE,

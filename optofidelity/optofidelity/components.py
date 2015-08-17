@@ -3,19 +3,23 @@
 # found in the LICENSE file.
 
 from .benchmark import BenchmarkRunner
+from .benchmark.fake import FakeBenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ADBSettingsSetup, AndroidUpdater,
-                           ChromePerfDashboard, ChromeUpdater, Dashboard,
-                           FakeSubjectSetup, FakeUpdater, ManualUpdater,
-                           Orchestrator, OrchestratorSubject,
-                           SpreadsheetDashboard, SubjectSetup, Updater)
+from .detection.fake import FakeVideoProcessor
+from .orchestrator import Orchestrator
+from .orchestrator.dashboard import (ChromePerfDashboard, Dashboard,
+                                     FakeDashboard, SpreadsheetDashboard)
+from .orchestrator.subject_setup import (ADBSettingsSetup, FakeSubjectSetup,
+                                         SubjectSetup)
+from .orchestrator.updater import (AndroidUpdater, ChromeUpdater, FakeUpdater,
+                                   ManualUpdater, Updater)
 from .system import HighSpeedCamera, Navigator, RobotBackend
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
 from .system.camera_xiCam import XiCamCamera
 from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
-from .system.navigator import (BaseNavigator, ManualNavigator,
+from .system.navigator import (FakeNavigator, ManualNavigator,
                                NativeADBNavigator, RobotNavigator,
                                WebADBNavigator)
 
@@ -40,22 +44,25 @@ COMPONENTS = {
     "web_adb": WebADBNavigator,
     "native_adb": NativeADBNavigator,
     "manual": ManualNavigator,
-    "fake": BaseNavigator
+    "fake": FakeNavigator
   },
   VideoProcessor: {
     "multithreaded": MultithreadedVideoProcessor,
     "singlethreaded": SinglethreadedVideoProcessor,
-    "default": MultithreadedVideoProcessor
+    "default": MultithreadedVideoProcessor,
+    "fake": FakeVideoProcessor
   },
   Dashboard: {
     "chromeperf": ChromePerfDashboard,
-    "spreadsheet": SpreadsheetDashboard
+    "spreadsheet": SpreadsheetDashboard,
+    "fake": FakeDashboard
   },
   Orchestrator: {
     "default": Orchestrator
   },
   BenchmarkRunner: {
-    "default": BenchmarkRunner
+    "default": BenchmarkRunner,
+    "fake": FakeBenchmarkRunner
   },
   SubjectSetup: {
     "adb_settings": ADBSettingsSetup,

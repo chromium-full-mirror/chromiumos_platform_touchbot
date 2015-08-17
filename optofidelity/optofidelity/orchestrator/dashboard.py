@@ -35,6 +35,19 @@ class Dashboard(object):
     """
 
 
+class FakeDashboard(Dashboard):
+  def __init__(self, subject_name):
+    super(FakeDashboard, self).__init__(subject_name)
+    self.results = []
+
+  @classmethod
+  def FromConfig(cls, parameters, children, subject_name):
+    return cls(subject_name)
+
+  def ReportResults(self, benchmark_results, version, report_url):
+    self.results.append(benchmark_results)
+
+
 def HTTPPost(url, data):
   buffer = StringIO()
   curl = pycurl.Curl()
