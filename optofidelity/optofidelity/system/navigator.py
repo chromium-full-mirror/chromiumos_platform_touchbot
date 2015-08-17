@@ -25,6 +25,10 @@ class Navigator(object):
     """State information. (e.g. coordinates of detected buttons)"""
     return {}
 
+  @state.setter
+  def state(self, value):
+    pass
+
   def SetUp(self):
     """SetUp the navigator to run on a device."""
 
@@ -76,6 +80,10 @@ class BaseNavigator(Navigator):
   def __init__(self):
     self._is_open = False
     self._current_activity = None
+
+  @classmethod
+  def FromConfig(cls, attributes, children, dut_backend):
+    return cls()
 
   def Open(self):
     if self._is_open:

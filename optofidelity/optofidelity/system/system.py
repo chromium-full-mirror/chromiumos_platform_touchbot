@@ -99,6 +99,7 @@ class BenchmarkSystem(object):
     self.backend = backend
     self.camera = camera
     self.led_calibration_subject = None
+    self.finger_calib_delay = (0.0, 0.0)
 
   def Reset(self):
     """Reset system.

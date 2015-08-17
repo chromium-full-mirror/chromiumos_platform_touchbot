@@ -15,8 +15,9 @@ from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
 from .system.camera_xiCam import XiCamCamera
 from .system.fake import FakeHighSpeedCamera, FakeRobotBackend
-from .system.navigator import (ManualNavigator, NativeADBNavigator,
-                               RobotNavigator, WebADBNavigator)
+from .system.navigator import (BaseNavigator, ManualNavigator,
+                               NativeADBNavigator, RobotNavigator,
+                               WebADBNavigator)
 
 COMPONENTS = {
   RobotBackend: {
@@ -38,7 +39,8 @@ COMPONENTS = {
     "robot": RobotNavigator,
     "web_adb": WebADBNavigator,
     "native_adb": NativeADBNavigator,
-    "manual": ManualNavigator
+    "manual": ManualNavigator,
+    "fake": BaseNavigator
   },
   VideoProcessor: {
     "multithreaded": MultithreadedVideoProcessor,

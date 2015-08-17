@@ -18,8 +18,10 @@ from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
 from .benchmark import BenchmarkRunner
 from .components import COMPONENTS
 from .detection import VideoProcessor
-from .orchestrator import Dashboard, Orchestrator, OrchestratorSubject, Updater
-from .system import BenchmarkSystem, HighSpeedCamera, Navigator, RobotBackend
+from .orchestrator import (Dashboard, Orchestrator, OrchestratorSubject,
+                           SubjectSetup, Updater)
+from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
+                     Navigator, RobotBackend)
 from .system.system import FingerCalibDelay
 from .util import CreateComponent, const_property
 
@@ -91,7 +93,7 @@ class SystemBuilder(object):
     self._config_element = config_element
     self._options = options
     self.attrib = config_element.attrib
-    self._state_file = self._ParseValue(config_element.get("state-file"))
+    self._state_file = self.ParseValue(config_element.get("state-file"))
     self._SetupLogging()
 
   @const_property
@@ -127,9 +129,9 @@ class SystemBuilder(object):
     return cls(ElementTree.parse(config_file).getroot(), root_dir, options)
 
   @classmethod
-  def FromString(cls, config_string):
+  def FromString(cls, config_string, root_dir=".", options=object()):
     """Initialize with config from config_string."""
-    return cls(ElementTree.fromstring(config_string), ".", object())
+    return cls(ElementTree.fromstring(config_string), root_dir, options)
 
   def SaveState(self):
     """Save current state to file.
@@ -154,7 +156,7 @@ class SystemBuilder(object):
       self.orchestrator.state = state["orchestrator"]
 
   def _SetupLogging(self):
-    log_config = self._ParseValue(self._config_element.get("log-config"))
+    log_config = self.ParseValue(self._config_element.get("log-config"))
     if log_config:
       with open(log_config, "r") as file_obj:
         dictionary = json.load(file_obj)
@@ -233,35 +235,32 @@ class SystemBuilder(object):
     subject.updater = updater
     subject.dashboard = dashboard
 
-    for preparer_elem in subject_elem.iter("preparer"):
-      preparer = self._CreateComponent(SubjectPreparer, preparer_elem, context)
-      subject.preparer.append(preparer)
-
     for setup_elem in subject_elem.iter("setup"):
       setup = self._CreateComponent(SubjectSetup, setup_elem, context)
       subject.setups.append(setup)
 
     margin_attrib = subject_elem.get("margin")
     if margin_attrib:
-      margin_attrib = self._ParseValue(margin_attrib, dut_elem.attrib)
+      margin_attrib = self.ParseValue(margin_attrib, dut_elem.attrib)
       subject.margin = self._ParseCoord(margin_attrib)
 
-    exposure = self._ParseValue(subject_elem.get("exposure"), dut_elem.attrib)
+    exposure = self.ParseValue(subject_elem.get("exposure"), dut_elem.attrib)
     if exposure:
       subject.exposure = float(exposure)
 
-    test_plane = self._ParseValue(subject_elem.get("test-plane"),
+    test_plane = self.ParseValue(subject_elem.get("test-plane"),
                                   dut_elem.attrib)
     if test_plane:
       subject.test_plane_location = float(test_plane)
 
 
     if margin_attrib:
-      margin_attrib = self._ParseValue(margin_attrib, context)
+      margin_attrib = self.ParseValue(margin_attrib, context)
       subject.margin = self._ParseCoord(margin_attrib)
 
     for benchmark_elem in subject_elem.iter("benchmark"):
-      attrib, children = self._GetElementAttribs(benchmark_elem, {})
+      attrib = {k: self.ParseValue(v)
+                for k, v in benchmark_elem.attrib.iteritems()}
       subject.DefineBenchmark(attrib["name"], attrib["type"],
                               attrib["activity"], attrib)
     return subject
@@ -310,7 +309,7 @@ class SystemBuilder(object):
     element.attrib = dict((k, v) for k, v in element.attrib.items()
                                  if k not in remove_keys)
 
-  def _ParseValue(self, value, context=dict()):
+  def ParseValue(self, value, context=dict()):
     if value is None:
       return value
 
@@ -327,7 +326,7 @@ class SystemBuilder(object):
       return str(getattr(self._options, option_name))
     if value.startswith("{") and value.endswith("}"):
       key = value[1:-1]
-      value = self._ParseValue(context.get(key))
+      value = self.ParseValue(context.get(key))
     return value
 
   def _CreateComponent(self, interface_type, element, context, *extra_args):
@@ -355,7 +354,7 @@ class SystemBuilder(object):
       raise Exception("Invalid type '%s' for interface '%s'" %
                       (type_name, interface_type))
     impl_type = available_types[type_name]
-    value_filter = lambda v: self._ParseValue(v, context)
+    value_filter = lambda v: self.ParseValue(v, context)
     return CreateComponent(impl_type, element, extra_args, value_filter)
 
   def _ParseCoord(self, string):

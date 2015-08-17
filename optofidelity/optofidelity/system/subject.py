@@ -58,7 +58,7 @@ class BenchmarkSubject(object):
     self._dut_backend = dut_backend
 
   @const_property
-  def _test_plane(self):
+  def test_plane(self):
     def is_oriented(orientation, target):
       dist = np.abs(orientation - target)
       dist = min(dist, (2 * np.pi) - dist)
@@ -97,7 +97,8 @@ class BenchmarkSubject(object):
 
   @state.setter
   def state(self, value):
-    self.navigator.state = value["navigator"]
+    if self.navigator:
+      self.navigator.state = value["navigator"]
 
   @property
   def width(self):
@@ -131,7 +132,7 @@ class BenchmarkSubject(object):
     :param float y
     :param bool blocking: Block until the gesture is finished (default).
     """
-    self.Tap(self._test_plane, y, count, blocking)
+    self.Tap(self.test_plane, y, count, blocking)
 
   def Move(self, x, y, z, blocking=True):
     """Move to location (x, y, z).
@@ -153,7 +154,7 @@ class BenchmarkSubject(object):
     :param float z
     :param bool blocking: Block until the gesture is finished (default).
     """
-    self.Move(self._test_plane, y, z)
+    self.Move(self.test_plane, y, z)
 
   def MoveRobotOutOfCameraView(self, blocking=True):
     self.MoveOnTestPlane(-10.0, self.HOVER_HEIGHT, blocking)
@@ -183,7 +184,7 @@ class BenchmarkSubject(object):
     :param float z
     :param bool blocking: Block until the gesture is finished (default).
     """
-    self.Jump(self._test_plane, y, z)
+    self.Jump(self.test_plane, y, z)
 
   def RecordCalibrationVideo(self):
     """Records a video of the screen flashing, used for calibration.
