@@ -5,11 +5,11 @@
 from .benchmark import BenchmarkRunner
 from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
-from .orchestrator import (ADBSettingsSetup,
-                           AndroidUpdater, ChromePerfDashboard, ChromeUpdater,
-                           Dashboard, FakeUpdater, ManualUpdater, Orchestrator,
-                           OrchestratorSubject, SpreadsheetDashboard,
-                           SubjectSetup, Updater)
+from .orchestrator import (ADBSettingsSetup, AndroidUpdater,
+                           ChromePerfDashboard, ChromeUpdater, Dashboard,
+                           FakeSubjectSetup, FakeUpdater, ManualUpdater,
+                           Orchestrator, OrchestratorSubject,
+                           SpreadsheetDashboard, SubjectSetup, Updater)
 from .system import HighSpeedCamera, Navigator, RobotBackend
 from .system.backend_tnt import TnTRobotBackend
 from .system.camera_phantom import PhantomCamera
@@ -56,6 +56,7 @@ COMPONENTS = {
     "default": BenchmarkRunner
   },
   SubjectSetup: {
-    "adb_settings": ADBSettingsSetup
+    "adb_settings": ADBSettingsSetup,
+    "fake": FakeSubjectSetup
   },
 }

@@ -74,6 +74,13 @@ class ADB(object):
       return prop
     return None
 
+  def PutSetting(self, namespace, key, value):
+    self.ExecuteShell(["settings", "put", namespace, key, value])
+
+  def GetSetting(self, namespace, key):
+    stdout = self.ExecuteShell(["settings", "get", namespace, key])
+    return stdout.strip()
+
   def SendKey(self, key_name):
     self.ExecuteShell(["input", "keyevent", key_name], timeout=10, retries=2)
 
