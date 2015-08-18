@@ -16,6 +16,7 @@ from optofidelity.reporting._trace_figures import (EventsMeasurementsFigure,
                                                    LocationMeasurementsFigure,
                                                    TraceOverviewFigure)
 from optofidelity.videoproc import ImageMatches
+from tests.config import CONFIG
 
 from . import test_data
 
@@ -40,7 +41,8 @@ class FigureVerificationTests(unittest.TestCase):
   def assertImageMatches(self, image, expected_file_name, force_update=False):
     expected_image_path = test_data.Path(expected_file_name)
     if not ImageMatches(image, expected_image_path,
-                        force_update or self.FORCE_UPDATE_ALL):
+                        force_update or self.FORCE_UPDATE_ALL,
+                        CONFIG.get("user_interaction")):
       self.fail("Image not matching expected image: %s" % expected_file_name)
 
 

@@ -53,10 +53,12 @@ def DebugView(title="", cmap_name="gray", **kwargs):
   plt.show()
 
 
-def ImageMatches(image, expected_image_path, force_update=False):
+def ImageMatches(image, expected_image_path, force_update=False, show=False):
   if force_update or not os.path.exists(expected_image_path):
     SaveImage(expected_image_path, image)
-    DebugView(title=os.path.basename(expected_image_path), created_image=image)
+    if show:
+      DebugView(title=os.path.basename(expected_image_path),
+                created_image=image)
     return True
 
   expected_image = LoadImage(expected_image_path, gray=True)
@@ -64,7 +66,8 @@ def ImageMatches(image, expected_image_path, force_update=False):
   mse = np.mean((expected_image - actual_image) ** 2)
   if mse > 0.01:
     print "Image not matching expected image: %s" % expected_image_path
-    DebugView(actual_image=actual_image, expected_image=expected_image)
+    if show:
+      DebugView(actual_image=actual_image, expected_image=expected_image)
     return False
   return True
 

@@ -5,35 +5,26 @@
 
 from unittest import TestCase
 import os
-import sys
 
 from optofidelity.system.fake import FakeDUTBackend, FakeNavigator
 from optofidelity.system.navigator import (ManualNavigator, NativeADBNavigator,
                                            RobotNavigator, WebADBNavigator)
 from optofidelity.util import CreateComponentFromXML
-from tests.config import (ALLOW_USER_INTERACTION, TEST_ADB_DEVICE_ID,
-                          CreateTestDUTBackend)
+from tests.config import CONFIG, CreateTestDUTBackend
 
 _script_dir = os.path.dirname(os.path.realpath(__file__))
 
 class AbstractNavBackendTests(object):
-  def assertUserAccepts(self, instructions):
-    if not ALLOW_USER_INTERACTION:
-      return
-    print instructions
-    print "Press enter to accept"
-    sys.stdin.readline()
-
   def createBackend(self):
-    self.skipTest("Abstract TestCase class")
+    pass
 
   def openCloseActivityTest(self, activity_name):
     backend = self.createBackend()
     backend.SetUp()
     backend.Open()
     backend.OpenActivity(activity_name)
-    self.assertUserAccepts("Verify the '%s' activity has been opened." %
-                           activity_name)
+    CONFIG.AskUserAccept("Verify the '%s' activity has been opened." %
+                         activity_name)
     backend.Cleanup()
 
   def testCalibrationFlow(self):
@@ -44,9 +35,9 @@ class AbstractNavBackendTests(object):
     backend.SetUp()
     backend.Open()
     backend.OpenActivity("calibration")
-    self.assertUserAccepts("Verify the calibration page has been opened.")
+    CONFIG.AskUserAccept("Verify the calibration page has been opened.")
     backend.Reset()
-    self.assertUserAccepts("Verify the subject has been reset.")
+    CONFIG.AskUserAccept("Verify the subject has been reset.")
 
   def testVerifyPrepare(self):
     backend = self.createBackend()
@@ -66,12 +57,11 @@ WEB_ADB_CONFIG = """\
 class WebADBNavigatorTests(TestCase, AbstractNavBackendTests):
   CHROME_COMPONENT = "com.android.chrome/com.google.android.apps.chrome.Main"
   DATA_PATH = os.path.join(_script_dir, "../../apps/web")
-  CONFIG = WEB_ADB_CONFIG.format(data=DATA_PATH, adb=TEST_ADB_DEVICE_ID)
 
   def createBackend(self):
-    if TEST_ADB_DEVICE_ID is None:
-        self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
-    return CreateComponentFromXML(WebADBNavigator, self.CONFIG, [None])
+    configuration = WEB_ADB_CONFIG.format(data=self.DATA_PATH,
+                                          adb=CONFIG["adb_device_id"])
+    return CreateComponentFromXML(WebADBNavigator, configuration, [None])
 
 
 NATIVE_ADB_CONFIG = """\
@@ -86,36 +76,44 @@ NATIVE_ADB_CONFIG = """\
 
 class NativeADBNavigatorTests(TestCase, AbstractNavBackendTests):
   APK_FILE = os.path.join(_script_dir, "../../apps/Android/app/app-release.apk")
-  CONFIG = NATIVE_ADB_CONFIG.format(adb=TEST_ADB_DEVICE_ID, apk=APK_FILE)
 
   def createBackend(self):
-    if TEST_ADB_DEVICE_ID is None:
-        self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
-    return CreateComponentFromXML(NativeADBNavigator, self.CONFIG, [None])
+    configuration = NATIVE_ADB_CONFIG.format(adb=CONFIG["adb_device_id"],
+                                             apk=self.APK_FILE)
+    return CreateComponentFromXML(NativeADBNavigator, configuration, [None])
 
   def testHomeScreenFlow(self):
     self.openCloseActivityTest("home")
 
 
-ROBOT_CONFIG = """\
+ROBOT_CONFIG_FORMAT = """\
 <navigator>
   <activity name="neutral" icon="{data}/neutral.shm" />
   <activity name="calibration" icon="{data}/flash.shm" />
-  <activity name="tap" text="Tap" />
+  <activity name="tap" text="tap" />
+</navigator>
+"""
+
+ROBOT_CONFIG_FORMAT_IPHONE = """\
+<navigator>
+  <activity name="neutral" icon="{data}/neutral.shm" />
+  <activity name="calibration" icon="{data}/flash.shm" />
 </navigator>
 """
 
 class RobotNavigatorTests(TestCase, AbstractNavBackendTests):
   DATA_PATH = os.path.join(_script_dir, "../../config/icons")
-  CONFIG = ROBOT_CONFIG.format(data=DATA_PATH)
+  ROBOT_CONFIG = ROBOT_CONFIG_FORMAT.format(data=DATA_PATH)
+  ROBOT_CONFIG_IPHONE = ROBOT_CONFIG_FORMAT_IPHONE.format(data=DATA_PATH)
 
   def createBackend(self):
     dut = CreateTestDUTBackend()
-    return CreateComponentFromXML(RobotNavigator, self.CONFIG, [dut])
+    return CreateComponentFromXML(RobotNavigator, self.ROBOT_CONFIG_IPHONE,
+                                  [dut])
 
   def createFakeBackend(self):
     dut = FakeDUTBackend("fake")
-    return CreateComponentFromXML(RobotNavigator, self.CONFIG, [dut]), dut
+    return CreateComponentFromXML(RobotNavigator, self.ROBOT_CONFIG, [dut]), dut
 
   def testFailedWordDetection(self):
     nav, dut = self.createFakeBackend()
@@ -146,8 +144,7 @@ class RobotNavigatorTests(TestCase, AbstractNavBackendTests):
 
 class ManualNavigatorTests(TestCase, AbstractNavBackendTests):
   def createBackend(self):
-    if not ALLOW_USER_INTERACTION:
-      self.skipTest("Test requires user interaction.")
+    CONFIG.Require("user_interaction")
     return CreateComponentFromXML(ManualNavigator, "<navigator />", [None])
 
 

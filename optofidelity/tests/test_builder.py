@@ -5,7 +5,6 @@
 
 from collections import namedtuple
 from tempfile import NamedTemporaryFile
-import os
 import unittest
 import xml.etree.ElementTree as ElementTree
 

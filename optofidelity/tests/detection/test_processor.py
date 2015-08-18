@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 """Unit tests for both implementations of VideoProcessor."""
 
-from unittest import TestCase, skip
+from unittest import TestCase
 
 import numpy as np
 
@@ -13,6 +13,7 @@ from optofidelity.detection.events import LEDEvent, ScreenDrawEvent
 from optofidelity.detection.fake import FakeVideoProcessor
 from optofidelity.detection.screen_calibration import ScreenCalibration
 from optofidelity.videoproc import FakeVideoReader
+from tests.config import CONFIG
 
 from . import test_data
 
@@ -45,8 +46,8 @@ class ProcessorTest(TestCase):
         self.assertLess(np.abs(white_event.time - 44), 2)
         self.assertEqual(white_event.state, ScreenDrawEvent.STATE_WHITE)
 
-  @skip("Requires manual validation")
   def testProgressDisplayAndDebugging(self):
+    CONFIG.Require("user_interaction")
     for multithreaded in (True, False):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)

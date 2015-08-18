@@ -7,20 +7,17 @@ from unittest import TestCase
 import os
 import re
 import shutil
-import sys
 import tempfile
-import webbrowser
 
 from optofidelity.benchmark import AggregateResults
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.reporting import BenchmarkReport, AggregateReport
+from tests.config import CONFIG
 
 from . import test_data
 
 
 class ReportTests(TestCase):
-  USER_VERIFICATION = False
-
   def setUp(self):
     self.tempdir = tempfile.mkdtemp()
 
@@ -87,9 +84,4 @@ class ReportTests(TestCase):
                       "referenced file %s does not exist." % path)
 
   def userVerification(self, filename):
-    if not self.USER_VERIFICATION:
-      return
-    webbrowser.open("file://" + filename)
-    print "Opening report in browser. Please verify results."
-    print "Press Enter to continue."
-    sys.stdin.readline()
+    CONFIG.AskUserAccept("Verify report at file://" + filename)

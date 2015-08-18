@@ -18,10 +18,8 @@ from optofidelity.benchmark._tap_delegate import TapDelegate
 from optofidelity.benchmark.results import (BenchmarkMeasurements,
                                             BenchmarkResults)
 from optofidelity.system import BenchmarkSubject
-from optofidelity.system.backend_tnt import TnTRobotBackend
-from optofidelity.system.fake import FakeDUTBackend, FakeHighSpeedCamera
-from tests.config import TEST_DUT_NAME, TEST_ROBOT_IP
-
+from optofidelity.system.fake import FakeHighSpeedCamera
+from tests.config import CONFIG, CreateTestDUTBackend
 from . import test_data
 
 
@@ -33,14 +31,9 @@ class AbstractDelegateTests(unittest.TestCase):
   """
 
   def createTestSubject(self):
-    if TEST_DUT_NAME is not None:
-      backend = TnTRobotBackend(TEST_ROBOT_IP).GetDUTBackend(TEST_DUT_NAME)
-      return BenchmarkSubject(TEST_DUT_NAME, backend, FakeHighSpeedCamera())
-    else:
-      print "Running test offline."
-      print "Set TEST_ROBOT_IP and TEST_DUT_NAME to run on robot."
-      return BenchmarkSubject("fake", FakeDUTBackend("fake"),
-                              FakeHighSpeedCamera())
+    backend = CreateTestDUTBackend()
+    return BenchmarkSubject(CONFIG.get("dut_name", "fake"), backend,
+                            FakeHighSpeedCamera())
 
   def runExecuteOnSubjectTest(self, delegate):
     subject = self.createTestSubject()

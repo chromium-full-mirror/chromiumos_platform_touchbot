@@ -6,13 +6,13 @@ from unittest import TestCase
 
 from optofidelity.orchestrator.updater import (AndroidUpdater, ChromeUpdater,
                                                FakeUpdater, ManualUpdater)
-from optofidelity.util import AskUserContinue, CreateComponentFromXML
-from tests.config import ALLOW_USER_INTERACTION, TEST_ADB_DEVICE_ID
+from optofidelity.util import CreateComponentFromXML
+from tests.config import CONFIG
 
 
 class UpdaterTests(TestCase):
   def installLatestVersionTest(self, updater):
-    latest = updater.available_versions[0]
+    latest = updater.available_versions[-1]
     updater.Install(latest)
     self.assertEqual(updater.installed_version, latest)
 
@@ -23,32 +23,23 @@ class UpdaterTests(TestCase):
 
 class ChromeUpdaterTests(UpdaterTests):
   def testInstallUninstallFlow(self):
-    if TEST_ADB_DEVICE_ID is None:
-      self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
-      return
-
     for channel in ("stable", "beta", "dev"):
       config = "<updater adb='{adb}' channel='{channel}' />"
-      config = config.format(adb=TEST_ADB_DEVICE_ID, channel=channel)
+      config = config.format(adb=CONFIG["adb_device_id"], channel=channel)
       updater = CreateComponentFromXML(ChromeUpdater, config)
       self.installLatestVersionTest(updater)
       updater.Verify()
-      if channel is not "stable":
+      if channel != "stable":
         self.uninstallTest(updater)
 
 
 class AndroidUpdaterTests(UpdaterTests):
-  def testInstalledVersion(self):
-    if TEST_ADB_DEVICE_ID is None:
-      self.skipTest("Specify TEST_ADB_DEVICE_ID to test live adb subject.")
-      return
-
-    config = "<updater adb='{adb}' />".format(adb=TEST_ADB_DEVICE_ID)
+  def testInstallUninstallFlow(self):
+    config = "<updater adb='{adb}' />".format(adb=CONFIG["adb_device_id"])
     updater = CreateComponentFromXML(AndroidUpdater, config)
     version = updater.installed_version
     self.assertIsNotNone(version)
-    if ALLOW_USER_INTERACTION:
-      AskUserContinue("Android version is: %s" % version)
+    CONFIG.AskUserAccept("Android version is: %s" % version)
 
 
 class ManualUpdaterTests(UpdaterTests):

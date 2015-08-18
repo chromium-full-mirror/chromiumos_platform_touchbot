@@ -9,21 +9,21 @@ import os
 from optofidelity.util import (GSFile, GSFindUniqueFilename, GSFolder,
                                GSOpenFile, GSTouch, SingleInstanceLock)
 
-GS_URL = None
-GS_FILE_URL = os.path.join(GS_URL, "test.txt") if GS_URL else None
+from tests.config import CONFIG
+
 
 class GSUtilTests(TestCase):
   def setUp(self):
-    if GS_URL is None:
-      self.skipTest("Specify GS_URL to run gs_util tests.")
+    self.gs_folder = CONFIG["gs_folder_url"]
+    self.gs_file = os.path.join(self.gs_folder, "test.txt")
 
   def tearDown(self):
-    os.system("gsutil rm " + GS_FILE_URL)
+    os.system("gsutil rm " + self.gs_file)
 
   def testUniqueFilename(self):
-    path1, file1 = GSFindUniqueFilename(GS_URL, "base_name")
+    path1, file1 = GSFindUniqueFilename(self.gs_folder, "base_name")
     GSTouch(os.path.join(path1, ".exists"))
-    path2, file2 = GSFindUniqueFilename(GS_URL, "base_name")
+    path2, file2 = GSFindUniqueFilename(self.gs_folder, "base_name")
     self.assertTrue(file1.startswith("base_name"))
     self.assertTrue(file2.startswith("base_name"))
     self.assertNotEqual(file1, file2)
@@ -31,7 +31,7 @@ class GSUtilTests(TestCase):
   def testGSOpenFile(self):
     with NamedTemporaryFile() as temp_file:
       # Test same behavior for local file as well as remote file
-      for path in (GS_FILE_URL, temp_file.name):
+      for path in (self.gs_file, temp_file.name):
         with GSOpenFile(path, "w") as file_obj:
           file_obj.write("42")
 
@@ -42,15 +42,15 @@ class GSUtilTests(TestCase):
           self.assertEqual(file_obj.read(), "4242")
 
   def testPreserveSuffix(self):
-    with GSFile(GS_FILE_URL) as gs_file:
+    with GSFile(self.gs_file) as gs_file:
       self.assertTrue(gs_file.endswith(".txt"))
 
   def testFolder(self):
-    with GSFolder(GS_URL) as folder:
+    with GSFolder(self.gs_folder) as folder:
       with open(os.path.join(folder, "test.txt"), "w") as file_obj:
         file_obj.write("42")
 
-    with GSFolder(GS_URL, download=True, upload=False) as folder:
+    with GSFolder(self.gs_folder, download=True, upload=False) as folder:
       with open(os.path.join(folder, "test.txt")) as file_obj:
         self.assertEqual(file_obj.read(), "42")
 

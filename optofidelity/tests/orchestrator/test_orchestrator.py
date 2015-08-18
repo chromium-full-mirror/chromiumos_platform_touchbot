@@ -7,14 +7,10 @@ import os
 import shutil
 import tempfile
 
-from optofidelity.benchmark import Benchmark, DrawEventLatencySeries
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.builder import SystemBuilder
-from optofidelity.orchestrator import (Dashboard, Orchestrator,
-                                       OrchestratorSubject)
-from optofidelity.system.fake import FakeDUTBackend, FakeHighSpeedCamera
-from optofidelity.util import AskUserContinue
-from tests.config import ALLOW_USER_INTERACTION
+from optofidelity.orchestrator import (Dashboard, OrchestratorSubject)
+from tests.config import CONFIG
 
 from . import test_data
 
@@ -83,8 +79,7 @@ class OrchestratorTests(TestCase):
 
   def testPrintInfo(self):
     self.orchestrator.PrintInfo("*")
-    if ALLOW_USER_INTERACTION:
-      AskUserContinue("Verify the printed output")
+    CONFIG.AskUserAccept("Verify the printed output")
 
   def testVideoProcessingErrorHandling(self):
     self.video_processor.ProcessVideo = AlwaysRaiseException

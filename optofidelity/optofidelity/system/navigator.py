@@ -215,12 +215,15 @@ class RobotNavigator(BaseNavigator):
                   if i is not None}
     words = {w: a for a, (w, i) in self._activity_targets.iteritems()
                   if w is not None}
-
-    word_coords = self._dut_backend.DetectWords(words.keys())
-    for word, coords in word_coords.iteritems():
-      if coords is None:
-        raise Exception("Cannot detect word '%s'" % (word,))
-      self._activity_coords[words[word]] = coords
+    center_x, center_y = (self._dut_backend.width / 2,
+                          self._dut_backend.height / 2)
+    self._dut_backend.Tap(center_x, center_y)
+    if len(words):
+      word_coords = self._dut_backend.DetectWords(words.keys())
+      for word, coords in word_coords.iteritems():
+        if coords is None:
+          raise Exception("Cannot detect word '%s'" % (word,))
+        self._activity_coords[words[word]] = coords
 
     for icon_file, activity in icons.iteritems():
       coords = self._dut_backend.DetectIcon(icon_file)

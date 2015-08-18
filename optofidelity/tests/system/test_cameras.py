@@ -5,20 +5,23 @@
 cameras. Tests will be skipped if no cameras are present."""
 
 import unittest
+
 import cv2
 
 from optofidelity.system.camera_phantom import PhantomCamera
 from optofidelity.system.camera_xiCam import XiCamCamera
+from tests.config import CONFIG
+
 try:
   import optofidelity.system.xiCam as xiCam
 except ImportError:
   xiCam = None
-from tests.config import TEST_PHANTOM_IP
 
 class CameraTester(object):
   TEST_DUR = 1000
   TEST_FPS = 100
   BAD_FPS = 10000
+
   def recording(self, test, camera):
     camera.Prepare(self.TEST_DUR, self.TEST_FPS)
     camera.Trigger()
@@ -26,6 +29,7 @@ class CameraTester(object):
     test.assertEqual(video.num_frames, (self.TEST_DUR / 1000) * self.TEST_FPS)
     test.assertEqual(video.fps, self.TEST_FPS)
     return video
+
   def state_check(self, test, camera):
     test.assertRaises(Exception, lambda: camera.Trigger())
     test.assertRaises(Exception, lambda: camera.ReceiveVideo())
@@ -46,20 +50,22 @@ class CameraTester(object):
 class PhantomTests(unittest.TestCase):
   CAMERA_PORT = 7115
   TEST_FPS = 300
+
   def setUp(self):
-    if TEST_PHANTOM_IP is None:
-      self.skipTest("This test requires TEST_PHANTOM_IP to be set.")
-    else:
-      self.camera = PhantomCamera(TEST_PHANTOM_IP, self.CAMERA_PORT, self.TEST_FPS)
-      self.tester = CameraTester()
+    self.camera = PhantomCamera(CONFIG["phantom_ip"], self.CAMERA_PORT,
+                                self.TEST_FPS)
+    self.tester = CameraTester()
 
   def test_recording(self):
     video = self.tester.recording(self, self.camera)
-    print "Please verify that the recorded video is correct"
-    video.DebugView()
+    if CONFIG.get("user_interaction"):
+      for i, img in video.Frames():
+        cv2.imshow("Phantom Unit Test", img)
+        cv2.waitKey(1)
 
   def test_state_checking(self):
     self.tester.state_check(self, self.camera)
+
 
 class XiCamTests(unittest.TestCase):
   TEST_FPS = 300
@@ -75,11 +81,10 @@ class XiCamTests(unittest.TestCase):
 
   def test_recording(self):
     video = self.tester.recording(self, self.camera)
-    for i, img in video.Frames():
-      cv2.imshow("XiCam Unit Test", img)
-      cv2.waitKey(1)
+    if CONFIG.get("user_interaction"):
+      for i, img in video.Frames():
+        cv2.imshow("XiCam Unit Test", img)
+        cv2.waitKey(1)
 
   def test_state_checking(self):
     self.tester.state_check(self, self.camera)
-
-
