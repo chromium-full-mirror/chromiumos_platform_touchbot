@@ -8,6 +8,7 @@ from .detection import (MultithreadedVideoProcessor,
                         SinglethreadedVideoProcessor, VideoProcessor)
 from .detection.fake import FakeVideoProcessor
 from .orchestrator import Orchestrator
+from .orchestrator.access import Access, CambrionixAccess, FakeAccess
 from .orchestrator.dashboard import (ChromePerfDashboard, Dashboard,
                                      FakeDashboard, SpreadsheetDashboard)
 from .orchestrator.subject_setup import (ADBSettingsSetup, FakeSubjectSetup,
@@ -68,4 +69,9 @@ COMPONENTS = {
     "adb_settings": ADBSettingsSetup,
     "fake": FakeSubjectSetup
   },
+  Access: {
+    "default": FakeAccess,
+    "cambrionix": CambrionixAccess,
+    "fake": FakeAccess
+  }
 }

@@ -4,8 +4,6 @@
 import logging
 import re
 import subprocess
-import threading
-import time
 
 from .tools import TimeoutCommunicate
 
@@ -22,6 +20,9 @@ class ADB(object):
     :param str adb_device: USB serial number of the device to use.
     """
     self.adb_cmd = ["adb", "-s", adb_device]
+
+  def WaitForDevice(self, timeout=1):
+    self.Execute(["wait-for-device"], timeout=timeout)
 
   def UninstallPackage(self, package_name):
     """Uninstalls package on device.
@@ -54,9 +55,11 @@ class ADB(object):
   def PowerOn(self):
     if not self.IsAwake():
       self.SendKey(self.KEY_POWER)
-      self.SendKey(self.KEY_UNLOCK)
+    self.SendKey(self.KEY_UNLOCK)
+    self.ExecuteShell(["svc", "power", "stayon", "true"])
 
   def PowerOff(self):
+    self.ExecuteShell(["svc", "power", "stayon", "false"])
     if self.IsAwake():
       self.SendKey(self.KEY_POWER)
 

@@ -100,21 +100,22 @@ class Orchestrator(object):
       if not fnmatch(subject.name, match):
         continue
       print "Subject:", subject.name
-      if not subject.Verify():
-        print "  Cannot verify subject"
-        continue
-      installed_version = subject.updater.installed_version
-      print "  Installed version:", installed_version
+      with subject.access:
+        if not subject.Verify():
+          print "  Cannot verify subject"
+          continue
+        installed_version = subject.updater.installed_version
+        print "  Installed version:", installed_version
 
-      print "  Available versions:"
-      sys.stdout.write("    ")
-      for i, version in enumerate(subject.updater.available_versions):
-        if i % 6 == 0 and i != 0:
-          sys.stdout.write("\n    ")
-        if version == installed_version:
-          version = "*" + version
-        sys.stdout.write(version.ljust(16))
-      print
+        print "  Available versions:"
+        sys.stdout.write("    ")
+        for i, version in enumerate(subject.updater.available_versions):
+          if i % 6 == 0 and i != 0:
+            sys.stdout.write("\n    ")
+          if version == installed_version:
+            version = "*" + version
+          sys.stdout.write(version.ljust(16))
+        print
 
       print "  Available benchmarks:"
       for benchmark_def in subject.benchmark_defs.itervalues():
@@ -138,39 +139,45 @@ class Orchestrator(object):
       if not fnmatch(subject.name, match):
         continue
       self._progress.Info(subject.name, "Setting up Subject")
+      with subject.access:
+        subject.SetUp()
 
-      subject.SetUp()
+        if versions_string:
+          versions = subject.GetMatchingVersions(versions_string, False)
+          if len(versions) > 1:
+            self._progress.Error(subject.name, "Pick a single version.")
+          if not subject.Update(versions[0]):
+            self._progress.Error(subject.name, "Cannot update subject.")
 
-      if versions_string:
-        versions = subject.GetMatchingVersions(versions_string, False)
-        if len(versions) > 1:
-          self._progress.Error(subject.name, "Pick a single version.")
-        if not subject.Update(versions[0]):
-          self._progress.Error(subject.name, "Cannot update subject.")
+        if not subject.Verify():
+          self._progress.Error(subject.name, "Subject is in a bad state.")
 
-      if not subject.Verify():
-        self._progress.Error(subject.name, "Subject is in a bad state.")
+        self._runner.OpenAndCalibrateSubject(subject)
+        self._runner.CloseSubject()
 
-      self._runner.OpenAndCalibrateSubject(subject)
-      self._runner.CloseSubject()
-
-  def PrepareSubjects(self):
+  def PrepareSubjects(self, match="*"):
     """Gets all subjects into testable state.
 
     :type subject: OrchestratorSubject
     """
     for subject in self._subjects.itervalues():
+      if not fnmatch(subject.name, match):
+        continue
       self._progress.Info(subject.name, "Preparing")
-      subject.Prepare()
+      with subject.access:
+        subject.Prepare()
 
-  def VerifySubjects(self):
+  def VerifySubjects(self, match="*"):
     """Gets all subjects into testable state.
 
     :type subject: OrchestratorSubject
     """
     for subject in self._subjects.itervalues():
+      if not fnmatch(subject.name, match):
+        continue
       self._progress.Info(subject.name, "Verifying")
-      subject.Verify()
+      with subject.access:
+        subject.Verify()
 
   def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
     """Runs updates and benchmarks on all bencharks matching 'match'
@@ -201,26 +208,27 @@ class Orchestrator(object):
     :type versions: str
     :type skip_installed: bool
     """
-    if not subject.Verify():
-      self._progress.Error(subject.name, "Subject in bad state.")
-      return
-
-    versions_to_test = subject.GetMatchingVersions(versions, skip_installed)
-    if not versions_to_test:
-      self._progress.Info(subject.name, "No versions to test.")
-      return
-
-    self._progress.Info(subject.name,
-                        "Versions to test: %s" % (versions_to_test,))
-    for version in versions_to_test:
-      with self._progress.LogExceptions(subject.name, "Fatal Exception"):
-        benchmark_names = [d.name for d in benchmark_defs]
-        self._progress.Info(subject.name,
-                            "Running benchmarks: %s" % (benchmark_names,))
-        self.RunSubjectVersion(subject, benchmark_defs, version)
+    with subject.access:
       if not subject.Verify():
         self._progress.Error(subject.name, "Subject in bad state.")
         return
+
+      versions_to_test = subject.GetMatchingVersions(versions, skip_installed)
+      if not versions_to_test:
+        self._progress.Info(subject.name, "No versions to test.")
+        return
+
+      self._progress.Info(subject.name,
+                          "Versions to test: %s" % (versions_to_test,))
+      for version in versions_to_test:
+        with self._progress.LogExceptions(subject.name, "Fatal Exception"):
+          benchmark_names = [d.name for d in benchmark_defs]
+          self._progress.Info(subject.name,
+                              "Running benchmarks: %s" % (benchmark_names,))
+          self.RunSubjectVersion(subject, benchmark_defs, version)
+        if not subject.Verify():
+          self._progress.Error(subject.name, "Subject in bad state.")
+          return
 
   def RunSubjectVersion(self, subject, benchmark_defs, version):
     """Run all benchmarks on a single version/subject.
@@ -310,7 +318,8 @@ class Orchestrator(object):
         self._runner.RunBenchmark(benchmark)
 
         self.PublishBenchmarkRepetition(benchmark, subject, benchmark_time)
-        if len(benchmark.results.error):
+        if (len(benchmark.results.error) or
+            not len(benchmark.results.measurements)):
           self._progress.Error(full_name, "%s failed." % rep_name)
           self._progress.LogFailure(full_name, "Benchmark failed",
                                     str(benchmark.results))

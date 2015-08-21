@@ -19,7 +19,7 @@ from .benchmark import BenchmarkRunner
 from .components import COMPONENTS
 from .detection import VideoProcessor
 from .orchestrator import (Dashboard, Orchestrator, OrchestratorSubject,
-                           SubjectSetup, Updater)
+                           SubjectSetup, Updater, Access)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.system import FingerCalibDelay
@@ -229,11 +229,13 @@ class SystemBuilder(object):
                                     context)
     dashboard = self._CreateComponent(Dashboard, subject_elem.find("dashboard"),
                                       context, name)
+    access = self._CreateComponent(Access, subject_elem.find("access"), context)
 
     subject = OrchestratorSubject(name, dut_backend, system.camera)
     subject.navigator = navigator
     subject.updater = updater
     subject.dashboard = dashboard
+    subject.access = access
 
     for setup_elem in subject_elem.iter("setup"):
       setup = self._CreateComponent(SubjectSetup, setup_elem, context)

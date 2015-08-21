@@ -74,13 +74,16 @@ NATIVE_ADB_CONFIG = """\
 </navigator>
 """
 
-class NativeADBNavigatorTests(TestCase, AbstractNavBackendTests):
+def createNativeADBNavigator():
   APK_FILE = os.path.join(_script_dir, "../../apps/Android/app/app-release.apk")
+  configuration = NATIVE_ADB_CONFIG.format(adb=CONFIG["adb_device_id"],
+                                           apk=APK_FILE)
+  return CreateComponentFromXML(NativeADBNavigator, configuration, [None])
 
+
+class NativeADBNavigatorTests(TestCase, AbstractNavBackendTests):
   def createBackend(self):
-    configuration = NATIVE_ADB_CONFIG.format(adb=CONFIG["adb_device_id"],
-                                             apk=self.APK_FILE)
-    return CreateComponentFromXML(NativeADBNavigator, configuration, [None])
+    return createNativeADBNavigator()
 
   def testHomeScreenFlow(self):
     self.openCloseActivityTest("home")

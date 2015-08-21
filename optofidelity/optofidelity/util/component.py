@@ -26,4 +26,3 @@ def CreateComponent(type_, element, extra_args=[], value_filter=None):
 def CreateComponentFromXML(type_, xml_source, extra_args=[], value_filter=None):
   element = ElementTree.fromstring(xml_source)
   return CreateComponent(type_, element, extra_args, value_filter)
-  

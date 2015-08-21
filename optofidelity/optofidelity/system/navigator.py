@@ -259,7 +259,7 @@ class BaseADBNavigator(BaseNavigator):
   """
   REMOTE_DIR = "/sdcard/crostouch"
 
-  def __init__(self, adb_device, stay_alive=False):
+  def __init__(self, adb_device, stay_alive=True):
     """
     :param str adb_device: Serial number of the adb device.
     """
@@ -292,6 +292,10 @@ class BaseADBNavigator(BaseNavigator):
     time.sleep(1.0)  # Wait for activity to load
 
   def _Close(self):
+    if self.HasActivity(self.NEUTRAL_ACTIVITY):
+      intent_params = self._activity_intents[self.NEUTRAL_ACTIVITY]
+      self._adb.StartActivity(**intent_params)
+      self._adb.PutSetting("system", "screen_brightness", "0")
     if not self._stay_alive:
       self._adb.PowerOff()
 
@@ -322,8 +326,8 @@ class WebADBNavigator(BaseADBNavigator):
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
-    self = cls(attributes["adb"], attributes["component"],
-               attributes.get("stay-alive", False))
+    stay_alive = attributes.get("stay-alive") in ("True", "true")
+    self = cls(attributes["adb"], attributes["component"], stay_alive)
     for child_name, parameters in children:
       if child_name == "activity":
         activity_name = parameters["name"]
@@ -366,8 +370,9 @@ class NativeADBNavigator(BaseADBNavigator):
 
   @classmethod
   def FromConfig(cls, attributes, children, dut_backend):
+    stay_alive = attributes.get("stay-alive") in ("True", "true")
     self = cls(attributes["adb"], attributes["apk"], attributes["package"],
-               attributes.get("stay-alive", False))
+               stay_alive)
     for child_name, parameters in children:
       if child_name == "activity":
         if "class-name" in parameters:

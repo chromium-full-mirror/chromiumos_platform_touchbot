@@ -37,6 +37,7 @@ class OrchestratorSubject(BenchmarkSubject):
 
     :returns bool: True if verification was successful.
     """
+    self._RequireAccess()
     with self._progress.CaptureFailures(self.name, "Subject verification"):
       self.updater.Verify()
       self.navigator.Verify()
@@ -44,12 +45,14 @@ class OrchestratorSubject(BenchmarkSubject):
     return False
 
   def SetUp(self):
+    self._RequireAccess()
     with self._progress.LogExceptions(self.name, "Setting up subject"):
       self.navigator.SetUp()
       for setup in self.setups:
         setup.SetUp()
 
   def Prepare(self):
+    self._RequireAccess()
     with self._progress.LogExceptions(self.name, "Preparing subject"):
       self.navigator.Prepare()
 
@@ -60,6 +63,7 @@ class OrchestratorSubject(BenchmarkSubject):
 
     :returns bool: True if the update was successful.
     """
+    self._RequireAccess()
     with self._progress.CaptureFailures(self.name, "Subject update"):
       if version != self.updater.installed_version:
         self.updater.Install(version)
@@ -74,6 +78,7 @@ class OrchestratorSubject(BenchmarkSubject):
     :returns List[str]: List of matching versions
     :raises Exception: If the updater cannot access the device.
     """
+    self._RequireAccess()
     available_versions = self.updater.available_versions
     installed_version = self.updater.installed_version
     if available_versions:

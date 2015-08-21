@@ -5,10 +5,11 @@
 from tempfile import NamedTemporaryFile
 from unittest import TestCase
 import os
+import time
 
-from optofidelity.util import (GSFile, GSFindUniqueFilename, GSFolder,
-                               GSOpenFile, GSTouch, SingleInstanceLock)
-
+from optofidelity.util import (Cambrionix, GSFile, GSFindUniqueFilename,
+                               GSFolder, GSOpenFile, GSTouch,
+                               SingleInstanceLock)
 from tests.config import CONFIG
 
 
@@ -66,3 +67,28 @@ class SingleInstanceLockTests(TestCase):
         print "Hello"
     with SingleInstanceLock("test"):
       self.assertRaises(Exception, ThisShouldFail)
+
+
+class CambrionixTests(TestCase):
+  def testPortMode(self):
+    cambrionix = Cambrionix(CONFIG["cambrionix_serial_device"])
+
+    for mode in ("charge", "sync", "off"):
+      cambrionix.SetPortMode(mode)
+      time.sleep(1)
+      for port in cambrionix.ports_status.itervalues():
+        self.assertEqual(port.mode, mode)
+
+  def testSinglePortMode(self):
+    cambrionix = Cambrionix(CONFIG["cambrionix_serial_device"])
+    target_port = 8
+
+    cambrionix.SetPortMode("off")
+    for mode in ("charge", "sync", "off"):
+      cambrionix.SetPortMode(mode, port=target_port)
+      time.sleep(1)
+      for port in cambrionix.ports_status.itervalues():
+        if port.id == target_port:
+          self.assertEqual(port.mode, mode)
+        else:
+          self.assertEqual(port.mode, "off")

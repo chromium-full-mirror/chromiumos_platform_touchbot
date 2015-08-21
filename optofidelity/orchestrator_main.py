@@ -52,19 +52,18 @@ def RunBenchmarks(matches, options):
   builder = SystemBuilder.FromFile(options.config, options)
   builder.LoadState()
 
-  if options.prepare:
-    builder.orchestrator.PrepareSubjects()
-  elif options.verify:
-    builder.orchestrator.VerifySubjects()
-  else:
-    for match in matches:
-      if options.info:
-        builder.orchestrator.PrintInfo(match)
-      elif options.setup:
-        builder.orchestrator.SetUpSubjects(match, options.versions)
-      else:
-        builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
-                                                    options.skip_installed)
+  for match in matches:
+    if options.info:
+      builder.orchestrator.PrintInfo(match)
+    elif options.prepare:
+      builder.orchestrator.PrepareSubjects(match)
+    elif options.verify:
+      builder.orchestrator.VerifySubjects(match)
+    elif options.setup:
+      builder.orchestrator.SetUpSubjects(match, options.versions)
+    else:
+      builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
+                                                  options.skip_installed)
   builder.SaveState()
 
 def Main():
@@ -104,5 +103,4 @@ def Main():
 
 
 if __name__ == "__main__":
-  with SingleInstanceLock("optofidelity"):
-    Main()
+  Main()

@@ -53,6 +53,7 @@ class BenchmarkSubject(object):
     self.camera = camera
     self.exposure = None
     self.navigator = None
+    self.access = None
     self.margin = (0.0, 0.0)
     self.test_plane_location = 0.2
     self._dut_backend = dut_backend
@@ -205,3 +206,7 @@ class BenchmarkSubject(object):
     x, y, _ = self._dut_backend.position
     if (x < 0 or x > self._dut_backend.width or y < 0 or y > self._dut_backend.height):
       self.Jump(target_x, target_y, target_z)
+
+  def _RequireAccess(self):
+    if self.access and not self.access.active:
+      raise Exception("Access needs to be activated before usage.")

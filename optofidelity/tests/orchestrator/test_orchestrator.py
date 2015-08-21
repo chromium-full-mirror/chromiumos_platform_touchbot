@@ -7,9 +7,10 @@ import os
 import shutil
 import tempfile
 
+from optofidelity.benchmark import BenchmarkMeasurements
 from optofidelity.benchmark.fake import FakeBenchmarkRunner
 from optofidelity.builder import SystemBuilder
-from optofidelity.orchestrator import (Dashboard, OrchestratorSubject)
+from optofidelity.orchestrator import OrchestratorSubject
 from tests.config import CONFIG
 
 from . import test_data
@@ -57,6 +58,8 @@ class OrchestratorTests(TestCase):
     self.successful = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
     self.failed = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
     self.failed.results.error = "Error42"
+    self.empty = FakeBenchmarkRunner.FromTrace(fake_trace, "tap", {})
+    self.empty.results.measurements = BenchmarkMeasurements()
 
     self.subject = self.orchestrator._subjects.values()[0]
     self.subject.updater.Install("2.0")
@@ -115,14 +118,16 @@ class OrchestratorTests(TestCase):
   def testRunSubjectVersion(self):
     self.runner.fake_benchmarks = [self.successful]
     benchmark_defs = self.subject.benchmark_defs.values()
-    self.orchestrator.RunSubjectVersion(self.subject, benchmark_defs, "3.0")
+    with self.subject.access:
+      self.orchestrator.RunSubjectVersion(self.subject, benchmark_defs, "3.0")
     self.assertEqual(self.subject.updater.installed_version, "3.0")
     self.assertEqual(len(self.subject.dashboard.results), 2)
 
   def testAggregation(self):
     self.runner.fake_benchmarks = [self.successful]
-    aggregate = self.orchestrator.RunSubjectVersionBenchmark(
-        self.subject, self.benchmark_def, "1.0")
+    with self.subject.access:
+      aggregate = self.orchestrator.RunSubjectVersionBenchmark(
+          self.subject, self.benchmark_def, "1.0")
     self.assertTrue(aggregate.measurements.HasMinNumSamples())
     self.assertEqual(len(aggregate.repetitions), 9)
 
@@ -135,22 +140,32 @@ class OrchestratorTests(TestCase):
   def testErrorRepetition(self):
     """Failing benchmarks should be repeated and saved as well."""
     self.runner.fake_benchmarks = [self.failed, self.failed, self.successful]
-    benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
-        self.subject, self.benchmark_def, {})
+    with self.subject.access:
+      benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+          self.subject, self.benchmark_def, {})
     self.assertEqual(benchmark, self.successful)
     self.assertEqual(len(os.listdir(self.tempdir)), 3)
 
   def testTooManyErrors(self):
     """Failing benchmarks should be repeated and saved as well."""
     self.runner.fake_benchmarks = [self.failed]
-    benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
-        self.subject, self.benchmark_def, {})
+    with self.subject.access:
+      benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+          self.subject, self.benchmark_def, {})
+    self.assertIsNone(benchmark)
+
+  def testEmptyEqualsError(self):
+    self.runner.fake_benchmarks = [self.empty]
+    with self.subject.access:
+      benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+          self.subject, self.benchmark_def, {})
     self.assertIsNone(benchmark)
 
   def testRepetitionSaving(self):
-    with self.runner.UseSubject(self.subject):
-      benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
-          self.subject, self.benchmark_def, {})
+    with self.subject.access:
+      with self.runner.UseSubject(self.subject):
+        benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+            self.subject, self.benchmark_def, {})
 
     self.assertEqual(os.listdir(self.tempdir), [benchmark.results.uid])
     loaded = benchmark.Load(os.path.join(self.tempdir, benchmark.results.uid))

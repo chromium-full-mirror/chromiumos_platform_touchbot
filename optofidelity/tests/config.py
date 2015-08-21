@@ -19,7 +19,7 @@ class TestConfig(dict):
     if value is None:
       raise SkipTest("Specify '%s' to run test." % key)
     return value
-  
+
   def __contains__(self, key):
     if super(TestConfig, self).__contains__(key):
       return self.get(key) is not None
@@ -40,7 +40,6 @@ class TestConfig(dict):
       if response in ("n", "N"):
         raise AssertionError("User did not accept test result")
 
-
 CONFIG = TestConfig(
   adb_device_id = None,
   robot_ip = None,
@@ -49,7 +48,10 @@ CONFIG = TestConfig(
   spreadsheet_key = None,
   oauth_key_file = None,
   chromeperf_endpoint = None,
+  gs_folder_url = None,
 
+  cambrionix_serial_device = None,
+  cambrionix_dut_port_id = None,
   user_interaction = None,
 )
 
