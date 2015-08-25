@@ -68,6 +68,7 @@ NATIVE_ADB_CONFIG = """\
 <navigator adb="{adb}" package="org.chromium.touchlatency" apk="{apk}"
            stay-alive="True">
   <activity name="calibration" class-name="FlashActivity" />
+  <activity name="neutral" class-name="BlackoutActivity" />
   <activity name="home" action="android.intent.action.MAIN"
             category="android.intent.category.HOME"
             wait="True" force-stop="False" />

@@ -77,6 +77,9 @@ class Navigator(object):
 class BaseNavigator(Navigator):
   """Basic implementation to keep track of the device state."""
 
+  NEUTRAL_ACTIVITY = "neutral"
+  """Name of neutral activity to go back to after benchmark."""
+
   def __init__(self):
     self._is_open = False
     self._current_activity = None
@@ -170,10 +173,6 @@ class RobotNavigator(BaseNavigator):
   This backend will use icon detection and OCR to navigate a device.
   The device is expected to be in a kiosk mode always running the benchmark app.
   """
-
-  NEUTRAL_ACTIVITY = "neutral"
-  """Name of neutral activity to go back to after benchmark."""
-
   def __init__(self, dut_backend):
     """
     :type dut_backend: DUTBackend
@@ -279,11 +278,11 @@ class BaseADBNavigator(BaseNavigator):
     self.Close()
 
   def Prepare(self):
-    self._adb.PowerOff()
+    self._Reset()
 
   def _Open(self):
-    if not self._stay_alive:
-      self._adb.PowerOn()
+    self._adb.PowerOn()
+    self._adb.PutSetting("system", "screen_brightness", "255")
 
   def _OpenActivity(self, activity_name):
     self._adb.SendKey("KEYCODE_HOME")  # Wake up screen sending home key
@@ -304,8 +303,7 @@ class BaseADBNavigator(BaseNavigator):
 
   def _Reset(self):
     self._adb.SendKey("KEYCODE_HOME")
-    if not self._stay_alive:
-      self._adb.PowerOff()
+    self._Close()
 
 
 class WebADBNavigator(BaseADBNavigator):

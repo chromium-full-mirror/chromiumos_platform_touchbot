@@ -1,19 +1,19 @@
 package org.chromium.touchlatency;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
 
-public class MainMenuActivity extends ActionBarActivity {
+public class BlackoutActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main_menu);
+        setContentView(R.layout.activity_blackout);
     }
 
 
@@ -41,16 +41,16 @@ public class MainMenuActivity extends ActionBarActivity {
 
     public void OpenFlashPage(View view) {
         Intent myIntent = new Intent(this, FlashActivity.class);
-        MainMenuActivity.this.startActivity(myIntent);
+        BlackoutActivity.this.startActivity(myIntent);
     }
 
     public void OpenTapPage(View view) {
         Intent myIntent = new Intent(this, TapActivity.class);
-        MainMenuActivity.this.startActivity(myIntent);
+        BlackoutActivity.this.startActivity(myIntent);
     }
 
     public void OpenScrollPage(View view) {
         Intent myIntent = new Intent(this, ScrollActivity.class);
-        MainMenuActivity.this.startActivity(myIntent);
+        BlackoutActivity.this.startActivity(myIntent);
     }
 }
