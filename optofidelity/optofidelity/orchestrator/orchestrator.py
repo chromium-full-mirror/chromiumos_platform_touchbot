@@ -26,6 +26,14 @@ from .orchestrator_subject import BenchmarkDefinition, OrchestratorSubject
 _log = logging.getLogger(__name__)
 
 
+def MatchName(name, pattern):
+  if fnmatch(name, pattern):
+    return True
+  if name.split("/")[0] == pattern:
+    return True
+  return False
+
+
 class Orchestrator(object):
   """Orchestrates running multiple tests and persistent storage or results.
 
@@ -97,7 +105,7 @@ class Orchestrator(object):
 
   def PrintInfo(self, match):
     for subject in self._subjects.itervalues():
-      if not fnmatch(subject.name, match):
+      if not MatchName(subject.name, match):
         continue
       print "Subject:", subject.name
       with subject.access:
@@ -130,13 +138,22 @@ class Orchestrator(object):
     """
     self._subjects[subject.name] = subject
 
+  def AccessSubjects(self, match):
+    for subject in self._subjects.itervalues():
+      if not MatchName(subject.name, match):
+        continue
+      subject.access.Activate()
+      print "Subject '%s' is now accessible." % subject.name
+      if subject.adb:
+        print "ADB serial: %s" % subject.adb
+
   def SetUpSubjects(self, match, versions_string):
     """Runs setup on all subjects matching 'match'.
 
     :param str match: a glob on subject names
     """
     for subject in self._subjects.itervalues():
-      if not fnmatch(subject.name, match):
+      if not MatchName(subject.name, match):
         continue
       self._progress.Info(subject.name, "Setting up Subject")
       with subject.access:
@@ -161,7 +178,7 @@ class Orchestrator(object):
     :type subject: OrchestratorSubject
     """
     for subject in self._subjects.itervalues():
-      if not fnmatch(subject.name, match):
+      if not MatchName(subject.name, match):
         continue
       self._progress.Info(subject.name, "Preparing")
       with subject.access:
@@ -173,7 +190,7 @@ class Orchestrator(object):
     :type subject: OrchestratorSubject
     """
     for subject in self._subjects.itervalues():
-      if not fnmatch(subject.name, match):
+      if not MatchName(subject.name, match):
         continue
       self._progress.Info(subject.name, "Verifying")
       with subject.access:
@@ -429,7 +446,7 @@ class Orchestrator(object):
                    for s in self._subjects.itervalues()
                    for n, d in s.benchmark_defs.iteritems() }
 
-    match_fn = lambda name: fnmatch(name, match)
+    match_fn = lambda name: MatchName(name, match)
     matches = [n for n in benchmarks.iterkeys() if match_fn(n)]
     grouped = defaultdict(list)
     for match in matches:

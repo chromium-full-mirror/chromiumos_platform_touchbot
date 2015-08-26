@@ -23,6 +23,7 @@ class OrchestratorSubject(BenchmarkSubject):
     self.benchmark_defs = {}
     self.updater = None
     self.dashboard = None
+    self.adb = None
     self.setups = []
     self._progress = ProgressPrinter(_log)
 

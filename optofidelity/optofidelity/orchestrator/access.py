@@ -44,6 +44,7 @@ class CambrionixAccess(Access):
     self.cambrionix = Cambrionix(serial_device)
     self.port_id = port_id
     self.adb = ADB(adb_serial)
+    self.adb_serial = adb_serial
 
   @classmethod
   def FromConfig(cls, attributes, children):

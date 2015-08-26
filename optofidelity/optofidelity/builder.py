@@ -250,6 +250,8 @@ class SystemBuilder(object):
     if exposure:
       subject.exposure = float(exposure)
 
+    subject.adb = self.ParseValue(dut_elem.get("adb"))
+
     test_plane = self.ParseValue(subject_elem.get("test-plane"),
                                   dut_elem.attrib)
     if test_plane:

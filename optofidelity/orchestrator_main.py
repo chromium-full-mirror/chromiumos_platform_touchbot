@@ -55,6 +55,8 @@ def RunBenchmarks(matches, options):
   for match in matches:
     if options.info:
       builder.orchestrator.PrintInfo(match)
+    elif options.access:
+      builder.orchestrator.AccessSubjects(match)
     elif options.prepare:
       builder.orchestrator.PrepareSubjects(match)
     elif options.verify:
@@ -96,6 +98,9 @@ def Main():
   parser.add_option("--quick",
                     dest="quick", default=False, action="store_true",
                     help="Quick benchmark without repetitions.")
+  parser.add_option("--access",
+                    dest="access", default=False, action="store_true",
+                    help="Enable USB access to subject.")
   (options, args) = parser.parse_args()
   matches = args if len(args) > 0 else ["*"]
 
