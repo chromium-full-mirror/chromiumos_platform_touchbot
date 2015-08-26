@@ -90,7 +90,7 @@ class Orchestrator(object):
     true_values = ("True", "true", "1")
     save_video = parameters.get("save-video", "") in true_values
     quick = parameters.get("quick", "") in true_values
-    generate_reports = parameters.get("generate-reports", "") in true_values
+    generate_reports = parameters.get("generate-reports", "True") in true_values
     return cls(system, runner, results, xkcd=xkcd,
                save_video=save_video, quick=quick, reports_url=reports,
                generate_reports=generate_reports)

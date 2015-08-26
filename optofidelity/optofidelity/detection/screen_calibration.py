@@ -49,13 +49,13 @@ class ScreenCalibration(object):
   """How many pixels of the test_area have to be at the edge of the screen
      to consider it being out of view?"""
 
-  WHITE_LEVEL_MIN = 0.5
+  WHITE_LEVEL_MIN = 0.8
   """Minimum level of a the white reference image."""
 
-  WHITE_LEVEL_MAX = 0.99
+  WHITE_LEVEL_MAX = 0.95
   """Maximum level of a the white reference image."""
 
-  PWM_COMPENSATION_LEVEL = 0.2
+  PWM_COMPENSATION_LEVEL = 0.01
   """Compensate for PWM if the range of colors in the white reference image is
      larger than this value."""
 
@@ -169,10 +169,14 @@ class ScreenCalibration(object):
 
   def _CompensatePWM(self):
     profile = np.mean(self.white_reference, 0)
-    profile_range = np.max(profile) - np.min(profile)
-    if profile_range > self.PWM_COMPENSATION_LEVEL:
-      _log.warn("Compensating for PWM (range=%.2f)" % profile_range)
+    profile_deriv = np.diff(profile)
+
+    deriv_range = np.max(profile_deriv) - np.min(profile_deriv)
+    if deriv_range > self.PWM_COMPENSATION_LEVEL:
+      _log.warn("Compensating for PWM (range=%.4f)" % deriv_range)
       self.white_reference[:] = np.min(profile)
+    else:
+      _log.warn("No PWM compensation (range=%.4f)" % deriv_range)
 
   def _GetFeaturesImage(self, camera_space_frame):
     """Trims image to area not showing the screen nor robot arm.
@@ -251,10 +255,11 @@ class ScreenCalibration(object):
     if border_overlap > self.OUT_OF_VIEW_EDGE_PIXELS:
       raise Exception("Screen out of camera view")
 
-    _log.info("white_mean=%.2f", np.mean(self.white_reference))
-    if np.mean(self.white_reference) > self.WHITE_LEVEL_MAX:
+    white_max = Filter.StableMax(self.white_reference)
+    _log.info("white_max=%.2f", white_max)
+    if white_max > self.WHITE_LEVEL_MAX:
       raise Exception("Calibration is over exposed")
-    if np.mean(self.white_reference) < self.WHITE_LEVEL_MIN:
+    if white_max < self.WHITE_LEVEL_MIN:
       raise Exception("Calibration is under exposed")
 
   def CameraToScreenSpace(self, camera_space_frame):

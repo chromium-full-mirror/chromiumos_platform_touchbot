@@ -109,7 +109,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
 
   def __init__(self, debug_video=None):
     SinglethreadedVideoProcessor.__init__(self)
-    self.num_processes = multiprocessing.cpu_count()
+    self.num_processes = multiprocessing.cpu_count() - 1
 
   def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     self._InitDetectors()

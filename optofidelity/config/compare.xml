@@ -11,7 +11,7 @@
 
   <!-- 1st row -->
   <dut name="s6edge" adb="05157df5896eca3b" port="1" type="android_phone"
-       stay-alive="true" />
+       stay-alive="true" exposure="2" />
   <dut name="m9" adb="FA53MYJ11555" port="2" type="android_phone"
        stay-alive="true"/>
   <dut name="nexus4" adb="04f6cafb8c976e5a" port="3" type="android_phone"
@@ -27,7 +27,7 @@
   <!-- 3rd row -->
   <dut name="iphone6plus" type="iphone" />
   <dut name="nexus6" adb="NP5A340401" port="10" type="android_phone"
-       exposure="1.5" stay-alive="false" />
+       exposure="2" stay-alive="false" />
 
   <!-- 4th row
   <dut name="bullhead" adb="00656e9429c02d0f" port="7" type="android_phone" />-->

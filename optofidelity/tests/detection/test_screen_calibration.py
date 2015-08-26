@@ -39,12 +39,6 @@ class ScreenCalibrationTests(TestCase):
       calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
       self.assertCalibrationIsConsistent(calibration)
 
-  def testCalibrationIssue(self):
-    for filename in ("calibration_issue_1.avi", ):
-      with test_data.LoadVideo(filename) as video_reader:
-        calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
-        self.assertCalibrationIsConsistent(calibration)
-
   def testCompactPickling(self):
     before = self.createCalibration()
     pickled = pickle.dumps(before, protocol=2)

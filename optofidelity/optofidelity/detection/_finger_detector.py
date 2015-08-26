@@ -17,7 +17,7 @@ class FingerDetector(Detector):
 
   NAME = "finger"
 
-  FINGER_MIN_AREA = 500
+  FINGER_MIN_AREA = 100
   """Minimal area of the robot finger in square pixels."""
 
   def __init__(self):
