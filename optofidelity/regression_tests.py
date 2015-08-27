@@ -28,6 +28,10 @@ TEST_DEFINITIONS = {
       Test("20150825_1953_000", {}),
   "led.false_suppression.s6edge":
       Test("20150825_1855_001", {}),
+  "led.false_distance_suppression.m9":
+      Test("20150826_2244_000", {}),
+  "led.false_distance_suppression.nexus4":
+      Test("20150826_2139_000", {}),
 
   "baseline.tap.nexus4":
       Test("20150825_1908_000", {"DownLatency": 98, "UpLatency": 81}),

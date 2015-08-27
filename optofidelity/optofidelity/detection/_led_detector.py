@@ -46,7 +46,6 @@ class LEDDetector(Detector):
 
   def __init__(self):
     self.recent_flash_times = []
-    self.expected_location = None
 
   def Preprocess(self, calib_frame, debugger):
     def log(msg, *params):
@@ -56,10 +55,12 @@ class LEDDetector(Detector):
     if calib_frame.has_calibration:
       margin = self.LED_SCREEN_MARGIN
       screen_shape = calib_frame.camera_space_screen_shape
-      bigger_shape = screen_shape.WithMargin(margin, margin)
-      off_screen_mask = (~bigger_shape.mask).astype(np.double)
+      area_of_interest = np.ones(calib_frame.camera_space_shape)
+      area_of_interest[(screen_shape.top):, :] = 0
+      area_of_interest[:, :(screen_shape.left - margin)] = 0
+      area_of_interest[:, (screen_shape.right + margin):] = 0
     else:
-     off_screen_mask = np.ones(calib_frame.camera_space_shape)
+     area_of_interest = np.ones(calib_frame.camera_space_shape)
 
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
@@ -73,7 +74,7 @@ class LEDDetector(Detector):
         return []
 
     # Look for an LED shaped large change in the masked area.
-    delta = calib_frame.camera_space_delta * off_screen_mask
+    delta = calib_frame.camera_space_delta * area_of_interest
     delta = skimage.filters.gaussian_filter(delta, self.LED_GAUSSIAN_SIGMA)
     binary = np.abs(delta) > self.LED_MIN_DIFF_THRESHOLD
 
@@ -119,14 +120,6 @@ class LEDDetector(Detector):
       if has_recently_flashed(flash):
         continue
       self.recent_flash_times.append((flash, frame_index))
-      if self.expected_location is not None:
-        distance = linalg.norm(flash.coords - self.expected_location)
-        if distance > self.LED_MIN_DISTANCE:
-          log("Supressing LED that's away from the usual location.")
-          continue
-      else:
-        self.expected_location = flash.coords
-
       state = Event.STATE_ON if flash.color > 0 else Event.STATE_OFF
       events.append(LEDEvent(frame_index, state=state))
 
