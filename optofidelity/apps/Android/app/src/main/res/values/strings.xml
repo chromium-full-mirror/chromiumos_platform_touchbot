@@ -10,5 +10,6 @@
     <string name="title_activity_tap">TapActivity</string>
     <string name="title_activity_scroll">ScrollActivity</string>
     <string name="title_activity_line_draw">LineDrawActivity</string>
+    <string name="title_activity_keyboard">KeyboardActivity</string>
 
 </resources>

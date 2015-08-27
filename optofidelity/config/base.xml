@@ -71,6 +71,7 @@
       <activity name="neutral" class-name="BlackoutActivity" />
       <activity name="scroll" class-name="ScrollActivity" />
       <activity name="tap" class-name="TapActivity" />
+      <activity name="keyboard" class-name="KeyboardActivity" />
       <activity name="home" action="android.intent.action.MAIN"
                 category="android.intent.category.HOME" />
     </navigator>
