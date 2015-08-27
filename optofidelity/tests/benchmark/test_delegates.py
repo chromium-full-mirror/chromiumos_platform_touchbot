@@ -69,12 +69,9 @@ class LineDrawDelegateTests(AbstractDelegateTests):
                                      35, 40, 40, 45, 44, 46, 47]) * 3.33,
       "DroppedFrameFrequency": np.asarray([26.666666666666668])
     },
-    "line_draw_miscalibration_1.trace": {
+    "line_draw_miscalibration.trace": {
       "DroppedFrameFrequency": np.asarray([0.0, 0.0])
-    },
-    "line_draw_miscalibration_2.trace": {
-      "DroppedFrameFrequency": np.asarray([0.0, 0.0])
-    },
+    }
   }
 
   def testExecuteOnSubject(self):

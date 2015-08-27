@@ -72,6 +72,11 @@ class Trace(list):
     return self._CalculateSpeed(self.finger)
 
   @property
+  def uncalib_finger_speed(self):
+    """:returns np.ndarray: time-series array of finger speed."""
+    return self._CalculateSpeed(self.finger)
+
+  @property
   def line_draw_start(self):
     """:returns np.ndarray: time-series array of where line draws start."""
     return self._TimeSeries(LineDrawEvent, True, calib=True)
@@ -126,7 +131,8 @@ class Trace(list):
     """
     for event_type in event_types:
       if len(self.FilteredByType(event_type)) == 0:
-        raise Exception("Trace does not show the events of type " + event_type)
+        raise Exception("Trace does not show the events of type " +
+                        str(event_type))
 
   def HasEventTypes(self, *event_types):
     """Return True only if all event types are present.
@@ -255,17 +261,17 @@ class Trace(list):
     :returns Tuple[Event, Event]
     """
     # Allow 20% variation of the maximum speed in linear range.
-    speed = self.finger_speed
+    speed = self.uncalib_finger_speed
     speed[np.isnan(speed)] = 0
 
     max_speed_idx = np.argmax(speed)
     min_speed_factor = (1 - self.LINEAR_MOTION_MAX_SPEED_DEVIATION)
-    min_speed = self.finger_speed[max_speed_idx] * min_speed_factor
+    min_speed = speed[max_speed_idx] * min_speed_factor
 
     # Find area in which the robot continuously has this speed.
     start = 0
-    end = len(self.finger_speed) - 1
-    for i, speed in enumerate(self.finger_speed):
+    end = len(speed) - 1
+    for i, speed in enumerate(speed):
       if speed > min_speed:
         if not start:
           start = i
@@ -273,8 +279,8 @@ class Trace(list):
         if start:
           end = i - 1
           break
-    return (FingerEvent(start, self.finger[start]),
-            FingerEvent(end, self.finger[end]))
+    return (FingerEvent(start, self.uncalib_finger[start]),
+            FingerEvent(end, self.uncalib_finger[end]))
 
   def FindStationaryFinger(self, start_time):
     """Return (start, end) event of range in which event shows no motion.
@@ -285,7 +291,7 @@ class Trace(list):
     start = None
     end = None
     for i in range(start_time, 0, -1):
-      speed = self.finger_speed[i]
+      speed = self.uncalib_finger_speed[i]
       if np.isnan(speed):
         continue
       if speed < self.STATIONARY_MAX_SPEED:
@@ -297,8 +303,8 @@ class Trace(list):
           break
     if start is None or end is None:
       raise Exception("Cannot find static motion range")
-    return (FingerEvent(start, self.finger[start]),
-            FingerEvent(end, self.finger[end]))
+    return (FingerEvent(start, self.uncalib_finger[start]),
+            FingerEvent(end, self.uncalib_finger[end]))
 
   def _TimeSeries(self, event_type, start_time=False, interpolate=False,
                   calib=False):
