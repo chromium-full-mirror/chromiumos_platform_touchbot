@@ -13,24 +13,24 @@
     "handlers": {
         "main": {
           "class": "logging.handlers.TimedRotatingFileHandler",
-          "filename": "logs/debug",
+          "filename": "%LOG_DIR%/debug",
           "when": "midnight",
           "formatter": "verbose"
         },
         "summary": {
           "class": "logging.handlers.TimedRotatingFileHandler",
-          "filename": "logs/summary",
+          "filename": "%LOG_DIR%/summary",
           "when": "midnight",
           "formatter": "verbose"
         },
         "failure": {
             "class": "logging.FileHandler",
-            "filename": "logs/failures.log",
+            "filename": "%LOG_DIR%/failures",
             "formatter": "simple"
         },
         "perf": {
             "class": "logging.FileHandler",
-            "filename": "logs/perf.log",
+            "filename": "%LOG_DIR%/perf",
             "formatter": "simple"
         }
     },

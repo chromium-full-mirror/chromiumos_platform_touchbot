@@ -156,10 +156,15 @@ class SystemBuilder(object):
       self.orchestrator.state = state["orchestrator"]
 
   def _SetupLogging(self):
-    log_config = self.ParseValue(self._config_element.get("log-config"))
-    if log_config:
-      with open(log_config, "r") as file_obj:
-        dictionary = json.load(file_obj)
+    log_config_file = self.ParseValue(self._config_element.get("log-config"))
+    if log_config_file:
+      with open(log_config_file, "r") as file_obj:
+        log_dir = os.path.join(self._root_dir, "..", "logs")
+        if not os.path.exists(log_dir):
+          os.mkdir(log_dir)
+        log_config = file_obj.read()
+        log_config = log_config.replace("%LOG_DIR%", log_dir)
+        dictionary = json.loads(log_config)
       logging.config.dictConfig(dictionary)
     else:
       logging.basicConfig(level=logging.INFO)
