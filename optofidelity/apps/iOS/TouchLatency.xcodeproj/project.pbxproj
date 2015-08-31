@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7C6B3CD91B94F9D9008B1634 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C6B3CD81B94F9D9008B1634 /* KeyboardViewController.swift */; };
 		7C8F7DAE1B60386600BE07AA /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C8F7DAD1B60386600BE07AA /* AppDelegate.swift */; };
 		7C8F7DB01B60386600BE07AA /* FlashViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C8F7DAF1B60386600BE07AA /* FlashViewController.swift */; };
 		7C8F7DB21B60386600BE07AA /* ScrollViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C8F7DB11B60386600BE07AA /* ScrollViewController.swift */; };
@@ -17,6 +18,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		7C6B3CD81B94F9D9008B1634 /* KeyboardViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		7C8F7DA81B60386600BE07AA /* TouchLatency.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TouchLatency.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7C8F7DAC1B60386600BE07AA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		7C8F7DAD1B60386600BE07AA /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -63,6 +65,7 @@
 				7C8F7DAF1B60386600BE07AA /* FlashViewController.swift */,
 				7C8F7DB11B60386600BE07AA /* ScrollViewController.swift */,
 				7C8F7DB31B60386600BE07AA /* Main.storyboard */,
+				7C6B3CD81B94F9D9008B1634 /* KeyboardViewController.swift */,
 				7C8F7DB61B60386600BE07AA /* Images.xcassets */,
 				7C8F7DB81B60386600BE07AA /* LaunchScreen.xib */,
 				7C8F7DAB1B60386600BE07AA /* Supporting Files */,
@@ -149,6 +152,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7C8F7DB21B60386600BE07AA /* ScrollViewController.swift in Sources */,
+				7C6B3CD91B94F9D9008B1634 /* KeyboardViewController.swift in Sources */,
 				7C8F7DAE1B60386600BE07AA /* AppDelegate.swift in Sources */,
 				7CA0732B1B618E4C0098E089 /* TapViewController.swift in Sources */,
 				7C8F7DB01B60386600BE07AA /* FlashViewController.swift in Sources */,

@@ -2,8 +2,43 @@
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="7706" systemVersion="14E46" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" initialViewController="49e-Tb-3d3">
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="7703"/>
+        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
     </dependencies>
     <scenes>
+        <!--Keyboard-->
+        <scene sceneID="FKI-jJ-jmt">
+            <objects>
+                <viewController id="YoJ-Np-asu" userLabel="Keyboard" customClass="KeyboardViewController" customModule="TouchLatency" customModuleProvider="target" sceneMemberID="viewController">
+                    <layoutGuides>
+                        <viewControllerLayoutGuide type="top" id="Xx6-CQ-BJn"/>
+                        <viewControllerLayoutGuide type="bottom" id="3rU-Xu-Gy5"/>
+                    </layoutGuides>
+                    <view key="view" contentMode="scaleToFill" id="p3O-c0-YBi">
+                        <rect key="frame" x="0.0" y="0.0" width="600" height="551"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <textField opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" contentHorizontalAlignment="left" contentVerticalAlignment="center" borderStyle="roundedRect" minimumFontSize="17" translatesAutoresizingMaskIntoConstraints="NO" id="g1z-6d-fX2">
+                                <rect key="frame" x="16" y="20" width="568" height="30"/>
+                                <fontDescription key="fontDescription" type="system" pointSize="14"/>
+                                <textInputTraits key="textInputTraits"/>
+                            </textField>
+                        </subviews>
+                        <color key="backgroundColor" white="1" alpha="1" colorSpace="calibratedWhite"/>
+                        <constraints>
+                            <constraint firstItem="g1z-6d-fX2" firstAttribute="top" secondItem="Xx6-CQ-BJn" secondAttribute="bottom" id="4Ca-pe-iJf"/>
+                            <constraint firstItem="g1z-6d-fX2" firstAttribute="leading" secondItem="p3O-c0-YBi" secondAttribute="leadingMargin" id="cOE-8g-KtL"/>
+                            <constraint firstItem="g1z-6d-fX2" firstAttribute="trailing" secondItem="p3O-c0-YBi" secondAttribute="trailingMargin" id="iUn-xO-V1A"/>
+                        </constraints>
+                    </view>
+                    <tabBarItem key="tabBarItem" title="Keyboard" image="keyboard" id="NfY-Xr-cWj"/>
+                    <connections>
+                        <outlet property="textField" destination="g1z-6d-fX2" id="NY9-XG-nAO"/>
+                    </connections>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="s6u-OY-hs2" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="19" y="-853"/>
+        </scene>
         <!--Tap-->
         <scene sceneID="XhU-9d-ATB">
             <objects>
@@ -111,6 +146,7 @@
                         <segue destination="9pv-A4-QxB" kind="relationship" relationship="viewControllers" id="u7Y-xg-7CH"/>
                         <segue destination="8rJ-Kc-sve" kind="relationship" relationship="viewControllers" id="lzU-1b-eKA"/>
                         <segue destination="sFw-My-zm5" kind="relationship" relationship="viewControllers" id="da2-CJ-yZM"/>
+                        <segue destination="YoJ-Np-asu" kind="relationship" relationship="viewControllers" id="wS3-Tb-0vT"/>
                     </connections>
                 </tabBarController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="HuB-VB-40B" sceneMemberID="firstResponder"/>
@@ -139,6 +175,7 @@
     </scenes>
     <resources>
         <image name="flash" width="27" height="27"/>
+        <image name="keyboard" width="28" height="28"/>
         <image name="neutral" width="22" height="22"/>
         <image name="scroll" width="28" height="28"/>
         <image name="tap" width="31" height="31"/>
