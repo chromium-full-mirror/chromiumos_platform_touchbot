@@ -3,7 +3,8 @@
 # found in the LICENSE file.
 """Implementation of two line draw delegates based on the same logic."""
 
-from optofidelity.detection import FingerEvent, LineDrawEvent
+from optofidelity.detection import (FingerDetector, FingerEvent,
+                                    LineDetector, LineDrawEvent)
 from optofidelity.system import BenchmarkSubject
 
 from ._delegate import BenchmarkDelegate
@@ -22,7 +23,7 @@ class LineDrawDelegate(BenchmarkDelegate):
   """Framerate at which to record, in frames per second."""
 
   def InitializeProcessor(self, processor):
-    processor.EnableDetectors(line_draw=True, finger_location=True)
+    processor.InitializeDetectors(LineDetector(), FingerDetector())
 
   def ExecuteOnSubject(self, subject):
     """Executes line draw and records the interaction.

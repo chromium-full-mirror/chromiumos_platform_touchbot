@@ -10,6 +10,7 @@ import numpy as np
 
 from optofidelity.videoproc import VideoReader
 
+from ._detector import Detector
 from .events import Event
 from .screen_calibration import ScreenCalibration
 from .trace import Trace
@@ -36,19 +37,17 @@ class VideoProcessor(object):
   __metaclass__ = InterfaceMeta
 
   @abstractmethod
-  def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
-                      screen_draw=False):
-    """Enable selected detectors.
+  def InitializeDetectors(self, *detectors):
+    """Initialize processor with the provided list of detectors.
 
-    :param bool line_draw: Enables line draw detection.
-    :param bool led: Enables LED flash detection.
-    :param bool finger_location: Enables detection of finger location.
-    :param bool screen_draw: Enables detection of full screen draws.
+    :param List[Detector] detectors: List of detectors to use
     """
 
   @abstractmethod
   def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     """Process video and return list of detected events.
+
+    The InitializeDetectors method has to be run before executing this method.
 
     :param VideoReader video_reader: Video to process
     :type screen_calibration: Optional[ScreenCalibration]

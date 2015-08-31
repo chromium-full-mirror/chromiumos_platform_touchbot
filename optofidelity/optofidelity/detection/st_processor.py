@@ -13,10 +13,6 @@ from optofidelity.videoproc import InteractiveVideoViewer
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import DetectorDebugger
-from ._finger_detector import FingerDetector
-from ._led_detector import LEDDetector
-from ._line_detector import LineDetector
-from ._screen_draw_detector import ScreenDrawDetector
 from .processor import VideoProcessor
 from .screen_calibration import ScreenCalibration
 from .trace import Trace
@@ -28,30 +24,21 @@ class SinglethreadedVideoProcessor(VideoProcessor):
   """Processes video and accumulates generated events."""
 
   def __init__(self, debug_video_file=None):
-    self._detector_types = []
+    self._detectors = []
     self._debug_video_file = debug_video_file
 
   @classmethod
   def FromConfig(cls, parameters, children):
     return cls(parameters.get("debug-video"))
 
-  def EnableDetectors(self, line_draw=False, led=False, finger_location=False,
-                      screen_draw=False):
-    self._detector_types = []
-    if line_draw:
-      self._AddDetector(LineDetector)
-    if led:
-      self._AddDetector(LEDDetector)
-    if finger_location:
-      self._AddDetector(FingerDetector)
-    if screen_draw:
-      self._AddDetector(ScreenDrawDetector)
-
-  def _InitDetectors(self):
-    self._detectors = [dtype() for dtype in self._detector_types]
+  def InitializeDetectors(self, *detectors):
+    if not len(detectors):
+      raise ValueError("No detectors specified.")
+    self._detectors = detectors
 
   def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
-    self._InitDetectors()
+    if not len(self._detectors):
+      raise Exception("InitializeDetectors has to be called first.")
     all_events = []
     prev_frame = None
     viewer = None
@@ -88,6 +75,7 @@ class SinglethreadedVideoProcessor(VideoProcessor):
     if debug_video is not None:
       debug_video.release()
 
+    self._detectors = []
     print
     return Trace(all_events, video_reader.ms_per_frame)
 

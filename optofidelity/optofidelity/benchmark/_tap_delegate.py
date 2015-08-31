@@ -5,7 +5,8 @@
 
 import numpy as np
 
-from optofidelity.detection import LEDEvent, ScreenDrawEvent
+from optofidelity.detection import (LEDDetector, LEDEvent, ScreenDrawDetector,
+                                    ScreenDrawEvent)
 
 from ._delegate import BenchmarkDelegate
 
@@ -26,7 +27,7 @@ class TapDelegate(BenchmarkDelegate):
   """Framerate at which to record, in frames per second."""
 
   def InitializeProcessor(self, processor):
-    processor.EnableDetectors(screen_draw=True, led=True)
+    processor.InitializeDetectors(ScreenDrawDetector(), LEDDetector())
 
   def ExecuteOnSubject(self, subject):
     duration = (self.BASE_DURATION +

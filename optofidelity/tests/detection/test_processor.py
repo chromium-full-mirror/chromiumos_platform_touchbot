@@ -8,6 +8,7 @@ from unittest import TestCase
 import numpy as np
 
 from optofidelity.detection import (MultithreadedVideoProcessor,
+                                    ScreenDrawDetector,
                                     SinglethreadedVideoProcessor, Trace)
 from optofidelity.detection.events import LEDEvent, ScreenDrawEvent
 from optofidelity.detection.fake import FakeVideoProcessor
@@ -33,7 +34,7 @@ class ProcessorTest(TestCase):
     for multithreaded in (True, False):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)
-        processor.EnableDetectors(screen_draw=True)
+        processor.InitializeDetectors(ScreenDrawDetector())
         events = processor.ProcessVideo(video_reader, self.calib, [])
 
         self.assertEqual(len(events), 2)
@@ -51,7 +52,7 @@ class ProcessorTest(TestCase):
     for multithreaded in (True, False):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)
-        processor.EnableDetectors(screen_draw=True)
+        processor.InitializeDetectors(ScreenDrawDetector())
         processor.ProcessVideo(video_reader, self.calib, ["all"])
 
   def testFakeProcessor(self):

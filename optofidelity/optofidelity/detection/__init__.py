@@ -15,6 +15,10 @@ location of the screen of the DUT.
 
 The result of the video processing is a list of Event objects.
 """
+from ._finger_detector import FingerDetector
+from ._led_detector import LEDDetector
+from ._line_detector import LineDetector
+from ._screen_draw_detector import ScreenDrawDetector
 from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
                      ScreenDrawEvent)
 from .mt_processor import MultithreadedVideoProcessor

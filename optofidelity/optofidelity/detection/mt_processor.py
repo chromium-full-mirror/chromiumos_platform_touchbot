@@ -112,7 +112,9 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     self.num_processes = multiprocessing.cpu_count() - 1
 
   def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
-    self._InitDetectors()
+    if not len(self._detectors):
+      raise Exception("InitializeDetectors has to be called first.")
+
     self.screen_calibration = screen_calibration
 
     if not self._detectors:
@@ -206,6 +208,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
       generated_events = self._GenerateEvents(i, preprocessed_data, None)
       _log.debug("%04d generated events: %s", i + 1, generated_events)
       events.extend(generated_events)
+    self._detectors = []
     print
     return Trace(events, video_reader.ms_per_frame)
 
