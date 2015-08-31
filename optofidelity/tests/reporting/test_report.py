@@ -59,8 +59,8 @@ class ReportTests(TestCase):
     report.GenerateReport(aggregateResults)
     benchmark.Save(self.tempdir, debug_info=True)
 
-    self.assertReportFilesExist(report.html_filename)
     self.userVerification(report.html_filename)
+    self.assertReportFilesExist(report.html_filename)
 
   def testXKCDReport(self):
     self.runReportTest("line_draw_basic.trace", "line_draw", xkcd=True)

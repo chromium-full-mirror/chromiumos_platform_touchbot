@@ -82,6 +82,15 @@ class DrawEventLatencySeries(MeasurementSeries):
             for m in self]
 
 
+class DrawEventStartLatencySeries(DrawEventLatencySeries):
+  """A series that measures the latency between an input and a draw event."""
+
+  @property
+  def values(self):
+    return [float(m.output_event.start_time - m.input_event.time) *
+            self.ms_per_frame for m in self]
+
+
 class DroppedFramesSeries(MeasurementSeries):
   """Measures the percent of dropped frames assuming a 60Hz refresh rate."""
   DEFAULT_UNITS = "%"
@@ -120,7 +129,8 @@ class DroppedFramesSeries(MeasurementSeries):
   @property
   def values(self):
     if len(self):
-      return [float(len(self.dropped_times)) / float(len(self)) * 100.0]
+      num_frames = len(self.dropped_times) + len(self)
+      return [float(len(self.dropped_times)) / float(num_frames) * 100.0]
     return [100.0]
 
 
@@ -215,6 +225,36 @@ class BenchmarkMeasurements(defaultdict):
     series = series_info.series_type(series_name, pass_num, self.ms_per_frame)
     self[pass_num][series_name] = series
     return series
+
+  def GetSeries(self, series_name, pass_num, series_type):
+    if series_name not in self.series_infos:
+      series_info = MeasurementSeriesInfo(series_name, series_type,
+                                          series_type.DEFAULT_UNITS,
+                                          series_type.DEFAULT_MIN_NUM_SAMPLES)
+      self.series_infos[series_name] = series_info
+
+    series = self[pass_num].get(series_name)
+    if not series:
+      series = series_type(series_name, pass_num, self.ms_per_frame)
+      self[pass_num][series_name] = series
+    return series
+
+  def AddDrawEventMeasurement(self, name, input_event, output_event,
+                              pass_num=0):
+    start_series = self.GetSeries(name + "Start", pass_num,
+                                  DrawEventStartLatencySeries)
+    start_series.AddMeasurement(input_event, output_event)
+
+    end_series = self.GetSeries(name, pass_num, DrawEventLatencySeries)
+    end_series.AddMeasurement(input_event, output_event)
+
+  def AddTimeValueMeasurement(self, name, time, value, pass_num=0):
+    series = self.GetSeries(name, pass_num, TimeValueMeasurementSeries)
+    series.AddMeasurement(time, value)
+
+  def AddDroppedFramesMeasurement(self, name, draw_event, pass_num=0):
+    series = self.GetSeries(name, pass_num, DroppedFramesSeries)
+    series.AddMeasurement(draw_event)
 
   def SummarizeValues(self, series_name):
     """Collects all MeasurementSeries.values for the specified series_name.

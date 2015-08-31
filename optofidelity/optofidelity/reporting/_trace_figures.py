@@ -8,6 +8,7 @@ from safetynet import Any, Dict, Optional
 import numpy as np
 
 from optofidelity.benchmark import (DrawEventLatencySeries,
+                                    DrawEventStartLatencySeries,
                                     DroppedFramesSeries,
                                     TimeValueMeasurementSeries)
 from optofidelity.detection import LEDEvent, ScreenDrawEvent, Trace
@@ -194,13 +195,16 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
         for measurement in series:
           in_ev = measurement.input_event
           out_ev = measurement.output_event
+          out_ev_time = out_ev.time
+          if isinstance(series, DrawEventStartLatencySeries):
+            out_ev_time = out_ev.start_time
           if in_ev.location is not None:
             in_coords = (in_ev.time, in_ev.location)
-            out_coords = (out_ev.time, out_ev.location)
+            out_coords = (out_ev_time, out_ev.location)
             location_pairs += [(in_coords, out_coords)]
           elif in_ev.state is not None:
-            events_pairs += [((in_ev.time, 0.5), (out_ev.time, 0.5))]
-          latencies += [(out_ev.time, out_ev.time - in_ev.time)]
+            events_pairs += [((in_ev.time, 0.5), (out_ev_time, 0.5))]
+          latencies += [(out_ev_time, out_ev_time - in_ev.time)]
       elif isinstance(series, DroppedFramesSeries):
         for dropped_time in series.dropped_times:
           latencies += [(dropped_time, 30), (np.nan, np.nan)]

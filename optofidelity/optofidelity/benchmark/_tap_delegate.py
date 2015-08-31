@@ -8,7 +8,6 @@ import numpy as np
 from optofidelity.detection import LEDEvent, ScreenDrawEvent
 
 from ._delegate import BenchmarkDelegate
-from .results import DrawEventLatencySeries
 
 
 class TapDelegate(BenchmarkDelegate):
@@ -53,12 +52,6 @@ class TapDelegate(BenchmarkDelegate):
       raise Exception("LED detection was inconsistent.")
     trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
 
-    measurements.AddSeriesInfo("UpLatency", DrawEventLatencySeries)
-    measurements.AddSeriesInfo("DownLatency", DrawEventLatencySeries)
-
-    up_series = measurements.AddSeries("UpLatency")
-    down_series = measurements.AddSeries("DownLatency")
-
     for segmented_trace in trace.SegmentedByLED():
       segmented_trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
 
@@ -71,6 +64,8 @@ class TapDelegate(BenchmarkDelegate):
           ScreenDrawEvent.STATE_WHITE)
 
       if finger_down and screen_black:
-        down_series.AddMeasurement(finger_down, screen_black)
+        measurements.AddDrawEventMeasurement("DownLatency", finger_down,
+                                             screen_black)
       if finger_up and screen_white:
-        up_series.AddMeasurement(finger_up, screen_white)
+        measurements.AddDrawEventMeasurement("UpLatency", finger_up,
+                                             screen_white)

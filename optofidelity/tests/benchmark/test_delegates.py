@@ -7,7 +7,6 @@ Most importantly this includes tests of trace processing, which processes
 recorded traces into measurements.
 """
 import cPickle as pickle
-import os
 import unittest
 
 import numpy as np
@@ -39,38 +38,55 @@ class AbstractDelegateTests(unittest.TestCase):
     subject = self.createTestSubject()
     delegate.ExecuteOnSubject(subject)
 
-  def runTraceProcessingTest(self, delegate, trace_file, expected_latencies):
+  def runTraceProcessingTest(self, delegate, trace_file, series_expectations):
     trace_path = test_data.Path(trace_file)
     trace = pickle.load(open(trace_path, "r"))
 
     measurements = BenchmarkMeasurements()
     delegate.ProcessTrace(trace, measurements)
     print "Trace file:", trace_file
+    print measurements
 
     for series_name in measurements.series_infos:
-      if series_name not in expected_latencies:
+      if series_name not in series_expectations:
         continue
+      expectation = series_expectations[series_name]
       latencies = measurements.SummarizeValues(series_name)
-      print "Measurement", series_name
-      print "Calculated Latencies:", latencies
-      print "Expected Latencies:", expected_latencies[series_name]
-      self.assertTrue(np.allclose(latencies, expected_latencies[series_name]))
+      print "Validating %s of %s: %s" % (series_name, trace_file, latencies)
+      if isinstance(expectation, float):
+        msg = "mean(%s) != %.2f" % (series_name, expectation)
+        mean = np.mean(latencies)
+        self.assertAlmostEqual(mean, expectation, places=2, msg=msg)
+      else:
+        msg  = "len(%s) != %d" % (series_name, len(expectation))
+        self.assertEqual(len(latencies), len(expectation), msg)
+        for i, (expected, actual) in enumerate(zip(expectation, latencies)):
+          msg  = "%s[%d] != %d" % (series_name, i, expected)
+          self.assertAlmostEqual(expected, actual, places=2, msg=msg)
 
 
 class LineDrawDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
     "line_draw_basic.trace": {
-      "LineDrawLatency": np.asarray([37, 37, 45, 44, 42, 46, 48, 48, 50, 48, 42,
-                                     48, 46, 43, 44, 43, 43, 39, 44, 46]) * 3.33,
-      "DroppedFrameFrequency": np.asarray([40.0])
+      "LineDrawLatency": [
+          123.21, 123.21, 149.85, 146.52, 139.86, 153.18, 159.84, 159.84,
+          166.5, 159.84, 139.86, 159.84, 153.18, 143.19, 146.52, 143.19,
+          143.19, 129.87, 146.52
+      ],
+      "LineDrawLatencyStart": [
+          113.22, 113.22, 139.86, 136.53, 129.87, 143.19, 146.52, 149.85,
+          156.51, 149.85, 129.87, 149.85, 143.19, 136.53, 136.53, 133.2,
+          133.2, 119.88, 136.53
+      ],
+      "DroppedFrameFrequency": 29.63
     },
     "line_draw_incomplete.trace": {
-      "LineDrawLatency": np.asarray([28, 28, 29, 29, 30, 31, 35, 35,
-                                     35, 40, 40, 45, 44, 46, 47]) * 3.33,
-      "DroppedFrameFrequency": np.asarray([26.666666666666668])
+      "LineDrawLatency": 120.32,
+      "LineDrawLatencyStart": 111.22,
+      "DroppedFrameFrequency": 21.05
     },
     "line_draw_miscalibration.trace": {
-      "DroppedFrameFrequency": np.asarray([0.0, 0.0])
+      "DroppedFrameFrequency": 0.0
     }
   }
 
@@ -99,12 +115,14 @@ class LineDrawStartDelegateTests(AbstractDelegateTests):
 class TapDelegateTests(AbstractDelegateTests):
   TRACE_EXPECTED_LATENCIES = {
     "tap_unfinished.trace": {
-      "DownLatency": np.asarray([31, 28, 31, 28]) * 3.33,
-      "UpLatency": np.asarray([31, 29, 26]) * 3.33
+      "DownLatency": [103.23, 93.24, 103.23, 93.24],
+      "UpLatency": [103.23, 96.57, 86.58]
     },
     "tap_basic.trace": {
-      "DownLatency": np.asarray([31, 28, 31, 28]) * 3.33,
-      "UpLatency": np.asarray([32, 30, 27, 25]) * 3.33
+      "DownLatency": [103.23, 93.24, 103.23, 93.24],
+      "DownLatencyStart": [79.92, 73.26, 79.92, 73.26],
+      "UpLatency": [106.56, 99.9, 89.91, 83.25],
+      "UpLatencyStart": [86.58, 79.92, 69.93, 63.27]
     }
   }
 

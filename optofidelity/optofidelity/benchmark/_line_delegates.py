@@ -7,8 +7,6 @@ from optofidelity.detection import FingerEvent, LineDrawEvent
 from optofidelity.system import BenchmarkSubject
 
 from ._delegate import BenchmarkDelegate
-from .results import (DrawEventLatencySeries, DroppedFramesSeries,
-                      TimeValueMeasurementSeries)
 
 
 class LineDrawDelegate(BenchmarkDelegate):
@@ -64,9 +62,6 @@ class LineDrawDelegate(BenchmarkDelegate):
     return subject.camera.ReceiveVideo()
 
   def ProcessTrace(self, trace, measurements):
-    measurements.AddSeriesInfo("LineDrawLatency", DrawEventLatencySeries)
-    measurements.AddSeriesInfo("DroppedFrameFrequency", DroppedFramesSeries)
-    measurements.AddSeriesInfo("ContinuousLatency", TimeValueMeasurementSeries)
     for pass_num, pass_trace in enumerate(trace.SegmentedByLineReset()):
       # Find pause after first movement to calibrate the offset between
       # finger and line location.
@@ -93,19 +88,20 @@ class LineDrawDelegate(BenchmarkDelegate):
       if len(draw_events) < 2:
         continue
 
-      ld_series = measurements.AddSeries("LineDrawLatency", pass_num)
-      df_series = measurements.AddSeries("DroppedFrameFrequency", pass_num)
       for draw_event in draw_events:
         finger_event = pass_trace.FindFingerCrossing(draw_event.location,
                                                      draw_event.time)
-        ld_series.AddMeasurement(finger_event, draw_event)
-        df_series.AddMeasurement(draw_event)
+        measurements.AddDrawEventMeasurement("LineDrawLatency", finger_event,
+                                             draw_event, pass_num=pass_num)
+        measurements.AddDroppedFramesMeasurement("DroppedFrameFrequency",
+                                                 draw_event, pass_num=pass_num)
 
-      cont_series = measurements.AddSeries("ContinuousLatency", pass_num)
       for time in range(draw_events[0].time, draw_events[-1].time + 1):
         line_location = pass_trace.line_draw_end[time]
         finger_event = pass_trace.FindFingerCrossing(line_location, time)
-        cont_series.AddMeasurement(time, time - finger_event.time)
+        measurements.AddTimeValueMeasurement("ContinuousLatency", time,
+                                             time - finger_event.time,
+                                             pass_num=pass_num)
 
 
 class LineDrawStartDelegate(BenchmarkDelegate):
@@ -150,8 +146,6 @@ class LineDrawStartDelegate(BenchmarkDelegate):
     return subject.camera.ReceiveVideo()
 
   def ProcessTrace(self, trace, measurements):
-    measurements.AddSeriesInfo("ScrollStartLatency", DrawEventLatencySeries)
-    series = measurements.AddSeries("ScrollStartLatency")
     for segmented_trace in trace.SegmentedByLED():
 
       # Find first line draw start in this segment
@@ -169,4 +163,5 @@ class LineDrawStartDelegate(BenchmarkDelegate):
         break
 
       finger_moved_event = segmented_trace.Find(FingerEvent, finger_moved_time)
-      series.AddMeasurement(finger_moved_event, line_draw)
+      measurements.AddDrawEventMeasurement("LineDrawStart", finger_moved_event,
+                                           line_draw)

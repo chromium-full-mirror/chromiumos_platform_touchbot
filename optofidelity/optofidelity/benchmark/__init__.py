@@ -17,6 +17,6 @@ from .benchmark import Benchmark
 from .led_calibrator import LEDCalibrator
 from .results import (AggregateResults, BenchmarkMeasurements,
                       BenchmarkResults, DrawEventLatencySeries,
-                      DroppedFramesSeries, MeasurementSeries,
-                      TimeValueMeasurementSeries)
+                      DrawEventStartLatencySeries, DroppedFramesSeries,
+                      MeasurementSeries, TimeValueMeasurementSeries)
 from .runner import BenchmarkRunner
