@@ -139,13 +139,17 @@ class Orchestrator(object):
     self._subjects[subject.name] = subject
 
   def AccessSubjects(self, match):
+    matched = False
     for subject in self._subjects.itervalues():
       if not MatchName(subject.name, match):
         continue
+      matched = True
       subject.access.Activate()
       print "Subject '%s' is now accessible." % subject.name
       if subject.adb:
         print "ADB serial: %s" % subject.adb
+    if not matched:
+      print "No subject matching", match
 
   def SetUpSubjects(self, match, versions_string):
     """Runs setup on all subjects matching 'match'.
@@ -155,22 +159,23 @@ class Orchestrator(object):
     for subject in self._subjects.itervalues():
       if not MatchName(subject.name, match):
         continue
-      self._progress.Info(subject.name, "Setting up Subject")
-      with subject.access:
-        subject.SetUp()
+      with self._progress.LogExceptions("Error during setup"):
+        self._progress.Info(subject.name, "Setting up Subject")
+        with subject.access:
+          subject.SetUp()
 
-        if versions_string:
-          versions = subject.GetMatchingVersions(versions_string, False)
-          if len(versions) > 1:
-            self._progress.Error(subject.name, "Pick a single version.")
-          if not subject.Update(versions[0]):
-            self._progress.Error(subject.name, "Cannot update subject.")
+          if versions_string:
+            versions = subject.GetMatchingVersions(versions_string, False)
+            if len(versions) > 1:
+              self._progress.Error(subject.name, "Pick a single version.")
+            if not subject.Update(versions[0]):
+              self._progress.Error(subject.name, "Cannot update subject.")
 
-        if not subject.Verify():
-          self._progress.Error(subject.name, "Subject is in a bad state.")
+          if not subject.Verify():
+            self._progress.Error(subject.name, "Subject is in a bad state.")
 
-        self._runner.OpenAndCalibrateSubject(subject)
-        self._runner.CloseSubject()
+          self._runner.OpenAndCalibrateSubject(subject)
+          self._runner.CloseSubject()
 
   def PrepareSubjects(self, match="*"):
     """Gets all subjects into testable state.
@@ -180,9 +185,10 @@ class Orchestrator(object):
     for subject in self._subjects.itervalues():
       if not MatchName(subject.name, match):
         continue
-      self._progress.Info(subject.name, "Preparing")
-      with subject.access:
-        subject.Prepare()
+      with self._progress.LogExceptions("Error during prepare"):
+        self._progress.Info(subject.name, "Preparing")
+        with subject.access:
+          subject.Prepare()
 
   def VerifySubjects(self, match="*"):
     """Gets all subjects into testable state.
@@ -192,9 +198,10 @@ class Orchestrator(object):
     for subject in self._subjects.itervalues():
       if not MatchName(subject.name, match):
         continue
-      self._progress.Info(subject.name, "Verifying")
-      with subject.access:
-        subject.Verify()
+      with self._progress.LogExceptions("Error during verify"):
+        self._progress.Info(subject.name, "Verifying")
+        with subject.access:
+          subject.Verify()
 
   def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
     """Runs updates and benchmarks on all bencharks matching 'match'

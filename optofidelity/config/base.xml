@@ -75,7 +75,8 @@
       <activity name="home" action="android.intent.action.MAIN"
                 category="android.intent.category.HOME" />
     </navigator>
-    <access type="cambrionix" serial="/dev/ttyUSB0" port="{port}" adb="{adb}" />
+    <access type="cambrionix"
+            serial="/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN005XC0-if00-port0" port="{port}" adb="{adb}" />
     <updater type="android" adb="{adb}" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"

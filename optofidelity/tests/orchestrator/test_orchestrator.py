@@ -103,6 +103,9 @@ class OrchestratorTests(TestCase):
     self.orchestrator.UpdateAndRunBenchmarks("*", "installed:", True)
     # Does not run benchmarks, so there is nothing to save.
     self.assertEqual(len(os.listdir(self.tempdir)), 0)
+    # Subject has to be in a state where it can be used again.
+    self.subject.navigator.Open()
+    self.subject.navigator.Close()
 
   def testVerificationErrorHandling(self):
     self.subject.navigator.Verify = AlwaysRaiseException

@@ -196,11 +196,13 @@ class BenchmarkSubject(object):
     """
     self.camera.Prepare(1000, exposure=self.exposure)
     self.navigator.OpenActivity(self.CALIBRATION_ACTIVITY)
-    self.MoveRobotOutOfCameraView()
-    self.camera.Trigger()
-    video = self.camera.ReceiveVideo()
-    self.navigator.CloseActivity()
-    return video
+    try:
+      self.MoveRobotOutOfCameraView()
+      self.camera.Trigger()
+      video = self.camera.ReceiveVideo()
+      return video
+    finally:
+      self.navigator.CloseActivity()
 
   def _SavelyMoveToDevice(self, target_x, target_y, target_z):
     x, y, _ = self._dut_backend.position

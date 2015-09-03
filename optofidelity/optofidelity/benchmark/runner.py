@@ -113,7 +113,11 @@ class BenchmarkRunner(object):
     """
     self._progress.Info(subject.name, "Opening and calibrating")
     subject.navigator.Open()
-    return self._CalibrateScreen(subject)
+    try:
+      return self._CalibrateScreen(subject)
+    except:
+      subject.navigator.Close()
+      raise
 
   def _ExecuteBenchmark(self, benchmark):
     """Execute all steps of benchmark processing.
@@ -152,7 +156,6 @@ class BenchmarkRunner(object):
       video_reader = subject.RecordCalibrationVideo()
       screen_calibration = self.video_processor.CreateScreenCalibration(
           video_reader)
-      screen_calibration.Validate()
       return screen_calibration
     except KeyboardInterrupt:
       raise

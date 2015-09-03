@@ -274,8 +274,7 @@ class BaseADBNavigator(BaseNavigator):
     return activity_name in self._activity_intents
 
   def Verify(self):
-    self.Open()
-    self.Close()
+    self._adb.WaitForDevice()
 
   def Prepare(self):
     self._Reset()
@@ -394,3 +393,8 @@ class NativeADBNavigator(BaseADBNavigator):
     if self._adb.GetPackageVersion(self._package_name):
       self._adb.UninstallPackage(self._package_name)
     self._adb.InstallAPK(self._apk_file)
+
+  def Verify(self):
+    super(NativeADBNavigator, self).Verify()
+    if not self._adb.GetPackageVersion(self._package_name):
+      raise Exception("You have to run --setup before using this subject.")

@@ -45,7 +45,8 @@ class ADB(object):
     :type package_name: str
     :returns Optional[str]: version name of package if it is installed
     """
-    info = self.ExecuteShell(["pm", "dump", package_name], timeout=20)
+    info = self.ExecuteShell(["pm", "dump", package_name], timeout=20,
+                             retries=2)
     version_regex = re.compile("versionName=(.+)")
     match = version_regex.search(info)
     if match:
@@ -56,15 +57,15 @@ class ADB(object):
     if not self.IsAwake():
       self.SendKey(self.KEY_POWER)
     self.SendKey(self.KEY_UNLOCK)
-    self.ExecuteShell(["svc", "power", "stayon", "true"])
+    self.ExecuteShell(["svc", "power", "stayon", "true"], retries=2)
 
   def PowerOff(self):
-    self.ExecuteShell(["svc", "power", "stayon", "false"])
+    self.ExecuteShell(["svc", "power", "stayon", "false"], retries=2)
     if self.IsAwake():
       self.SendKey(self.KEY_POWER)
 
   def IsAwake(self):
-    power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=20)
+    power_dump = self.ExecuteShell(["dumpsys", "power"], timeout=20, retries=2)
     return "mWakefulness=Awake" in power_dump
 
   def GetProp(self, prop_name):
@@ -72,16 +73,16 @@ class ADB(object):
 
     Returns None if the property does not exist.
     """
-    prop = self.ExecuteShell(["getprop", prop_name]).strip()
+    prop = self.ExecuteShell(["getprop", prop_name], retries=2).strip()
     if len(prop):
       return prop
     return None
 
   def PutSetting(self, namespace, key, value):
-    self.ExecuteShell(["settings", "put", namespace, key, value])
+    self.ExecuteShell(["settings", "put", namespace, key, value], retries=2)
 
   def GetSetting(self, namespace, key):
-    stdout = self.ExecuteShell(["settings", "get", namespace, key])
+    stdout = self.ExecuteShell(["settings", "get", namespace, key], retries=2)
     return stdout.strip()
 
   def SendKey(self, key_name):
@@ -106,7 +107,7 @@ class ADB(object):
                         ("-d", uri), ("-c", category)]:
       if value:
         cmd += [flag, value]
-    self.ExecuteShell(cmd, check_error=True, timeout=20)
+    self.ExecuteShell(cmd, check_error=True, timeout=20, retries=2)
 
   def Execute(self, sub_command, check_success=False, check_error=False,
               timeout=False, retries=0):

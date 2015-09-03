@@ -19,9 +19,6 @@ class ScreenCalibrationTests(TestCase):
                              test_data.CalibrationWhiteImage())
 
   def assertCalibrationIsConsistent(self, calibration):
-    # Should not throw any exceptions on validation
-    calibration.Validate()
-
     # Check reference images. They should be mostly homogeneus
     avg_white = np.mean(calibration.white_reference)
     avg_black = np.mean(calibration.black_reference)
