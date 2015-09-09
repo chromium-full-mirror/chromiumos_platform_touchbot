@@ -6,7 +6,7 @@ import logging
 
 import numpy as np
 
-from optofidelity.videoproc import Canvas
+from optofidelity.videoproc import Canvas, DebugView
 
 from ._detector import Detector
 from .events import LineDrawEvent
@@ -87,6 +87,12 @@ class LineDetector(Detector):
     The line is expected to be at the center of the screen and have at least a
     width of LINE_WIDTH.
     """
+    background_mask = ~calib_frame.screen_space_foreground
+    background = calib_frame.screen_space_normalized[background_mask]
+
+    if np.median(background) < 1.0 - self.DRAW_START_MIN_COLOR:
+      raise Exception("Screen brightness has changed.")
+
     center = int(calib_frame.screen_space_shape[0] / 2)
     top = int(center - (self.LINE_WIDTH / 2))
     bottom = int(center + (self.LINE_WIDTH / 2))

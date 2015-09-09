@@ -45,11 +45,15 @@ class DetectorDebugger(object):
     :type calib_frame: CalibratedFrame
     :returns np.ndarray: The composed RGB image
     """
-    if "normalized" in self._debug_flags:
+    if "delta" in self._debug_flags:
+      if "normalized" in self._debug_flags:
+        debug_frame = self.ComposeScreenSpace(
+            0.5 + calib_frame.screen_space_delta)
+      else:
+        debug_frame = self.ComposeCameraSpace(
+            0.5 + calib_frame.camera_space_delta)
+    elif "normalized" in self._debug_flags:
       debug_frame = self.ComposeScreenSpace(calib_frame.screen_space_normalized)
-    elif "delta" in self._debug_flags:
-      debug_frame = self.ComposeCameraSpace(
-          0.5 + calib_frame.camera_space_delta)
     elif "stabilization" in self._debug_flags:
       delta = (0.5 + self.screen_calibration.black_frame
                    - calib_frame.camera_space_frame)

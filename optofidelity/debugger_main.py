@@ -46,7 +46,7 @@ def LoadBenchmarkFromURL(url_or_uid):
 
 def ProcessBenchmark(url_or_uid, what, debug_flags):
   benchmark, url = LoadBenchmarkFromURL(url_or_uid)
-  benchmark.screen_calibration.Validate()
+
   try:
     if what in ("all", "video"):
       print debug_flags

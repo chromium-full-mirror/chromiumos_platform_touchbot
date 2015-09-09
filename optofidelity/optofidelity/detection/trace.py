@@ -350,6 +350,8 @@ class Trace(list):
       else:
         current_value = np.nan
 
+      if time >= len(array):
+        continue
       array[time] = current_value
       last_value = array[last_time]
       if not np.isnan(last_value):

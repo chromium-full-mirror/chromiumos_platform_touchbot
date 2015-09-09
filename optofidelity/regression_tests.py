@@ -21,17 +21,20 @@ TEST_DEFINITIONS = {
       Test("20150825_1410_000", {}),
   "finger.small.s6":
       Test("20150825_1630_000", {}),
-  "finger.small.nexus6":
-      Test("20150825_1832_001", {}),
 
   "led.false_suppression.nexus4":
       Test("20150825_1953_000", {}),
   "led.false_suppression.s6edge":
       Test("20150825_1855_001", {}),
+  "led.screen_on_edge.s6edge":
+      Test("20150903_1018_000", {}),
   "led.false_distance_suppression.m9":
       Test("20150826_2244_000", {}),
   "led.false_distance_suppression.nexus4":
       Test("20150826_2139_000", {}),
+
+  "line.brightness_changed.nexus6":
+    Test("20150908_1624_000", Exception),
 
   "baseline.tap.nexus4":
       Test("20150825_1908_000", {"DownLatency": 98, "UpLatency": 81}),
@@ -54,19 +57,25 @@ def RunBenchmark(benchmark, expectations):
     print benchmark.results
     if len(benchmark.results.error):
       return False
-    if len(expectations):
+    if isinstance(expectations, dict):
       measurements = benchmark.results.measurements
       for value_name, expected in expectations.iteritems():
         actual = np.mean(measurements.SummarizeValues(value_name))
         if abs(actual - expected) > FAILURE_THRESHOLD:
           print "Assertion failed: %s != %d" % (value_name, expected)
           return False
+    elif isinstance(expectations, type) and issubclass(expectations, Exception):
+      print "Expected exception of type", expectations
+      return False
     print "Test successful."
     return True
   except KeyboardInterrupt:
     raise
   except:
     traceback.print_exc()
+    if isinstance(expectations, type) and issubclass(expectations, Exception):
+      print "Exception expected"
+      return True
     return False
 
 

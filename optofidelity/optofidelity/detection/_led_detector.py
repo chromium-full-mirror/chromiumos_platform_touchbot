@@ -57,10 +57,16 @@ class LEDDetector(Detector):
       screen_shape = calib_frame.camera_space_screen_shape
       area_of_interest = np.ones(calib_frame.camera_space_shape)
       area_of_interest[(screen_shape.top):, :] = 0
-      area_of_interest[:, :(screen_shape.left - margin)] = 0
-      area_of_interest[:, (screen_shape.right + margin):] = 0
+      left = (screen_shape.left - margin)
+      if left < 0:
+        left = 0
+      area_of_interest[:, :left] = 0
+      right = (screen_shape.right + margin)
+      if right > area_of_interest.shape[1]:
+        right = area_of_interest.shape[1]
+      area_of_interest[:, right:] = 0
     else:
-     area_of_interest = np.ones(calib_frame.camera_space_shape)
+      area_of_interest = np.ones(calib_frame.camera_space_shape)
 
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
@@ -85,6 +91,7 @@ class LEDDetector(Detector):
         color = np.mean(calib_frame.camera_space_delta[shape.mask])
         flashes.append(Flash(shape.center, color))
         draw_color = Canvas.RED
+        log("Flash: center=%s, color=%.2f", shape.center, color)
       if debugger:
         debugger.camera_space_canvas.DrawMask(draw_color, shape.contour)
     return flashes
