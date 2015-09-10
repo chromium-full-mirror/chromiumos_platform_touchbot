@@ -57,7 +57,7 @@ def get_finger_positions(filename):
 
     points = []
     fingers = {}
-    curr_id = 0
+    curr_id = -1
     last_x = last_y = 0
 
     for line in log:
