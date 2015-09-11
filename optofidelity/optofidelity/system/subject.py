@@ -111,6 +111,12 @@ class BenchmarkSubject(object):
     """Height of the subjects area along the devices Y-Axis."""
     return self.bottom - self.top
 
+  def StartCollection(self, duration):
+    pass
+
+  def StopCollection(self):
+    pass
+
   def WaitForGesturesToFinish(self):
     """Blocks until all gestures are finished."""
     self._dut_backend.WaitForGesturesToFinish()

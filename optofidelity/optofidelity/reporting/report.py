@@ -139,7 +139,8 @@ class BenchmarkReport(Report):
   REFERENCE_LINE_COLOR = (76.0/255.0, 175.0/255.0, 80.0/255.0, 1.0)
   """Color of the reference line in screenshots in a BGRA tuple"""
 
-  def GenerateReport(self, results, trace, screen_calibration, video):
+  def GenerateReport(self, results, trace, screen_calibration, video,
+                     additional_links=[]):
     """ Generates a full HTML report.
 
     If a video is not specified this method will skip the screenshot generation.
@@ -155,6 +156,8 @@ class BenchmarkReport(Report):
       ("Trace", "trace.txt"),
       ("Video", "video.avi"),
     ]
+    link_list.extend(additional_links)
+
     variables = {
       "measurements": results.measurements,
       "link_list": link_list

@@ -7,6 +7,7 @@ This module is responsible for managing multiple devices, updating them and
 running benchmarks.
 """
 from .access import Access
+from .collector import Collector
 from .dashboard import Dashboard
 from .orchestrator import Orchestrator
 from .orchestrator_subject import OrchestratorSubject

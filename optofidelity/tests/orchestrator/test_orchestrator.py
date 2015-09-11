@@ -32,6 +32,7 @@ unit_test_config = """\
       <navigator type="fake" />
       <updater type="fake" />
       <dashboard type="fake" />
+      <collector type="fake" />
       <benchmark name="tap" type="tap" activity="tap" />
       <benchmark name="tap2" type="tap" activity="tap" />
     </subject>
@@ -173,6 +174,20 @@ class OrchestratorTests(TestCase):
     self.assertEqual(os.listdir(self.tempdir), [benchmark.results.uid])
     loaded = benchmark.Load(os.path.join(self.tempdir, benchmark.results.uid))
     self.assertEqual(loaded.results.uid, benchmark.results.uid)
+
+  def testCollection(self):
+    self.assertEqual(len(self.subject.collectors), 1)
+    collector = self.subject.collectors[0]
+
+    with self.subject.access:
+      with self.runner.UseSubject(self.subject):
+        benchmark = self.orchestrator.RunSubjectVersionBenchmarkRepetition(
+            self.subject, self.benchmark_def, {})
+
+    self.assertTrue(collector.collected)
+
+    filename = os.path.join(self.tempdir, benchmark.results.uid, "fake.log")
+    self.assertTrue(os.path.exists(filename))
 
   def testVersionParsing(self):
     available = ["1.0", "1.1", "1.2", "2.0", "2.2", "3.0"]

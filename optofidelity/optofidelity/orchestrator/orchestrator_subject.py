@@ -25,11 +25,20 @@ class OrchestratorSubject(BenchmarkSubject):
     self.dashboard = None
     self.adb = None
     self.setups = []
+    self.collectors = []
     self._progress = ProgressPrinter(_log)
 
   def DefineBenchmark(self, name, benchmark_type, activity, params):
     self.benchmark_defs[name] = BenchmarkDefinition(name, benchmark_type,
                                                     activity, params)
+
+  def StartCollection(self, duration):
+    for collector in self.collectors:
+      collector.Start(duration)
+
+  def StopCollection(self):
+    for collector in self.collectors:
+      collector.Stop()
 
   def Verify(self):
     """Verify that the subject is accessible and in working order.

@@ -49,6 +49,7 @@ CONFIG = TestConfig(
   oauth_key_file = None,
   chromeperf_endpoint = None,
   gs_folder_url = None,
+  android_sdk_path = None,
 
   cambrionix_serial_device = None,
   cambrionix_dut_port_id = None,

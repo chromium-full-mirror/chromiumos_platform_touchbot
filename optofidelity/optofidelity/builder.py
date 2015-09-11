@@ -18,8 +18,8 @@ from safetynet import (Any, Dict, List, Optional, Tuple, TypecheckMeta,
 from .benchmark import BenchmarkRunner
 from .components import COMPONENTS
 from .detection import VideoProcessor
-from .orchestrator import (Dashboard, Orchestrator, OrchestratorSubject,
-                           SubjectSetup, Updater, Access)
+from .orchestrator import (Access, Collector, Dashboard, Orchestrator,
+                           OrchestratorSubject, SubjectSetup, Updater)
 from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.system import FingerCalibDelay
@@ -246,6 +246,10 @@ class SystemBuilder(object):
       setup = self._CreateComponent(SubjectSetup, setup_elem, context)
       subject.setups.append(setup)
 
+    for setup_elem in subject_elem.iter("collector"):
+      setup = self._CreateComponent(Collector, setup_elem, context)
+      subject.collectors.append(setup)
+
     margin_attrib = subject_elem.get("margin")
     if margin_attrib:
       margin_attrib = self.ParseValue(margin_attrib, dut_elem.attrib)
@@ -333,6 +337,9 @@ class SystemBuilder(object):
     if value.startswith("option:"):
       option_name = value[len("option:"):]
       return str(getattr(self._options, option_name))
+    if value.startswith("env:"):
+      env_name = value[len("env:"):]
+      return str(os.environ[env_name])
     if value.startswith("{") and value.endswith("}"):
       key = value[1:-1]
       value = self.ParseValue(context.get(key))

@@ -36,11 +36,12 @@ class TapDelegate(BenchmarkDelegate):
     center = subject.height / 2.0
 
     subject.MoveOnTestPlane(center, 10.0, blocking=True)
-
     subject.TapOnTestPlane(center)
+    subject.StartCollection(duration)
     subject.camera.Trigger()
     subject.TapOnTestPlane(center, count=self.NUM_MEASUREMENTS)
 
+    subject.StopCollection()
     video_reader = subject.camera.ReceiveVideo()
     return video_reader
 

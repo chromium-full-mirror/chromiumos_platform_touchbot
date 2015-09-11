@@ -48,7 +48,10 @@ class LineDrawDelegate(BenchmarkDelegate):
     # Tap to reset the screen, then draw from left to right.
     subject.TapOnTestPlane(left)
     subject.MoveOnTestPlane(left, down, blocking=True)
+
     subject.camera.Trigger()
+    subject.StartCollection(self.COMMANDS_DURATION)
+
     subject.MoveOnTestPlane(left_calib_stop, down)
     subject.MoveOnTestPlane(right, down)
     subject.MoveOnTestPlane(right, up)
@@ -60,6 +63,7 @@ class LineDrawDelegate(BenchmarkDelegate):
     subject.MoveOnTestPlane(left, down)
     subject.MoveOnTestPlane(left, up)
 
+    subject.StopCollection()
     return subject.camera.ReceiveVideo()
 
   def ProcessTrace(self, trace, measurements):

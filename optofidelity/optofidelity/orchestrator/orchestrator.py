@@ -417,13 +417,18 @@ class Orchestrator(object):
     save_video = self._save_video or bool(len(benchmark.results.error))
     benchmark.Save(results_url, debug_info=True, video=save_video)
 
-    if self._generate_reports:
-      with GSFolder(results_url) as report_path:
+    with GSFolder(results_url) as report_path:
+      additional_links = []
+      for collector in subject.collectors:
+        additional_links.extend(collector.report_links)
+        collector.Save(report_path)
+      if self._generate_reports:
         report = BenchmarkReport(report_path, xkcd=self._xkcd)
         report.GenerateReport(benchmark.results, benchmark.trace,
-                              benchmark.screen_calibration, benchmark.video)
-      self._progress.Info(benchmark.name, "Repetition report available at: %s"
-                                          % public_url)
+                              benchmark.screen_calibration, benchmark.video,
+                              additional_links)
+        self._progress.Info(benchmark.name, "Repetition report available at: %s"
+                                            % public_url)
 
   def _GetPublicReportUrl(self, url):
     if self.reports_url:
