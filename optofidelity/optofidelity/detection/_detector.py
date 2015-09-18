@@ -3,7 +3,7 @@
 # found in the LICENSE file.from abc import abstractmethod
 from abc import abstractmethod
 
-from safetynet import InterfaceMeta, List, Optional
+from safetynet import Any, Dict, InterfaceMeta, List, Optional
 import skimage.color as color
 
 from optofidelity.videoproc import Canvas
@@ -107,12 +107,9 @@ class Detector(object):
     """
 
   @abstractmethod
-  def GenerateEvents(self, preprocessed_data, frame_index, debugger):
+  def GenerateEvents(self, preprocessed_data):
     """Perform detection on the preprocessed data and return events.
 
-    This method has to be called in order, and should offload as much of the
-    heavy processing to Preprocess as possible.
-    :param CalibratedFrame calib_frame
-    :param Optional[DetectorDebugger] debugger
-    :returns List[Event]
+    :type debugger: Optional[DetectorDebugger]
+    :rtype List[Event]
     """

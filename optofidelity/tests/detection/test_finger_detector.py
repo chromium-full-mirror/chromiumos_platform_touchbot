@@ -32,15 +32,15 @@ class FingerDetectorTest(DetectorTest):
         15.0
     ])
     # Dictionary of which event is expected at which time
-    expected_events = {
-        0: FingerEvent(time=0, location=10.0),
-        1: FingerEvent(time=1, location=11.0),
-        2: FingerEvent(time=2, location=12.0),
-        3: FingerEvent(time=3, location=12.0),
-        4: FingerEvent(time=4, location=13.0),
-        6: FingerEvent(time=6, location=14.0),
-        7: FingerEvent(time=7, location=15.0)
-    }
+    expected_events = [
+        FingerEvent(time=0, location=10.0),
+        FingerEvent(time=1, location=11.0),
+        FingerEvent(time=2, location=12.0),
+        FingerEvent(time=3, location=12.0),
+        FingerEvent(time=4, location=13.0),
+        FingerEvent(time=6, location=14.0),
+        FingerEvent(time=7, location=15.0)
+    ]
 
     # Test if series of profiles generates expected events.
     self.assertExpectedEventsGenerated(FingerDetector(),

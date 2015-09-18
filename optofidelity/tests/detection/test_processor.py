@@ -53,7 +53,7 @@ class ProcessorTest(TestCase):
       with test_data.CalibrationVideo() as video_reader:
         processor = self.createTestVideoProcessor(multithreaded)
         processor.InitializeDetectors(ScreenDrawDetector())
-        processor.ProcessVideo(video_reader, self.calib, ["all"])
+        processor.ProcessVideo(video_reader, self.calib, ["all", "viewer"])
 
   def testFakeProcessor(self):
     events = Trace([LEDEvent(10, LEDEvent.STATE_ON),

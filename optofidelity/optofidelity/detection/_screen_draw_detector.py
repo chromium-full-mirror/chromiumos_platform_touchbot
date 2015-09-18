@@ -42,35 +42,36 @@ class ScreenDrawDetector(Detector):
     segment = [profile[:self.EDGE_WIDTH], profile[-self.EDGE_WIDTH:]]
     return (np.min(segment), np.max(segment))
 
-  def GenerateEvents(self, preprocessed_data, frame_index, debugger):
-    min_level, max_level = preprocessed_data
+  def GenerateEvents(self, preprocessed_data):
+    for frame_index, data in enumerate(preprocessed_data):
+      if data is None:
+        continue
+      min_level, max_level = data
 
-    # Note the last time the profile stays below the no_change threshold. This
-    # is the time index just before the draw starts.
-    # If the threshold exceeds the change threshold we consider the draw
-    # done and generate both the start and end draw event.
-    if self._color == ScreenDrawEvent.STATE_BLACK:
-      if max_level < self.NO_CHANGE_THRESH:
-        self._last_no_draw_time = frame_index
-      elif min_level > self.CHANGE_THRESH:
-        self._color = ScreenDrawEvent.STATE_WHITE
-        return [ScreenDrawEvent(frame_index, state=self._color,
-                                start_time=self._last_no_draw_time + 1)]
+      # Note the last time the profile stays below the no_change threshold. This
+      # is the time index just before the draw starts.
+      # If the threshold exceeds the change threshold we consider the draw
+      # done and generate both the start and end draw event.
+      if self._color == ScreenDrawEvent.STATE_BLACK:
+        if max_level < self.NO_CHANGE_THRESH:
+          self._last_no_draw_time = frame_index
+        elif min_level > self.CHANGE_THRESH:
+          self._color = ScreenDrawEvent.STATE_WHITE
+          yield ScreenDrawEvent(frame_index, state=self._color,
+                                  start_time=self._last_no_draw_time + 1)
 
-    # Analogous to the black logic.
-    elif self._color == ScreenDrawEvent.STATE_WHITE:
-      if min_level > 1.0 - self.NO_CHANGE_THRESH:
-        self._last_no_draw_time = frame_index
-      elif max_level < 1.0 - self.CHANGE_THRESH:
-        self._color = ScreenDrawEvent.STATE_BLACK
-        return [ScreenDrawEvent(frame_index, state=self._color,
-                                start_time=self._last_no_draw_time + 1)]
+      # Analogous to the black logic.
+      elif self._color == ScreenDrawEvent.STATE_WHITE:
+        if min_level > 1.0 - self.NO_CHANGE_THRESH:
+          self._last_no_draw_time = frame_index
+        elif max_level < 1.0 - self.CHANGE_THRESH:
+          self._color = ScreenDrawEvent.STATE_BLACK
+          yield ScreenDrawEvent(frame_index, state=self._color,
+                                  start_time=self._last_no_draw_time + 1)
 
-    # Wait for a solid black or white screen to set initial color
-    else:
-      if max_level < self.NO_CHANGE_THRESH:
-        self._color = ScreenDrawEvent.STATE_BLACK
-      elif max_level > 1.0 - self.NO_CHANGE_THRESH:
-        self._color = ScreenDrawEvent.STATE_WHITE
-
-    return []
+      # Wait for a solid black or white screen to set initial color
+      else:
+        if max_level < self.NO_CHANGE_THRESH:
+          self._color = ScreenDrawEvent.STATE_BLACK
+        elif max_level > 1.0 - self.NO_CHANGE_THRESH:
+          self._color = ScreenDrawEvent.STATE_WHITE

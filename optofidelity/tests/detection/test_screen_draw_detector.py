@@ -18,7 +18,7 @@ class ScreenDrawDetectorTest(DetectorTest):
     self.assertGreater(max_color, 0.99)
 
   def testEventGeneration(self):
-    minmax_sequence = np.asarray([
+    minmax_sequence = [
         # 0: Screen draw fading in
         (0, 0),
         (0, 0.2),
@@ -31,14 +31,14 @@ class ScreenDrawDetectorTest(DetectorTest):
         (0.2, 0.8),
         (0, 0.2),
         (0, 0),
-    ])
+    ]
     # Dictionary of expected events.
     BLACK = ScreenDrawEvent.STATE_BLACK
     WHITE = ScreenDrawEvent.STATE_WHITE
-    expected_events = {
-        4: ScreenDrawEvent(time=4, start_time=1, state=WHITE),
-        9: ScreenDrawEvent(time=9, start_time=6, state=BLACK),
-    }
+    expected_events = [
+        ScreenDrawEvent(time=4, start_time=1, state=WHITE),
+        ScreenDrawEvent(time=9, start_time=6, state=BLACK),
+    ]
 
     self.assertExpectedEventsGenerated(ScreenDrawDetector(),
                                        minmax_sequence, expected_events)

@@ -49,11 +49,11 @@ class LineDetectorTest(DetectorTest):
     profile_sequence = np.repeat(profile_sequence, 10, axis=1)
 
     # Dictionary of expected events.
-    expected_events = {
-        6: LineDrawEvent(time=6, location=49.0, start_time=4),
-        10: LineDrawEvent(time=10, location=69.0, start_time=8),
-        13: LineDrawEvent(time=13, location=None, start_time=13),
-    }
+    expected_events = [
+        LineDrawEvent(time=6, location=49.0, start_time=4),
+        LineDrawEvent(time=10, location=69.0, start_time=8),
+        LineDrawEvent(time=13, location=None, start_time=13),
+    ]
 
     # Test if series of profiles generates expected events.
     self.assertExpectedEventsGenerated(LineDetector(),
@@ -62,7 +62,7 @@ class LineDetectorTest(DetectorTest):
     # Mirror the profiles and, match up the expected location and run again.
     # The algorithm should work in both directions
     profile_sequence = np.fliplr(profile_sequence)
-    for v in expected_events.values():
+    for v in expected_events:
         if v.location is not None:
             v.location = profile_sequence.shape[1] - v.location
 

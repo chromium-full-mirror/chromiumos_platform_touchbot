@@ -38,24 +38,22 @@ class DetectorTest(TestCase):
 
   def assertExpectedEventsGenerated(self, detector, data_sequence,
                                     expected_events, print_only=False):
-    for i, data in enumerate(data_sequence):
-      events = detector.GenerateEvents(data, i, None)
-      if print_only:
-        print i, events
-        continue
-      if i in expected_events:
-        expected = expected_events[i]
-        self.assertEqual(len(events), 1,
-                         "%d: Expected event: %s" % (i, expected))
-        event = events[0]
+    events = list(detector.GenerateEvents(data_sequence))
+    if print_only:
+      print events
+      return
 
-        self.assertAlmostEqual(event.location, expected.location)
-        self.assertEqual(event.time, expected.time)
-        self.assertEqual(event.start_time, expected.start_time)
-        self.assertEqual(event.state, expected.state)
-      else:
-        self.assertEqual(len(events), 0,
-                         "%d: Did not expect events: %s" % (i, events))
+    self.assertEqual(len(events), len(expected_events))
+    for event in events:
+      expected = next((e for e in expected_events
+                         if e.time == event.time), None)
+      if expected is None:
+        self.fail("Did not expect event: %s" % event)
+      self.assertAlmostEqual(event.location, expected.location)
+      self.assertEqual(event.time, expected.time)
+      self.assertEqual(event.start_time, expected.start_time)
+      self.assertEqual(event.state, expected.state)
+
 
 class DebuggerTests(DetectorTest):
   def composeExampleDebugView(self, debug_flags):

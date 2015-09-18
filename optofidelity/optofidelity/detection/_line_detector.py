@@ -106,76 +106,75 @@ class LineDetector(Detector):
       debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile)
     return profile
 
-  def GenerateEvents(self, preprocessed_data, frame_index, debugger):
+  def GenerateEvents(self, preprocessed_data):
     def log(msg, *params):
       _log.debug("%04d: " + msg, frame_index, *params)
 
-    profile = preprocessed_data
+    for frame_index, profile in enumerate(preprocessed_data):
+      if profile is None:
+        continue
 
-    def Reset():
-      self._line_obj = None
-      self._suppress_until = frame_index + self.RESET_SUPPRESS_DURATION
-      return [LineDrawEvent(frame_index, location=None, start_time=frame_index)]
+      def Reset():
+        self._line_obj = None
+        self._suppress_until = frame_index + self.RESET_SUPPRESS_DURATION
+        return LineDrawEvent(frame_index, location=None, start_time=frame_index)
 
-    # Note the timestamp at which each profile pixel has last been below the
-    # DRAW_START_MIN_COLOR threshold. This is the frame before the drawing
-    # started.
-    if self._last_no_draw_map is None:
-      self._last_no_draw_map = np.zeros(profile.shape)
-    no_draw_indices = (profile < self.DRAW_START_MIN_COLOR)
-    self._last_no_draw_map[no_draw_indices] = frame_index
+      # Note the timestamp at which each profile pixel has last been below the
+      # DRAW_START_MIN_COLOR threshold. This is the frame before the drawing
+      # started.
+      if self._last_no_draw_map is None:
+        self._last_no_draw_map = np.zeros(profile.shape)
+      no_draw_indices = (profile < self.DRAW_START_MIN_COLOR)
+      self._last_no_draw_map[no_draw_indices] = frame_index
 
-    if self._suppress_until and frame_index < self._suppress_until:
-      log("Suppressing. until=%d", self._suppress_until)
-      return []
+      if self._suppress_until and frame_index < self._suppress_until:
+        log("Suppressing. until=%d", self._suppress_until)
+        continue
 
-    # Segment line in current frame
-    objects = _SegmentProfile(profile, self.MIN_SEGMENT_COLOR)
+      # Segment line in current frame
+      objects = _SegmentProfile(profile, self.MIN_SEGMENT_COLOR)
 
-    # If we have not seen a line before, just store this line object.
-    if self._line_obj is None:
-      if len(objects) == 1:
-        self._line_obj = objects[0]
-      return []
+      # If we have not seen a line before, just store this line object.
+      if self._line_obj is None:
+        if len(objects) == 1:
+          self._line_obj = objects[0]
+        continue
 
-    # If the line disappeared generate a reset event.
-    if len(objects) == 0:
-      return Reset()
+      # If the line disappeared generate a reset event.
+      if len(objects) == 0:
+        yield Reset()
+        continue
 
-    # Determine new line segment and location
-    new_line = objects[0]
-    new_location = None
-    new_slice = None
+      # Determine new line segment and location
+      new_line = objects[0]
+      new_location = None
+      new_slice = None
 
-    if self._line_obj.start - new_line.start > self.MIN_SEGMENT_LENGTH:
-      # New segment drawn on left side of existing line.
-      new_location = new_line.start + 1
-      new_slice = np.s_[new_line.start:self._line_obj.start]
-    elif new_line.end - self._line_obj.end > self.MIN_SEGMENT_LENGTH:
-      # New segment draw on right side of existing line.
-      new_location = new_line.end - 1
-      new_slice = np.s_[self._line_obj.end:new_line.end]
-    elif self._line_obj.start - new_line.start < -self.RESET_MIN_SEGMENT_LENGTH:
-      # Left side of line is disappearing. Reset.
-      return Reset()
-    elif new_line.end - self._line_obj.end < -self.RESET_MIN_SEGMENT_LENGTH:
-      # Right side of line is disappearing. Reset.
-      return Reset()
+      if self._line_obj.start - new_line.start > self.MIN_SEGMENT_LENGTH:
+        # New segment drawn on left side of existing line.
+        new_location = new_line.start + 1
+        new_slice = np.s_[new_line.start:self._line_obj.start]
+      elif new_line.end - self._line_obj.end > self.MIN_SEGMENT_LENGTH:
+        # New segment draw on right side of existing line.
+        new_location = new_line.end - 1
+        new_slice = np.s_[self._line_obj.end:new_line.end]
+      elif self._line_obj.start - new_line.start < -self.RESET_MIN_SEGMENT_LENGTH:
+        # Left side of line is disappearing. Reset.
+        yield Reset()
+        continue
+      elif new_line.end - self._line_obj.end < -self.RESET_MIN_SEGMENT_LENGTH:
+        # Right side of line is disappearing. Reset.
+        yield Reset()
+        continue
 
-    if new_slice is not None:
-      # Wait until the median color level meets the DRAW_END_MIN_COLOR
-      # requirement, then generate draw events.
-      level = np.median(profile[new_slice])
-      log("New segment. level=%d", level)
-      if level > self.DRAW_END_MIN_COLOR:
-        last_no_draw = np.max(self._last_no_draw_map[new_slice])
-        self._line_obj = new_line
-        self._current_location = new_location
-        return [LineDrawEvent(frame_index, location=float(new_location),
-                              start_time=int(last_no_draw + 1))]
-
-    if debugger:
-      debugger.screen_space_canvas.DrawVLine(Canvas.BLUE,
-                                             self._current_location)
-
-    return []
+      if new_slice is not None:
+        # Wait until the median color level meets the DRAW_END_MIN_COLOR
+        # requirement, then generate draw events.
+        level = np.median(profile[new_slice])
+        log("New segment. level=%d", level)
+        if level > self.DRAW_END_MIN_COLOR:
+          last_no_draw = np.max(self._last_no_draw_map[new_slice])
+          self._line_obj = new_line
+          self._current_location = new_location
+          yield LineDrawEvent(frame_index, location=float(new_location),
+                              start_time=int(last_no_draw + 1))

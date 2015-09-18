@@ -52,10 +52,8 @@ class FingerDetector(Detector):
       return location
     return None
 
-  def GenerateEvents(self, preprocessed_data, frame_index, debugger):
-    new_location = preprocessed_data
-
-    if new_location is None or new_location == self._current_location:
-      return []
-
-    return [FingerEvent(frame_index, location=new_location)]
+  def GenerateEvents(self, preprocessed_data):
+    for frame_index, new_location in enumerate(preprocessed_data):
+      if new_location is None or new_location == self._current_location:
+        continue
+      yield FingerEvent(frame_index, location=new_location)

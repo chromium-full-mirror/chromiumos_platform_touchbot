@@ -77,11 +77,11 @@ class LEDDetectorTest(DetectorTest):
       [flash((32, 32), -1.0)],
       [flash((32, 32), 1.0)],
     ]
-    expected_events = {
-      0: LEDEvent(0, LEDEvent.STATE_ON),
-      12: LEDEvent(12, LEDEvent.STATE_OFF),
-      24: LEDEvent(24, LEDEvent.STATE_ON)
-    }
+    expected_events = [
+      LEDEvent(0, LEDEvent.STATE_ON),
+      LEDEvent(12, LEDEvent.STATE_OFF),
+      LEDEvent(24, LEDEvent.STATE_ON)
+    ]
     self.assertExpectedEventsGenerated(LEDDetector(), flashes_sequence,
                                        expected_events)
 
@@ -96,8 +96,8 @@ class LEDDetectorTest(DetectorTest):
       [flash((199, 126))],
       [flash((225, 152)), flash((197., 123.))]
     ]
-    expected_events = {
-      0: LEDEvent(0, LEDEvent.STATE_ON)
-    }
+    expected_events = [
+      LEDEvent(0, LEDEvent.STATE_ON)
+    ]
     self.assertExpectedEventsGenerated(LEDDetector(), flashes_sequence,
                                        expected_events)

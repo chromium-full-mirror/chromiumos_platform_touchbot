@@ -96,41 +96,43 @@ class LEDDetector(Detector):
         debugger.camera_space_canvas.DrawMask(draw_color, shape.contour)
     return flashes
 
-  def GenerateEvents(self, preprocessed_data, frame_index, debugger):
+  def GenerateEvents(self, preprocessed_data):
     def log(msg, *params):
       _log.debug("%04d: " + msg, frame_index, *params)
 
-    flashes = preprocessed_data
-    updated = [(flash, time) for flash, time in self.recent_flash_times
-                             if time + self.DEBOUNCE_DURATION >= frame_index]
-    self.recent_flash_times = updated
-
-    def has_recently_flashed(flash):
-      for recent_flash, time in self.recent_flash_times:
-        distance = linalg.norm(flash.coords - recent_flash.coords)
-        if distance < self.LED_MIN_DISTANCE:
-          return True
-      return False
-
-    # If a flash happens a frame right after another one, assume it is part of
-    # the same LED and add all flashes to the recent flash times but do not
-    # generate another event.
-    last_frame_flashes = [(flash, time) for flash, time in updated
-                                        if frame_index - time <= 1]
-    if len(last_frame_flashes):
-      for flash in flashes:
-        self.recent_flash_times.append((flash, frame_index - 1))
-      return []
-
-    events = []
-    for flash in flashes:
-      if has_recently_flashed(flash):
+    for frame_index, flashes in enumerate(preprocessed_data):
+      if flashes is None:
         continue
-      self.recent_flash_times.append((flash, frame_index))
-      state = Event.STATE_ON if flash.color > 0 else Event.STATE_OFF
-      events.append(LEDEvent(frame_index, state=state))
 
-    # There may be multiple flashes due to reflections, return only one event.
-    if len(events) > 1:
-      events = [events[0]]
-    return events
+      updated = [(flash, time) for flash, time in self.recent_flash_times
+                               if time + self.DEBOUNCE_DURATION >= frame_index]
+      self.recent_flash_times = updated
+
+      def has_recently_flashed(flash):
+        for recent_flash, time in self.recent_flash_times:
+          distance = linalg.norm(flash.coords - recent_flash.coords)
+          if distance < self.LED_MIN_DISTANCE:
+            return True
+        return False
+
+      # If a flash happens a frame right after another one, assume it is part of
+      # the same LED and add all flashes to the recent flash times but do not
+      # generate another event.
+      last_frame_flashes = [(flash, time) for flash, time in updated
+                                          if frame_index - time <= 1]
+      if len(last_frame_flashes):
+        for flash in flashes:
+          self.recent_flash_times.append((flash, frame_index - 1))
+        continue
+
+      events = []
+      for flash in flashes:
+        if has_recently_flashed(flash):
+          continue
+        self.recent_flash_times.append((flash, frame_index))
+        state = Event.STATE_ON if flash.color > 0 else Event.STATE_OFF
+        events.append(LEDEvent(frame_index, state=state))
+
+      # There may be multiple flashes due to reflections, return only one event.
+      if len(events) >= 1:
+        yield events[0]

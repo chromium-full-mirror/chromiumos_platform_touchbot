@@ -91,8 +91,8 @@ class PreprocessWorker(multiprocessing.Process):
 
       calib_frame = CalibratedFrame(image, prev_image,
                                     self.processor.screen_calibration, i)
-      result = self.processor._Preprocess(calib_frame)
-      self.output_queue.put(result)
+      preprocessed_data = self.processor._Preprocess(calib_frame, None, [])
+      self.output_queue.put((i, preprocessed_data))
 
       # Notify processing of this buffer is done.
       self.buffer_list[index].done.set()
@@ -109,7 +109,7 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
 
   def __init__(self, debug_video=None):
     SinglethreadedVideoProcessor.__init__(self)
-    self.num_processes = multiprocessing.cpu_count() - 1
+    self.num_processes = multiprocessing.cpu_count() - 2
 
   def ProcessVideo(self, video_reader, screen_calibration, debug_flags):
     if not len(self._detectors):
@@ -194,46 +194,12 @@ class MultithreadedVideoProcessor(SinglethreadedVideoProcessor):
     # Read pre-processing results and put them into a dict by frame index
     data_map = {}
     for i in range(num_frames):
-      data_entry = data_queue.get()
-      data_map[data_entry[0]] = data_entry[1]
+      frame_index, preprocessed_data = data_queue.get()
+      data_map[frame_index] = preprocessed_data
 
     # Generate events from frames in order
-    events = []
-    for i in sorted(data_map.keys()):
-      msg = "Generating events %d/%d" % (i + 1, video_reader.num_frames)
-      sys.stdout.write("\r" + msg)
-      sys.stdout.flush()
-
-      preprocessed_data = data_map[i]
-      generated_events = self._GenerateEvents(i, preprocessed_data, None)
-      _log.debug("%04d generated events: %s", i + 1, generated_events)
-      events.extend(generated_events)
+    events = self._GenerateEvents(data_map)
     self._detectors = []
     print
     return Trace(events, video_reader.ms_per_frame)
 
-  def _Preprocess(self, calib_frame):
-    """Preprocess a single calibrated frame.
-
-    :param CalibratedFrame calib_frame
-    :returns Tuple[int, Dict[str, Any]]
-    """
-    preprocessed_data_map = {}
-    for detector in self._detectors:
-      preprocessed_data = detector.Preprocess(calib_frame, None)
-      preprocessed_data_map[detector.NAME] = preprocessed_data
-    return (calib_frame.frame_index, preprocessed_data_map)
-
-  def _GenerateEvents(self, frame_index, preprocessed_data_map, debugger):
-    """ Generate events from a single frame.
-
-    :param int frame_index
-    :param Dict[str, Optional[Any]] preprocessed_data_map
-    :param Optional[DetectorDebugger] debugger
-    """
-    all_events = []
-    for detector in self._detectors:
-      preprocessed_data = preprocessed_data_map[detector.NAME]
-      events = detector.GenerateEvents(preprocessed_data, frame_index, None)
-      all_events.extend(events)
-    return all_events
