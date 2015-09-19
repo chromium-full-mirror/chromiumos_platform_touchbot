@@ -55,11 +55,17 @@ class MeasurementSeries(list):
   def values(self):
     """:returns List[float]: values of this series of measurements"""
 
+  def SanityCheck(self):
+    pass
+
+
 DrawEventLatencyMeasurement = namedtuple("DrawEventLatencyMeasurement",
                                          ("input_event", "output_event"))
 
 class DrawEventLatencySeries(MeasurementSeries):
   """A series that measures the latency between an input and a draw event."""
+  MIN_EXPECTED_LATENCY = 0
+  MAX_EXPECTED_LATENCY = 500
 
   def AddMeasurement(self, input_event, output_event):
     """
@@ -81,6 +87,11 @@ class DrawEventLatencySeries(MeasurementSeries):
     return [float(m.output_event.time - m.input_event.time)  * self.ms_per_frame
             for m in self]
 
+  def SanityCheck(self):
+    for v in self.values:
+      if v < self.MIN_EXPECTED_LATENCY or v > self.MAX_EXPECTED_LATENCY:
+        raise Exception("Calculated latency is out of expected range")
+
 
 class DrawEventStartLatencySeries(DrawEventLatencySeries):
   """A series that measures the latency between an input and a draw event."""
@@ -95,6 +106,7 @@ class DroppedFramesSeries(MeasurementSeries):
   """Measures the percent of dropped frames assuming a 60Hz refresh rate."""
   DEFAULT_UNITS = "%"
   DEFAULT_MIN_NUM_SAMPLES = 0
+  MAX_EXPECTED_FRAME_DELTA = 20
 
   def AddMeasurement(self, draw_event):
     """
@@ -132,6 +144,11 @@ class DroppedFramesSeries(MeasurementSeries):
       num_frames = len(self.dropped_times) + len(self)
       return [float(len(self.dropped_times)) / float(num_frames) * 100.0]
     return [100.0]
+
+  def SanityCheck(self):
+    times = [e.time for e in self]
+    if max(np.diff(time)) > self.MAX_EXPECTED_FRAME_DELTA:
+      raise Exception("Time between frames higher than expected")
 
 
 class TimeValueMeasurementSeries(MeasurementSeries):
@@ -226,6 +243,12 @@ class BenchmarkMeasurements(dict):
   def AddDroppedFramesMeasurement(self, name, draw_event, pass_num=0):
     series = self.GetSeries(name, pass_num, DroppedFramesSeries)
     series.AddMeasurement(draw_event)
+
+  def SanityCheck(self):
+    """Checks measurements for sanity."""
+    for pass_msrmnts in self.values():
+      for series in pass_msrmnts.values():
+        series.SanityCheck()
 
   def SummarizeValues(self, series_name):
     """Collects all MeasurementSeries.values for the specified series_name.

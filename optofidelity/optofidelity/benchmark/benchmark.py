@@ -109,6 +109,7 @@ class Benchmark(object):
     start_t = time.time()
     self.results.measurements = BenchmarkMeasurements(self.trace.ms_per_frame)
     self._delegate.ProcessTrace(self.trace, self.results.measurements)
+    self.results.measurements.SanityCheck()
 
     _perf_log.info("Trace processing: %f s", (time.time() - start_t))
     return self.results
