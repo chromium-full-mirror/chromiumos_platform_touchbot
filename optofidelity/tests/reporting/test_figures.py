@@ -134,19 +134,16 @@ class TraceOverviewFigureTests(FigureVerificationTests):
 class MeasurementsFigureTests(FigureVerificationTests):
   def createSimpleResults(self):
     measurements = BenchmarkMeasurements()
-    measurements.AddSeriesInfo("Location", DrawEventLatencySeries)
-    measurements.AddSeriesInfo("Events", DrawEventLatencySeries)
-
-    location_series = measurements.AddSeries("Location")
     for i in range(0, 100, 10):
-      location_series.AddMeasurement(Event(time=i, location=float(i * 10)),
-                                     Event(time=i + 5,
-                                           location=float((i * 10) + 50)))
-    event_series = measurements.AddSeries("Events")
-    event_series.AddMeasurement(Event(time=15, state=False),
-                                Event(time=25, state=True))
-    event_series.AddMeasurement(Event(time=75, state=True),
-                                Event(time=85, state=False))
+      measurements.AddDrawEventMeasurement("Location",
+          Event(time=i, location=float(i * 10)),
+          Event(time=i + 5, start_time=i + 4, location=float((i * 10) + 50)))
+    measurements.AddDrawEventMeasurement("Events",
+        Event(time=15, state=False),
+        Event(time=25, start_time=20, state=True))
+    measurements.AddDrawEventMeasurement("Events",
+        Event(time=75, state=True),
+        Event(time=85, start_time=80, state=False))
     return measurements
 
   def testLatencyPlot(self):
@@ -195,15 +192,13 @@ class HistogramFigureTests(FigureVerificationTests):
 
   def createMultiPassResults(self, offset):
     measurements = BenchmarkMeasurements()
-    measurements.AddSeriesInfo("TestMeasurement", DrawEventLatencySeries)
-    series = [measurements.AddSeries("TestMeasurement", 0),
-              measurements.AddSeries("TestMeasurement", 1)]
     for i, latency in enumerate(self.LATENCIES):
       pass_num = i % 2
       late_time = int(i + latency / 3.33 + offset)
-      series[pass_num].AddMeasurement(Event(i, start_time=i - 20),
-                                      Event(late_time,
-                                            start_time=int(i + latency) - 20))
+      measurements.AddDrawEventMeasurement("TestMeasurement",
+          Event(i, start_time=i - 20),
+          Event(late_time, start_time=int(i + latency) - 20),
+          pass_num=pass_num)
     return measurements
 
   def testPrimaryHistogram(self):

@@ -154,3 +154,5 @@ class TestResultsCompability(unittest.TestCase):
     loaded_msrmnts = loaded_results.measurements
     self.assertEqual(results.measurements.SummarizeValues("LineDrawLatency"),
                      loaded_msrmnts.SummarizeValues("LineDrawLatency"))
+    self.assertEqual(loaded_msrmnts.series_infos,
+                     results.measurements.series_infos)

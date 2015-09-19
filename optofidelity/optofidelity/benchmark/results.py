@@ -175,7 +175,7 @@ class PassMeasurements(dict):
     return max([s.end_time for s in self.itervalues()])
 
 
-class BenchmarkMeasurements(defaultdict):
+class BenchmarkMeasurements(dict):
   """A dictionary of all MeasurementSeries made in one benchmark.
 
   The dictionary maps a pass number to a PassMeasurements instance, which
@@ -185,46 +185,15 @@ class BenchmarkMeasurements(defaultdict):
 
   DEFAULT_MIN_NUM_SAMPLES = 100
 
-  def __new__(cls, ms_per_frame=None):
-    """
-    """
-    self = super(BenchmarkMeasurements, cls).__new__(cls)
-    self.series_infos = dict()
+  def __setstate__(self, state):
+    """For compability to older pickled versions."""
+    self.series_infos = state.get("series_infos", dict())
+    self.ms_per_frame = state.get("ms_per_frame", 3.33)
+
+  def __init__(self, ms_per_frame=None, series_infos=None):
+    super(BenchmarkMeasurements, self).__init__()
+    self.series_infos = series_infos or dict()
     self.ms_per_frame = ms_per_frame or 3.33
-    return self
-
-  def __init__(self, *args, **kwargs):
-    super(BenchmarkMeasurements, self).__init__(PassMeasurements)
-
-  def AddSeriesInfo(self, series_name, series_type, units=None,
-                    min_num_samples=None):
-    """Register a new type of MeasurementSeries.
-
-    This method has to be called before calling AddSeries with that series_name.
-
-    :param str series_name: Name of the measurement series
-    :param type series_type: Type of the series (subclass of MeasurementSeries)
-    :param Optional[str] unit: Optional unit for display purposes.
-    :param int min_num_samples: Minimum number of samples to collect.
-    """
-    if units is None:
-      units = series_type.DEFAULT_UNITS
-    min_num_samples = min_num_samples or series_type.DEFAULT_MIN_NUM_SAMPLES
-    self.series_infos[series_name] = MeasurementSeriesInfo(series_name,
-        series_type, units, min_num_samples)
-
-  def AddSeries(self, series_name, pass_num=0):
-    """Add an empty new series to include measurements.
-
-    :param str series_name: Name of the measurement series as previously
-           registered with AddSeriesInfo
-    :param Optional[int]: Pass number for this series.
-    :returns MeasurementSeries: An instance of series_type for this series_name.
-    """
-    series_info = self.series_infos[series_name]
-    series = series_info.series_type(series_name, pass_num, self.ms_per_frame)
-    self[pass_num][series_name] = series
-    return series
 
   def GetSeries(self, series_name, pass_num, series_type):
     if series_name not in self.series_infos:
@@ -233,6 +202,8 @@ class BenchmarkMeasurements(defaultdict):
                                           series_type.DEFAULT_MIN_NUM_SAMPLES)
       self.series_infos[series_name] = series_info
 
+    if pass_num not in self:
+      self[pass_num] = PassMeasurements()
     series = self[pass_num].get(series_name)
     if not series:
       series = series_type(series_name, pass_num, self.ms_per_frame)
@@ -282,16 +253,10 @@ class BenchmarkMeasurements(defaultdict):
         add_line(3, "%s: %s", series.series_name, info)
     return "\n".join(lines)
 
-class AggregateMeasurements(defaultdict):
+
+class AggregateMeasurements(dict):
   """A dictionary of measurements from multiple benchmarks"""
   __metaclass__ = TypecheckMeta
-
-  def __init__(self, type=None):
-    """
-    :param child_type: ignored. Necessary since during unpickling the
-           defaultdict child type is provided as a parameter.
-    """
-    super(AggregateMeasurements, self).__init__(BenchmarkMeasurements)
 
   def HasMinNumSamples(self):
     for series_name, series_info in self.series_infos.iteritems():
@@ -327,8 +292,10 @@ class AggregateMeasurements(defaultdict):
       add_line(2, "%s: %s", series_name, info)
     return "\n".join(lines)
 
+
 class Measurement(object):
   """For backwards compability to older pickle files."""
+
 
 class MeasurementList(list):
   """For backwards compability to older pickle files."""
