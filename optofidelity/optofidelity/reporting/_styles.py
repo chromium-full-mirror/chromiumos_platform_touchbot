@@ -92,7 +92,11 @@ SCREEN_DRAW_END_STYLE = {
   "linestyle" : "solid",
   "label": "Screen Draw End"
 }
-
+ANALOG_STATE_STYLE = {
+  "color": "#a0a0a0",
+  "linewidth": 1,
+  "linestyle" : "solid",
+}
 # Measurements marker styles
 
 MEASUREMENT_STYLE = {

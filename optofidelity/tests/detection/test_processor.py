@@ -36,6 +36,7 @@ class ProcessorTest(TestCase):
         processor = self.createTestVideoProcessor(multithreaded)
         processor.InitializeDetectors(ScreenDrawDetector())
         events = processor.ProcessVideo(video_reader, self.calib, [])
+        events = [e for e in events if isinstance(e, ScreenDrawEvent)]
 
         self.assertEqual(len(events), 2)
 

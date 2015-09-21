@@ -169,6 +169,7 @@ class AbstractTraceFigure(PrimarySecondaryAxesFigure):
 
     if self._events_axes:
       led_offset = self.PLOT_OFFSETS[LEDEvent]
+      self.PlotEvents(trace.analog_state, 0.0, _styles.ANALOG_STATE_STYLE)
       self.PlotEvents(trace.uncalib_led, led_offset, _styles.LED_STYLE)
       self.PlotEvents(trace.led, led_offset, _styles.CALIB_LED_STYLE)
       screen_draw_offset = self.PLOT_OFFSETS[ScreenDrawEvent]

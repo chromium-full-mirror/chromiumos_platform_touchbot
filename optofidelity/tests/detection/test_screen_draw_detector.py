@@ -5,7 +5,7 @@
 import numpy as np
 
 from optofidelity.detection._screen_draw_detector import ScreenDrawDetector
-from optofidelity.detection.events import ScreenDrawEvent
+from optofidelity.detection.events import ScreenDrawEvent, AnalogStateEvent
 
 from .test_detector import DetectorTest
 
@@ -153,7 +153,8 @@ class ScreenDrawDetectorTest(DetectorTest):
     ]
 
     self.assertExpectedEventsGenerated(ScreenDrawDetector(),
-                                       minmax_sequence, expected_events)
+                                       minmax_sequence, expected_events,
+                                       ignore=AnalogStateEvent)
 
   def testDimmedScreenEventGeneration(self):
     BLACK = ScreenDrawEvent.STATE_BLACK
@@ -165,4 +166,5 @@ class ScreenDrawDetectorTest(DetectorTest):
 
     self.assertExpectedEventsGenerated(ScreenDrawDetector(),
                                        dimmed_preprocessed_data,
-                                       expected_events)
+                                       expected_events,
+                                       ignore=AnalogStateEvent)

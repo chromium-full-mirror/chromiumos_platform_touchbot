@@ -20,7 +20,8 @@ class Event(object):
   STATE_WHITE = False
   STATE_BLACK = True
 
-  def __init__(self, time, location=None, start_time=None, state=None):
+  def __init__(self, time, location=None, start_time=None, state=None,
+               analog_state=None):
     """
     :param int time
     :param Optional[float] location
@@ -31,6 +32,7 @@ class Event(object):
     self.location = float(location) if location is not None else None
     self.start_time = start_time
     self.state = state
+    self.analog_state = analog_state
 
     self.uncalib_time = time
     self.uncalib_start_time = start_time
@@ -74,7 +76,7 @@ class LineDrawEvent(Event):
     :param Optional[float] location
     :param int start_time
     """
-    Event.__init__(self, time, location, start_time)
+    Event.__init__(self, time, location=location, start_time=start_time)
 
 
 class FingerEvent(Event):
@@ -85,7 +87,7 @@ class FingerEvent(Event):
     :param int time
     :param float location
     """
-    Event.__init__(self, time, location)
+    Event.__init__(self, time, location=location)
 
 
 class ScreenDrawEvent(Event):
@@ -97,7 +99,7 @@ class ScreenDrawEvent(Event):
     :param int start_time
     :param bool state
     """
-    Event.__init__(self, time, None, start_time, state)
+    Event.__init__(self, time, start_time=start_time, state=state)
 
 
 class LEDEvent(Event):
@@ -108,5 +110,16 @@ class LEDEvent(Event):
     :param int time
     :param bool state
     """
-    Event.__init__(self, time, None, None, state)
+    Event.__init__(self, time, state=state)
+
+
+class AnalogStateEvent(Event):
+  EVENT_TYPE_NAME = "AnalogState"
+
+  def __init__(self, time, analog_state):
+    """
+    :param int time
+    :param float analog_state
+    """
+    Event.__init__(self, time, analog_state=analog_state)
 

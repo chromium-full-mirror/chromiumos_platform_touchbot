@@ -37,8 +37,11 @@ class DetectorTest(TestCase):
     return CalibratedFrame(image, prev_image, None, 0)
 
   def assertExpectedEventsGenerated(self, detector, data_sequence,
-                                    expected_events, print_only=False):
+                                    expected_events, print_only=False,
+                                    ignore=None):
     events = list(detector.GenerateEvents(data_sequence))
+    if ignore is not None:
+      events = [e for e in events if not isinstance(e, ignore)]
     if print_only:
       print events
       return

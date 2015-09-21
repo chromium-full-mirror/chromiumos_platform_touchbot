@@ -9,7 +9,7 @@ from optofidelity.util import nputil
 from optofidelity.videoproc import Canvas
 
 from ._detector import Detector
-from .events import ScreenDrawEvent
+from .events import AnalogStateEvent, ScreenDrawEvent
 
 _log = logging.getLogger(__name__)
 
@@ -44,3 +44,8 @@ class ScreenDrawDetector(Detector):
       state = (ScreenDrawEvent.STATE_BLACK if color < 0.5
                                            else ScreenDrawEvent.STATE_WHITE)
       yield ScreenDrawEvent(end, start, state)
+
+    for i, data in enumerate(preprocessed_data):
+      if data is None:
+        continue
+      yield AnalogStateEvent(i, 1.0 - np.mean(data))

@@ -6,8 +6,9 @@ import numpy as np
 from optofidelity.util import const_property
 import scipy.signal as signal
 
-from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
-                     ScreenDrawEvent)
+from .events import (AnalogStateEvent, Event, FingerEvent, LEDEvent,
+                     LineDrawEvent, ScreenDrawEvent)
+
 
 class Trace(list):
   """Contains a list of events ordered by time.
@@ -35,7 +36,8 @@ class Trace(list):
     self.ms_per_frame = ms_per_frame
 
   def __str__(self):
-    return "\n".join([str(e) for e in self])
+    return "\n".join([str(e) for e in self
+                             if not isinstance(e, AnalogStateEvent)])
 
   def __repr__(self):
     return str(self)
@@ -95,6 +97,10 @@ class Trace(list):
   def screen_draw_end(self):
     """:returns np.ndarray: binary time-series of when screen draws end."""
     return self._TimeSeries(ScreenDrawEvent, False, calib=True)
+
+  @property
+  def analog_state(self):
+    return self._TimeSeries(AnalogStateEvent, True)
 
   @property
   def led(self):
@@ -323,7 +329,7 @@ class Trace(list):
     if len(self) == 0:
       return np.empty((0,))
 
-    if event_type in (FingerEvent, LineDrawEvent):
+    if event_type in (FingerEvent, LineDrawEvent, AnalogStateEvent):
       current_value = np.nan
     elif event_type in (LEDEvent, ScreenDrawEvent):
       current_value = 0
@@ -347,6 +353,8 @@ class Trace(list):
           current_value = event.location
         else:
           current_value = event.uncalib_location
+      elif event.analog_state is not None:
+        current_value = event.analog_state
       else:
         current_value = np.nan
 
