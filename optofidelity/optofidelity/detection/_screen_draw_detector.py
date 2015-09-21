@@ -5,7 +5,8 @@ import logging
 
 import numpy as np
 
-from optofidelity.videoproc import Canvas, Filter, Shape
+from optofidelity.util import nputil
+from optofidelity.videoproc import Canvas
 
 from ._detector import Detector
 from .events import ScreenDrawEvent
@@ -18,21 +19,8 @@ class ScreenDrawDetector(Detector):
 
   NAME = "screen_draw"
 
-  CHANGE_THRESH = 0.9
-  """How much of the target color has to be reached for the screen to be
-     be considered fully changed."""
-
-  NO_CHANGE_THRESH = 0.05
-  """How much can the color deviate from it's supposed color to be considered
-     unchanged."""
-
   EDGE_WIDTH = 10
   """Width of edges on the sides of the screen we analyse for screen flashes."""
-
-
-  def __init__(self):
-    self._color = None
-    self._last_no_draw_time = 0
 
   def Preprocess(self, calib_frame, debugger):
     profile = np.mean(calib_frame.screen_space_normalized, 0)
@@ -43,35 +31,16 @@ class ScreenDrawDetector(Detector):
     return (np.min(segment), np.max(segment))
 
   def GenerateEvents(self, preprocessed_data):
-    for frame_index, data in enumerate(preprocessed_data):
-      if data is None:
-        continue
-      min_level, max_level = data
+    data = np.asarray(preprocessed_data, dtype=np.float)
+    profile_min = data[:, 0]
+    profile_max = data[:, 1]
 
-      # Note the last time the profile stays below the no_change threshold. This
-      # is the time index just before the draw starts.
-      # If the threshold exceeds the change threshold we consider the draw
-      # done and generate both the start and end draw event.
-      if self._color == ScreenDrawEvent.STATE_BLACK:
-        if max_level < self.NO_CHANGE_THRESH:
-          self._last_no_draw_time = frame_index
-        elif min_level > self.CHANGE_THRESH:
-          self._color = ScreenDrawEvent.STATE_WHITE
-          yield ScreenDrawEvent(frame_index, state=self._color,
-                                  start_time=self._last_no_draw_time + 1)
-
-      # Analogous to the black logic.
-      elif self._color == ScreenDrawEvent.STATE_WHITE:
-        if min_level > 1.0 - self.NO_CHANGE_THRESH:
-          self._last_no_draw_time = frame_index
-        elif max_level < 1.0 - self.CHANGE_THRESH:
-          self._color = ScreenDrawEvent.STATE_BLACK
-          yield ScreenDrawEvent(frame_index, state=self._color,
-                                  start_time=self._last_no_draw_time + 1)
-
-      # Wait for a solid black or white screen to set initial color
-      else:
-        if max_level < self.NO_CHANGE_THRESH:
-          self._color = ScreenDrawEvent.STATE_BLACK
-        elif max_level > 1.0 - self.NO_CHANGE_THRESH:
-          self._color = ScreenDrawEvent.STATE_WHITE
+    min_changes = nputil.FindStateChanges(profile_min)
+    max_changes = nputil.FindStateChanges(profile_max)
+    for min_change, max_change in zip(min_changes, max_changes):
+      start = min([min_change[0], max_change[0]])
+      end = max([min_change[1], max_change[1]])
+      color = np.mean([profile_min[end], profile_max[end]])
+      state = (ScreenDrawEvent.STATE_BLACK if color < 0.5
+                                           else ScreenDrawEvent.STATE_WHITE)
+      yield ScreenDrawEvent(end, start, state)
