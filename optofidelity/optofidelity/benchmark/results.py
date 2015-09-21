@@ -147,7 +147,7 @@ class DroppedFramesSeries(MeasurementSeries):
 
   def SanityCheck(self):
     times = [e.time for e in self]
-    if max(np.diff(time)) > self.MAX_EXPECTED_FRAME_DELTA:
+    if max(np.diff(times)) > self.MAX_EXPECTED_FRAME_DELTA:
       raise Exception("Time between frames higher than expected")
 
 

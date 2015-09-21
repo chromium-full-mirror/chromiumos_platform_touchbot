@@ -22,6 +22,9 @@ TEST_DEFINITIONS = {
   "finger.small.s6":
       Test("20150825_1630_000", {}),
 
+  "finger.low_finger.z4":
+      Test("20150929_1515_000", {}),
+
   "led.false_suppression.nexus4":
       Test("20150825_1953_000", {}),
   "led.false_suppression.s6edge":
@@ -32,16 +35,68 @@ TEST_DEFINITIONS = {
       Test("20150826_2244_000", {}),
   "led.false_distance_suppression.nexus4":
       Test("20150826_2139_000", {}),
+  "led.inconsistent.nexus5":
+      Test("20150915_2230_003", {}),
+  "led.inconsistent.s6edge":
+      Test("20150928_1805_000", {}),
 
   "line.brightness_changed.nexus6":
-    Test("20150908_1624_000", Exception),
+      Test("20150908_1624_000", {}),
+  "line.brightness_changed_2.nexus6":
+      Test("20150916_0037_000", {}),
+
+  "screen_draw.dimmed_screen.nexus6":
+      Test("20150916_0014_000", {}),
+  "screen_draw.draw_start_misdetected.s6edge":
+      Test("20150925_1207_001", {}),
+
+  "keyboard.missed_state_change.s6edge":
+      Test("20150928_2234_000", {}),
 
   "baseline.tap.nexus4":
       Test("20150825_1908_000", {"DownLatency": 98, "UpLatency": 81}),
-  "baseline.tap.nexus6":
-      Test("20150825_1827_000", {"DownLatency": 63, "UpLatency": 90}),
+  "baseline.tap.nexus5":
+      Test("20150925_1435_000", {}),
+  "baseline.tap.iphone6":
+      Test("20150925_1408_000", {}),
+  "baseline.tap.s6edge":
+      Test("20150925_1207_003", {}),
   "baseline.tap.m9":
-      Test("20150825_1730_000", {"DownLatency": 116, "UpLatency": 108})
+      Test("20150925_1447_000", {}),
+  "baseline.tap.iphone6plus":
+      Test("20150928_1350_000", {}),
+  "baseline.tap.nexus6":
+      Test("20150928_1452_000", {}),
+  "baseline.tap.s6":
+      Test("20150928_1550_001", {}),
+
+  "baseline.keyboard.nexus6":
+      Test("20150915_2353_001", {}),
+  "baseline.keyboard.s6edge.1":
+      Test("20150925_1455_000", {}),
+  "baseline.keyboard.s6edge.2":
+      Test("20150925_1455_001", {}),
+  "baseline.keyboard.s6edge.3":
+      Test("20150925_1455_002", {}),
+  "baseline.keyboard.s6":
+      Test("20150928_1424_001", {}),
+  "baseline.keyboard.nexus4":
+      Test("20150928_1400_000", {}),
+  "baseline.keyboard.nexus5":
+      Test("20150928_1443_000", {}),
+
+  "baseline.scroll.nexus5":
+      Test("20150925_1428_000", {}),
+  "baseline.scroll.s6edge":
+      Test("20150925_1202_000", {}),
+  "baseline.scroll.m9":
+      Test("20150925_1442_000", {}),
+  "baseline.scroll.iphone6plus":
+      Test("20150928_1341_000", {}),
+  "baseline.scroll.nexus6":
+      Test("20150928_1500_000", {}),
+  "baseline.scroll.s6":
+      Test("20150928_1544_000", {}),
 }
 
 FAILURE_THRESHOLD = 5
