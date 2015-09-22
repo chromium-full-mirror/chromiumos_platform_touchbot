@@ -92,7 +92,7 @@
   </subject-type>
 
   <subject-type type-name="android_keyboard" parent-type="android_native_base"
-                test-plane="0.5">
+                test-plane="0.5" margin="(0, 0)">
     <benchmark name="keyboard" type="keyboard" activity="keyboard"
                key-location="20" />
   </subject-type>
@@ -118,6 +118,8 @@
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
                oauth-key-file="file:oauth2key.json" />
+    <benchmark name="tap" type="tap" activity="tap" />
+    <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
 
 </optofidelity>

@@ -129,7 +129,7 @@ class Benchmark(object):
       if not os.path.exists(path):
         os.makedirs(path)
 
-      with open(self._GetPickleFileName(path), "w") as pickle_file:
+      with open(self._GetPickleFileName(path), "wb") as pickle_file:
         pickle.dump(self, pickle_file, protocol=pickle.HIGHEST_PROTOCOL)
       if debug_info:
         self._SaveDebugInfo(path)
@@ -146,12 +146,12 @@ class Benchmark(object):
       SaveImage(os.path.join(path, "calibration_black.png"), calib.black_frame)
       SaveImage(os.path.join(path, "calibration_white.png"), calib.white_frame)
     if self.trace:
-      with open(os.path.join(path, "trace.pickle"), "w") as pickle_file:
+      with open(os.path.join(path, "trace.pickle"), "wb") as pickle_file:
         pickle.dump(self.trace, pickle_file)
 
     def DumpProperty(variable_name):
       data = getattr(self, variable_name)
-      with open(os.path.join(path, "%s.txt" % variable_name), "w") as file:
+      with open(os.path.join(path, "%s.txt" % variable_name), "wb") as file:
         file.write(str(data) if data is not None else "")
     DumpProperty("trace")
     DumpProperty("results")
@@ -163,7 +163,7 @@ class Benchmark(object):
 
     :param str url: local folder or gs:// url
     """
-    with GSOpenFile(cls._GetPickleFileName(url), "r") as pickle_file:
+    with GSOpenFile(cls._GetPickleFileName(url), "rb") as pickle_file:
       self = pickle.load(pickle_file)
 
     video_url = cls._GetVideoFileName(url)

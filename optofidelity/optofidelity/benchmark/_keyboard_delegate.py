@@ -45,7 +45,9 @@ class KeyboardDelegate(BenchmarkDelegate):
 
     subject.TapOnTestPlane(key_location)
     subject.camera.Trigger()
+    subject.StartCollection(duration)
     subject.TapOnTestPlane(key_location, count=self.NUM_MEASUREMENTS)
+    subject.StopCollection()
     return subject.camera.ReceiveVideo()
 
   def ProcessTrace(self, trace, measurements):
