@@ -82,7 +82,8 @@ class Benchmark(object):
     """
     assert self.video, "No test video"
 
-    self._delegate.InitializeProcessor(video_processor)
+    self._delegate.InitializeProcessor(video_processor, self.video,
+                                       self.screen_calibration)
 
     start_t = time.time()
     self.trace = video_processor.ProcessVideo(self.video,

@@ -26,7 +26,7 @@ class TapDelegate(BenchmarkDelegate):
   CAMERA_FRAMERATE = 300
   """Framerate at which to record, in frames per second."""
 
-  def InitializeProcessor(self, processor):
+  def InitializeProcessor(self, processor, video_reader, screen_calibration):
     processor.InitializeDetectors(ScreenDrawDetector(), LEDDetector())
 
   def ExecuteOnSubject(self, subject):

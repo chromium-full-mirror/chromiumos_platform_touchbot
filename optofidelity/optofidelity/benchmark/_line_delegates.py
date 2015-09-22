@@ -22,7 +22,7 @@ class LineDrawDelegate(BenchmarkDelegate):
   CAMERA_FRAMERATE = 300
   """Framerate at which to record, in frames per second."""
 
-  def InitializeProcessor(self, processor):
+  def InitializeProcessor(self, processor, video_reader, screen_calibration):
     processor.InitializeDetectors(LineDetector(), FingerDetector())
 
   def ExecuteOnSubject(self, subject):
@@ -124,7 +124,7 @@ class LineDrawStartDelegate(BenchmarkDelegate):
   finger_min_speed = 0.2
   """Minimum speed for the robot finger to be considered moving."""
 
-  def InitializeProcessor(self, processor):
+  def InitializeProcessor(self, processor, video_reader, screen_calibration):
     processor.EnableDetectors(line_draw=True, finger_location=True, led=True)
 
   def ExecuteOnSubject(self, subject):

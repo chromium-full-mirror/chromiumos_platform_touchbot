@@ -10,7 +10,7 @@ from .results import DrawEventLatencySeries
 class OpenStuffDelegate(BenchmarkDelegate):
   """Contains logic to measure the latency of opening stuff."""
 
-  def InitializeProcessor(self, processor):
+  def InitializeProcessor(self, processor, video_reader, screen_calibration):
     processor.EnableDetectors(led=True)
 
   def ExecuteOnSubject(self, subject):

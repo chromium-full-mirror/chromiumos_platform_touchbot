@@ -28,7 +28,7 @@ class BenchmarkDelegate(object):
     self.activity = activity
 
   @abstractmethod
-  def InitializeProcessor(self, processor):
+  def InitializeProcessor(self, processor, video_reader, screen_calibration):
     """Configure video processor processor.
 
     Most specifically enable the required detectors.
