@@ -43,7 +43,11 @@ def FindStateChanges(array, settled_threshold=0.05, lookahead_length=5):
       if np.sign(delta) != delta_sign or np.abs(delta) < settled_threshold:
         # Look ahead to see if state change is complete or we are just at a
         # dip before the actual state change is done.
-        lookahead_delta = (array[i + step * 5] - array[i]) * step
+        lookahead_index = i + step * lookahead_length
+        if (lookahead_length <= 0 or lookahead_index < 0 or
+            lookahead_index >= len(array)):
+          return i - step
+        lookahead_delta = (array[lookahead_index] - array[i]) * step
         if (np.sign(lookahead_delta) != delta_sign or
             np.abs(lookahead_delta) < settled_threshold):
           return i - step

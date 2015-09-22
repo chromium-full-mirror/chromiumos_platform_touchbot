@@ -12,6 +12,7 @@ from optofidelity.detection import ScreenCalibration, VideoProcessor
 from optofidelity.system import BenchmarkSubject, BenchmarkSystem
 from optofidelity.util import GSFindUniqueFilename, LogCapture, ProgressPrinter
 
+from ._keyboard_delegate import KeyboardDelegate
 from ._line_delegates import LineDrawDelegate, LineDrawStartDelegate
 from ._open_delegates import OpenStuffDelegate
 from ._tap_delegate import TapDelegate
@@ -36,7 +37,8 @@ class BenchmarkRunner(object):
     "line_draw": LineDrawDelegate,
     "line_draw_start": LineDrawStartDelegate,
     "tap": TapDelegate,
-    "open": OpenStuffDelegate
+    "open": OpenStuffDelegate,
+    "keyboard": KeyboardDelegate
   }
 
   def __init__(self, benchmark_system, video_processor):

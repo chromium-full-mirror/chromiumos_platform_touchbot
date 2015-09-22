@@ -3,6 +3,7 @@
 
   <dut-type type-name="android_phone">
     <subject name="native" type="android_native" />
+    <subject name="keyboard" type="android_keyboard" />
   </dut-type>
 
   <dut-type type-name="iphone">

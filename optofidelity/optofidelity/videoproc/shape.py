@@ -191,6 +191,20 @@ class Shape(object):
       self._contour = self._contour.astype(np.bool)
     return self._contour
 
+  @classmethod
+  def FromRectangle(cls, array_shape, left=None, right=None, top=None,
+                    bottom=None):
+    mask = np.ones(array_shape, dtype=np.bool)
+    if left is not None:
+      mask[:, :left] = False
+    if right is not None:
+      mask[:, right:] = False
+    if top is not None:
+      mask[:top, :] = False
+    if bottom is not None:
+      mask[bottom:, :] = False
+    return Shape(mask)
+
   @staticmethod
   @typecheck
   def Shapes(binary_im):

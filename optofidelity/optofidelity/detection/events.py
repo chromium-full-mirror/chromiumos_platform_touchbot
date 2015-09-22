@@ -19,6 +19,8 @@ class Event(object):
   STATE_OFF = False
   STATE_WHITE = False
   STATE_BLACK = True
+  STATE_CLOSED = False
+  STATE_OPEN = True
 
   def __init__(self, time, location=None, start_time=None, state=None,
                analog_state=None):
@@ -92,6 +94,18 @@ class FingerEvent(Event):
 
 class ScreenDrawEvent(Event):
   EVENT_TYPE_NAME = "ScreenDraw"
+
+  def __init__(self, time, start_time, state):
+    """
+    :param int time
+    :param int start_time
+    :param bool state
+    """
+    Event.__init__(self, time, start_time=start_time, state=state)
+
+
+class StateChangeEvent(Event):
+  EVENT_TYPE_NAME = "StateChange"
 
   def __init__(self, time, start_time, state):
     """

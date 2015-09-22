@@ -169,3 +169,10 @@ class Canvas(object):
     assert(mask.shape[0] == self._buffer.shape[0])
     assert(mask.shape[1] == self._buffer.shape[1])
     self._buffer[mask] = color
+
+  def DrawImage(self, image, alpha=1.0):
+    assert(image.shape[0] == self._buffer.shape[0])
+    assert(image.shape[1] == self._buffer.shape[1])
+    for i in range(3):
+      self._buffer[:,:,i] = image
+    self._buffer[:,:,3] = alpha

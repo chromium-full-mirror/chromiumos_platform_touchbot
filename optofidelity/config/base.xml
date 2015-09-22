@@ -2,6 +2,7 @@
               results="gs://touchbot/optofidelity/benchmark_results/"
               reports="http://crostouchlatency.appspot.com/reports/"
               state-file="file:optofidelity.state">
+  <!-- System Config -->
   <benchmark-system>
     <backend type="tnt" host="192.168.0.11" port="8000" />
     <camera type="phantom" host="192.168.0.4" />
@@ -15,12 +16,8 @@
   <orchestrator results="{results}" database="{database}" reports="{reports}"
                 save-video="option:save_video" quick="option:quick" />
 
-  <subject-type type-name="base" margin="(15, 15)" exposure="{exposure}">
-    <benchmark name="tap" type="tap" activity="tap" />
-    <benchmark name="scroll" type="line_draw" activity="scroll" />
-  </subject-type>
-
-  <subject-type type-name="adb-base" parent-type="base">
+  <!-- ADB Base -->
+  <subject-type type-name="adb_base" margin="(15, 15)" exposure="{exposure}">
     <preparer type="adb_screen_off" adb="{adb}" />
     <setup type="adb_settings" adb="{adb}">
       <setting name="screen_brightness" value="255" />
@@ -34,7 +31,8 @@
             serial="/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN005XC0-if00-port0" port="{port}" adb="{adb}" />
   </subject-type>
 
-  <subject-type type-name="clank_base" parent-type="adb-base">
+  <!-- Clank -->
+  <subject-type type-name="clank_base" parent-type="adb_base">
     <navigator type="web_adb" adb="{adb}" data="file:../apps/web">
       <activity name="calibration" file="{data}/flash.html" />
       <activity name="scroll" file="{data}/scroll.html" />
@@ -45,6 +43,8 @@
     <updater type="chrome" adb="{adb}"/>
     <dashboard type="chromeperf" master="{master}"
                endpoint="https://chromeperf.appspot.com/add_point" />
+    <benchmark name="tap" type="tap" activity="tap" />
+    <benchmark name="scroll" type="line_draw" activity="scroll" />
     <benchmark name="touch_move" type="line_draw" activity="touch_move" />
   </subject-type>
 
@@ -66,7 +66,9 @@
     <updater type="chrome" channel="dev"/>
   </subject-type>
 
-  <subject-type type-name="android_native" margin="(20, 15)" parent-type="adb-base">
+  <!-- Android Native -->
+  <subject-type type-name="android_native_base" margin="(20, 15)"
+                parent-type="adb_base">
     <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
                apk="file:../apps/Android/app/app-release.apk"
                stay-alive="{stay-alive}">
@@ -84,7 +86,19 @@
                oauth-key-file="file:oauth2key.json" />
   </subject-type>
 
-  <subject-type type-name="manual"  parent-type="base">
+  <subject-type type-name="android_native" parent-type="android_native_base">
+    <benchmark name="tap" type="tap" activity="tap" />
+    <benchmark name="scroll" type="line_draw" activity="scroll" />
+  </subject-type>
+
+  <subject-type type-name="android_keyboard" parent-type="android_native_base"
+                test-plane="0.5">
+    <benchmark name="keyboard" type="keyboard" activity="keyboard"
+               key-location="20" />
+  </subject-type>
+
+  <!-- Manual -->
+  <subject-type type-name="manual" margin="(15, 15)" exposure="{exposure}">
     <navigator type="manual" />
     <updater type="manual" version="0.0" />
     <dashboard type="spreadsheet"
@@ -92,7 +106,8 @@
                oauth-key-file="file:oauth2key.json" />
   </subject-type>
 
-  <subject-type type-name="ios" parent-type="base">
+  <!-- iOS -->
+  <subject-type type-name="ios" margin="(15, 15)" exposure="{exposure}">
     <navigator type="robot">
       <activity name="neutral" icon="file:icons/neutral.shm" />
       <activity name="calibration" icon="file:icons/flash.shm" />

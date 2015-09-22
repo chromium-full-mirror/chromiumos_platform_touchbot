@@ -19,8 +19,9 @@ from ._finger_detector import FingerDetector
 from ._led_detector import LEDDetector
 from ._line_detector import LineDetector
 from ._screen_draw_detector import ScreenDrawDetector
+from ._state_change_detector import StateChangeDetector
 from .events import (Event, FingerEvent, LEDEvent, LineDrawEvent,
-                     ScreenDrawEvent)
+                     ScreenDrawEvent, StateChangeEvent)
 from .mt_processor import MultithreadedVideoProcessor
 from .processor import VideoProcessor
 from .screen_calibration import ScreenCalibration
