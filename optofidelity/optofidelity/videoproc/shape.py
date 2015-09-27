@@ -191,6 +191,9 @@ class Shape(object):
       self._contour = self._contour.astype(np.bool)
     return self._contour
 
+  def CalculateProfile(self, image):
+    return np.sum(image * self.mask, 0) / np.sum(self.mask, 0)
+
   @classmethod
   def FromRectangle(cls, array_shape, left=None, right=None, top=None,
                     bottom=None):

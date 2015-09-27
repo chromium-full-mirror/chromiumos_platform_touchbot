@@ -73,7 +73,7 @@ class CalibratedFrame(object):
     if self.camera_space_prev_frame is None:
       return None
     normalized = self._screen_calibration.NormalizeFrame(
-        self.screen_space_prev_frame)
+        self.screen_space_prev_frame, pwm_compensation=True)
     return Filter.Truncate(normalized)
 
   @const_property
@@ -81,7 +81,7 @@ class CalibratedFrame(object):
     """:returns np.ndarray: color normalized frame in screen space."""
     self._require_calibration()
     normalized = self._screen_calibration.NormalizeFrame(
-        self.screen_space_frame)
+        self.screen_space_frame, pwm_compensation=True)
     thresh = self.BRIGHTNESS_OUT_OF_RANGE_THRESH
     if (np.any(normalized > 1 + thresh) or np.any(normalized < -thresh)):
       raise ValueError("Brightness is outside of normalized range.")
@@ -129,3 +129,24 @@ class CalibratedFrame(object):
   def _require_calibration(self):
     if not self._screen_calibration:
       raise ValueError("screen_calibration is required for this operation.")
+
+  def MeasurePWMProfile(self, image=None, height=20):
+    if image is None:
+      image = self.screen_space_normalized
+    top = image.shape[0] - height
+    measurement_area = Shape.FromRectangle(image.shape, top=top)
+    return measurement_area.CalculateProfile(image)
+
+  def MeasurePWM(self, image=None, height=20):
+    pwm_profile = self.MeasurePWMProfile(image, height)
+    return np.tile(pwm_profile, (image.shape[0], 1))
+
+  def CompensatePWM(self, image=None, height=20):
+    pwm = self.MeasurePWM(image, height)
+    pwm[pwm < 0.1] = 0.1
+    return image / pwm
+
+  def CompensatePWMProfile(self, profile, image=None, height=20):
+    pwm = self.MeasurePWMProfile(image, height)
+    pwm[pwm < 0.1] = 0.1
+    return profile / pwm

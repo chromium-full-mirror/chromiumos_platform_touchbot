@@ -6,10 +6,10 @@ from unittest import TestCase
 import cPickle as pickle
 
 import numpy as np
-
+import cv2
 from optofidelity.detection.screen_calibration import ScreenCalibration
 from optofidelity.videoproc import DebugView
-
+from tests.config import CONFIG
 from . import test_data
 
 
@@ -33,6 +33,11 @@ class ScreenCalibrationTests(TestCase):
 
   def testCalibrationFromVideo(self):
     with test_data.CalibrationVideo() as video_reader:
+      calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
+      self.assertCalibrationIsConsistent(calibration)
+
+  def testLowBrightnessCalibration(self):
+    with test_data.LoadVideo("calibration_1.avi") as video_reader:
       calibration = ScreenCalibration.FromScreenFlashVideo(video_reader)
       self.assertCalibrationIsConsistent(calibration)
 
@@ -60,15 +65,33 @@ class ScreenCalibrationTests(TestCase):
     self.assertTrue(np.allclose(black_normalized, 0))
     self.assertTrue(np.allclose(white_normalized, 1))
 
-  def testPWMCalibration(self):
-    calib = ScreenCalibration.FromScreenFlashVideo(
-        test_data.LoadVideo("pwm_calibration.avi"))
-    self.assertCalibrationIsConsistent(calib)
+  def testPWMCalibration1(self):
+    video = test_data.LoadVideo("pwm_calibration.avi")
+    calibration = ScreenCalibration.FromScreenFlashVideo(video)
 
-  def testPWMCompensation(self):
-    calib = ScreenCalibration(test_data.LoadImage("pwm_calib_black.png"),
-                              test_data.LoadImage("pwm_calib_white.png"))
-    self.assertLess(np.std(calib.white_reference), 0.01)
+    self.verifyPWMCalibration(video, calibration)
+
+  def testPWMCalibration2(self):
+    video = test_data.LoadVideo("pwm_calibration_2.avi")
+    calibration = ScreenCalibration.FromScreenFlashVideo(video)
+    self.verifyPWMCalibration(video, calibration)
+
+  def verifyPWMCalibration(self, video, calibration):
+    self.assertIsNotNone(calibration.pwm_profile)
+    if not CONFIG.get("user_interaction"):
+      return
+
+    screen_space = calibration.CameraToScreenSpace(video.FrameAt(127))
+    normalized = calibration.NormalizeFrame(screen_space, debug=True,
+                                            pwm_compensation=True)
+
+    for i, frame in video.Frames():
+      screen_space = calibration.CameraToScreenSpace(frame)
+      normalized = calibration.NormalizeFrame(screen_space,
+                                              pwm_compensation=True)
+      print i
+      cv2.imshow("PWM Calibration", normalized)
+      cv2.waitKey()
 
   def testStabilization(self):
     self.skipTest("Manual verification required.")
