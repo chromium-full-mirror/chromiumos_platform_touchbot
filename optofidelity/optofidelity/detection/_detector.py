@@ -107,7 +107,7 @@ class Detector(object):
     """
 
   @abstractmethod
-  def GenerateEvents(self, preprocessed_data):
+  def GenerateEvents(self, preprocessed_data, debug=False):
     """Perform detection on the preprocessed data and return events.
 
     :type debugger: Optional[DetectorDebugger]
