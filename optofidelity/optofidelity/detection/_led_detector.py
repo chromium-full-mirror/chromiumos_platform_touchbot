@@ -35,7 +35,7 @@ class LEDDetector(Detector):
   LED_MIN_AREA = 100
   """Minimum size of an LED in the min filtered and thresholded picture."""
 
-  SCREEN_MAX_AVG_DELTA = 0.1
+  SCREEN_MAX_DELTA_THRESH = 0.9
   """Maximum average delta of the screen before suppressing LED events."""
 
   DEBOUNCE_DURATION = 5
@@ -52,35 +52,37 @@ class LEDDetector(Detector):
       _log.debug("%04d: " + msg, calib_frame.frame_index, *params)
 
     # Create mask showing everything outside the active screen.
+    array_shape = calib_frame.camera_space_shape
     if calib_frame.has_calibration:
       margin = self.LED_SCREEN_MARGIN
       screen_shape = calib_frame.camera_space_screen_shape
-      area_of_interest = np.ones(calib_frame.camera_space_shape)
-      area_of_interest[(screen_shape.top):, :] = 0
       left = (screen_shape.left - margin)
       if left < 0:
         left = 0
-      area_of_interest[:, :left] = 0
       right = (screen_shape.right + margin)
-      if right > area_of_interest.shape[1]:
-        right = area_of_interest.shape[1]
-      area_of_interest[:, right:] = 0
+      if right > array_shape[1]:
+        right = array_shape[1]
+      area_of_interest = Shape.FromRectangle(array_shape, left=left,
+          right=right, bottom=screen_shape.top - margin)
     else:
-      area_of_interest = np.ones(calib_frame.camera_space_shape)
-
+      area_of_interest = Shape(np.ones(array_shape, dtype=np.bool))
+    if debugger:
+      debugger.camera_space_canvas.DrawMask(Canvas.GREEN,
+                                            area_of_interest.contour)
     # If the screen is switching, reflections of the screen will cause parts
     # of the robot to look like a flashing LED. So We want to suppress any
     # LED events during this time.
     if calib_frame.has_calibration:
       screen_profile = np.mean(calib_frame.screen_space_delta, 0)
-      screen_avg_delta = np.max(np.abs(screen_profile))
-      log("screen_avg_delta=%.2f", screen_avg_delta)
-      if screen_avg_delta > self.SCREEN_MAX_AVG_DELTA:
+
+      screen_max_delta = np.max(np.abs(screen_profile))
+      log("screen_max_delta=%.2f", screen_max_delta)
+      if screen_max_delta > self.SCREEN_MAX_DELTA_THRESH:
         log("Suspending LED detection")
         return []
 
     # Look for an LED shaped large change in the masked area.
-    delta = calib_frame.camera_space_delta * area_of_interest
+    delta = calib_frame.camera_space_delta * area_of_interest.mask
     delta = skimage.filters.gaussian_filter(delta, self.LED_GAUSSIAN_SIGMA)
     binary = np.abs(delta) > self.LED_MIN_DIFF_THRESHOLD
 
@@ -96,10 +98,7 @@ class LEDDetector(Detector):
         debugger.camera_space_canvas.DrawMask(draw_color, shape.contour)
     return flashes
 
-  def GenerateEvents(self, preprocessed_data):
-    def log(msg, *params):
-      _log.debug("%04d: " + msg, frame_index, *params)
-
+  def GenerateEvents(self, preprocessed_data, debug=False):
     for frame_index, flashes in enumerate(preprocessed_data):
       if flashes is None:
         continue
