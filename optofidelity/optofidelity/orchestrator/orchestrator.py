@@ -174,7 +174,7 @@ class Orchestrator(object):
           if not subject.Verify():
             self._progress.Error(subject.name, "Subject is in a bad state.")
 
-          self._runner.OpenAndCalibrateSubject(subject)
+          self._runner.OpenAndCalibrateSubject(subject, self._save_video)
           self._runner.CloseSubject()
 
   def PrepareSubjects(self, match="*"):
@@ -361,7 +361,7 @@ class Orchestrator(object):
     :returns bool: True if successful.
     """
     with self._progress.CaptureFailures(subject.name, "Subject calibration"):
-      self._runner.OpenAndCalibrateSubject(subject)
+      self._runner.OpenAndCalibrateSubject(subject, self._save_video)
       return True
     return False
 

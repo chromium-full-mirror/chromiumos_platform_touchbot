@@ -78,8 +78,9 @@ class BenchmarkRunner(object):
     finally:
       self.CloseSubject()
 
-  def OpenAndCalibrateSubject(self, subject):
-    self._screen_calibration = self._OpenAndCalibrateSubject(subject)
+  def OpenAndCalibrateSubject(self, subject, save_video=False):
+    self._screen_calibration = self._OpenAndCalibrateSubject(subject,
+                                                             save_video)
     self._current_subject = subject
 
   def CloseSubject(self):
@@ -107,7 +108,7 @@ class BenchmarkRunner(object):
       raise Exception("Must be executed within the context of UseSubject.")
     self._ExecuteBenchmark(benchmark)
 
-  def _OpenAndCalibrateSubject(self, subject):
+  def _OpenAndCalibrateSubject(self, subject, save_video=False):
     """Open a subject and calibrate screen.
 
     :type subject: BenchmarkSubject
@@ -116,7 +117,7 @@ class BenchmarkRunner(object):
     self._progress.Info(subject.name, "Opening and calibrating")
     subject.navigator.Open()
     try:
-      return self._CalibrateScreen(subject)
+      return self._CalibrateScreen(subject, save_video)
     except:
       subject.navigator.Close()
       raise
@@ -145,12 +146,19 @@ class BenchmarkRunner(object):
     benchmark.results.metadata["elapsed_time"] =  "%ds" % elapsed_time
     benchmark.log = capture.log
 
-  def _CalibrateScreen(self, subject):
+  def _CalibrateScreen(self, subject, save_video=False):
     """Execute the screen calibration process.
 
     :type subject: BenchmarkSubject
     :rtype Optional[ScreenCalibration]
     """
+    def SaveVideo(video_reader):
+      if self._calib_video_path:
+        unique_file, _ = GSFindUniqueFilename(self._calib_video_path,
+                                              "calibration_", ".avi")
+        self._progress.Info(subject.name, "Calibration video at: %s" %
+                                           (unique_file,))
+        video_reader.Save(unique_file)
     try:
       self._progress.Info(subject.name, "Calibrating screen")
       if subject.camera.is_relative:
@@ -158,15 +166,11 @@ class BenchmarkRunner(object):
       video_reader = subject.RecordCalibrationVideo()
       screen_calibration = self.video_processor.CreateScreenCalibration(
           video_reader)
+      if save_video:
+        SaveVideo(video_reader)
       return screen_calibration
     except KeyboardInterrupt:
       raise
     except:
-      if self._calib_video_path:
-        unique_file, _ = GSFindUniqueFilename(self._calib_video_path,
-                                              "calibration_", ".avi")
-        self._progress.Exception(subject.name, "Failed calibration video at: %s" %
-                                           (unique_file,))
-        video_reader.Save(unique_file)
-
+      SaveVideo(video_reader)
       raise
