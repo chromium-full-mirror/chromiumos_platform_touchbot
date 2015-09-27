@@ -3,10 +3,10 @@
 # found in the LICENSE file.
 import logging
 
+from matplotlib import pyplot
 import numpy as np
 
 from optofidelity.util import nputil
-from optofidelity.videoproc import Canvas
 
 from ._detector import Detector
 from .events import AnalogStateEvent, ScreenDrawEvent
@@ -15,37 +15,67 @@ _log = logging.getLogger(__name__)
 
 
 class ScreenDrawDetector(Detector):
-  """Detects full screen draws switching between black and white."""
+  """Detects full screen draws switching between black and white.
+
+  The algorithm calculates the average screen color for every frame and then
+  uses nputil.FindStateChanges to identify when the screen is switching between
+  black and white.
+  """
 
   NAME = "screen_draw"
 
-  EDGE_WIDTH = 10
-  """Width of edges on the sides of the screen we analyse for screen flashes."""
+  BLACK_THRESHOLD = 0.1
+  """Average normalized color of the screen to identify a black screen."""
+
+  WHITE_THRESHOLD = 0.9
+  """Average normalized color of the screen to identify a white screen."""
+
+  MAX_NOISE_LEVEL = 0.2
+  """Maximum expected noise level. If the screen crosses this level then
+     a draw is about to happen."""
+
+  MAX_TRANSITION_DURATION = 20
+  """Maximum duration of a screen transition. In number of frames."""
 
   def Preprocess(self, calib_frame, debugger):
-    profile = np.mean(calib_frame.screen_space_normalized, 0)
-    if debugger:
-      debugger.screen_space_canvas.PlotProfile(Canvas.BLUE, profile)
+    return np.mean(calib_frame.screen_space_normalized[:])
 
-    segment = [profile[:self.EDGE_WIDTH], profile[-self.EDGE_WIDTH:]]
-    return (np.min(segment), np.max(segment))
+  def GenerateEvents(self, preprocessed_data, debug=False):
+    if debug:
+      for brightness in preprocessed_data:
+        print "%.4f" % brightness
 
-  def GenerateEvents(self, preprocessed_data):
-    data = np.asarray(preprocessed_data, dtype=np.float)
-    profile_min = data[:, 0]
-    profile_max = data[:, 1]
+    # Normalize brightness
+    brightness = np.asarray(preprocessed_data, dtype=np.float)
+    brightness = nputil.NormalizeStates(brightness, self.MAX_NOISE_LEVEL)
 
-    min_changes = nputil.FindStateChanges(profile_min)
-    max_changes = nputil.FindStateChanges(profile_max)
-    for min_change, max_change in zip(min_changes, max_changes):
-      start = min([min_change[0], max_change[0]])
-      end = max([min_change[1], max_change[1]])
-      color = np.mean([profile_min[end], profile_max[end]])
+    # Find state changes
+    changes = nputil.FindStateChanges(brightness,
+                                      dict(max_value=self.BLACK_THRESHOLD),
+                                      dict(min_value=self.WHITE_THRESHOLD),
+                                      crossing_threshold=self.MAX_NOISE_LEVEL,
+                                      debug=debug)
+    if debug:
+      pyplot.figure()
+      pyplot.plot(brightness, "-x")
+
+    for start, end in changes:
+      if end - start > self.MAX_TRANSITION_DURATION:
+        continue
+
+      # Determine color of the screen after the state change
+      color = brightness[end]
       state = (ScreenDrawEvent.STATE_BLACK if color < 0.5
                                            else ScreenDrawEvent.STATE_WHITE)
-      yield ScreenDrawEvent(end, start, state)
+      if debug:
+        pyplot.vlines(start, 0, 1)
+        pyplot.vlines(end, 0, 1)
 
+      yield ScreenDrawEvent(end, start + 1, state)
+
+    if debug:
+      pyplot.show()
+
+    # Yield brightness level as analog state events for display in reports.
     for i, data in enumerate(preprocessed_data):
-      if data is None:
-        continue
-      yield AnalogStateEvent(i, 1.0 - np.mean(data))
+      yield AnalogStateEvent(i, 1.0 - data)

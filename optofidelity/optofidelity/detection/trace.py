@@ -333,10 +333,15 @@ class Trace(list):
     if len(self) == 0:
       return np.empty((0,))
 
+    filtered_events = self.FilteredByType(event_type)
+
     if event_type in (FingerEvent, LineDrawEvent, AnalogStateEvent):
       current_value = np.nan
     elif event_type in (LEDEvent, ScreenDrawEvent):
       current_value = 0
+      if len(filtered_events):
+        first_event = filtered_events[0]
+        current_value = 0 if first_event.state else 1
     else:
       raise ValueError("Unknown event type: %s" % event_type)
 
@@ -344,7 +349,7 @@ class Trace(list):
     array[:] = current_value
     last_time = 0
 
-    for event in self.FilteredByType(event_type):
+    for event in filtered_events:
       if start_time and event.start_time is not None:
         time = event.start_time if calib else event.uncalib_start_time
       else:

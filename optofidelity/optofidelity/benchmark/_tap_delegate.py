@@ -55,7 +55,9 @@ class TapDelegate(BenchmarkDelegate):
     trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
 
     for segmented_trace in trace.SegmentedByLED():
-      segmented_trace.RequireEventTypes(LEDEvent, ScreenDrawEvent)
+      segmented_trace.RequireEventTypes(LEDEvent)
+      if not segmented_trace.HasEventTypes(ScreenDrawEvent):
+        continue
 
       finger_down = segmented_trace.FindStateSwitch(LEDEvent, LEDEvent.STATE_ON)
       finger_up = segmented_trace.FindStateSwitch(LEDEvent, LEDEvent.STATE_OFF)
