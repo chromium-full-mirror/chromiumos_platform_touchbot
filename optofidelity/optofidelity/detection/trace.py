@@ -24,7 +24,7 @@ class Trace(list):
   """How much can the speed deviate from the target speed to be considered
      part of the linear motion area."""
 
-  STATIONARY_MAX_SPEED = 0.1
+  STATIONARY_MAX_SPEED = 0.5
   """Maximum speed of the finger to be considered stationary."""
 
   ms_per_frame = 3.33
@@ -266,6 +266,8 @@ class Trace(list):
     at this speed.
     :returns Tuple[Event, Event]
     """
+    finger_location = self.uncalib_finger
+
     # Allow 20% variation of the maximum speed in linear range.
     speed = self.uncalib_finger_speed
     speed[np.isnan(speed)] = 0
@@ -285,8 +287,8 @@ class Trace(list):
         if start:
           end = i - 1
           break
-    return (FingerEvent(start, self.uncalib_finger[start]),
-            FingerEvent(end, self.uncalib_finger[end]))
+    return (FingerEvent(start, finger_location[start]),
+            FingerEvent(end, finger_location[end]))
 
   def FindStationaryFinger(self, start_time):
     """Return (start, end) event of range in which event shows no motion.
@@ -296,8 +298,10 @@ class Trace(list):
     """
     start = None
     end = None
+    finger_speed = self.uncalib_finger_speed
+    finger_location = self.uncalib_finger
     for i in range(start_time, 0, -1):
-      speed = self.uncalib_finger_speed[i]
+      speed = finger_speed[i]
       if np.isnan(speed):
         continue
       if speed < self.STATIONARY_MAX_SPEED:
@@ -309,8 +313,8 @@ class Trace(list):
           break
     if start is None or end is None:
       raise Exception("Cannot find static motion range")
-    return (FingerEvent(start, self.uncalib_finger[start]),
-            FingerEvent(end, self.uncalib_finger[end]))
+    return (FingerEvent(start, finger_location[start]),
+            FingerEvent(end, finger_location[end]))
 
   def _TimeSeries(self, event_type, start_time=False, interpolate=False,
                   calib=False):

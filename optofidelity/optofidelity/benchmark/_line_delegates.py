@@ -75,7 +75,12 @@ class LineDrawDelegate(BenchmarkDelegate):
 
       # Find linear motion range
       start_event, end_event = pass_trace.FindLinearFingerMotion()
+      if start_event is None or end_event is None:
+        continue
       calib_start, calib_end = pass_trace.FindStationaryFinger(start_event.time)
+      if calib_start is None or calib_end is None:
+        continue
+
       line_at_calib = pass_trace.Find(LineDrawEvent, calib_end.time, "before")
       calib_offset = line_at_calib.uncalib_location - calib_end.uncalib_location
       pass_trace.ApplyFingerLocationCalib(calib_offset)
@@ -96,14 +101,18 @@ class LineDrawDelegate(BenchmarkDelegate):
       for draw_event in draw_events:
         finger_event = pass_trace.FindFingerCrossing(draw_event.location,
                                                      draw_event.time)
+        if finger_event is None:
+          continue
         measurements.AddDrawEventMeasurement("LineDrawLatency", finger_event,
                                              draw_event, pass_num=pass_num)
         measurements.AddDroppedFramesMeasurement("DroppedFrameFrequency",
                                                  draw_event, pass_num=pass_num)
 
+      line_location = pass_trace.line_draw_end
       for time in range(draw_events[0].time, draw_events[-1].time + 1):
-        line_location = pass_trace.line_draw_end[time]
-        finger_event = pass_trace.FindFingerCrossing(line_location, time)
+        finger_event = pass_trace.FindFingerCrossing(line_location[time], time)
+        if finger_event is None:
+          continue
         measurements.AddTimeValueMeasurement("ContinuousLatency", time,
                                              time - finger_event.time,
                                              pass_num=pass_num)
