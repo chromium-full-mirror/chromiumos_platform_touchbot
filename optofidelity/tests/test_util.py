@@ -6,10 +6,10 @@ from tempfile import NamedTemporaryFile
 from unittest import TestCase
 import os
 import time
-
+import numpy as np
 from optofidelity.util import (Cambrionix, GSFile, GSFindUniqueFilename,
                                GSFolder, GSOpenFile, GSTouch,
-                               SingleInstanceLock)
+                               SingleInstanceLock, nputil)
 from tests.config import CONFIG
 
 
@@ -92,3 +92,90 @@ class CambrionixTests(TestCase):
           self.assertEqual(port.mode, mode)
         else:
           self.assertEqual(port.mode, "off")
+
+class NPUtilTests(TestCase):
+  def assertNearlyEqual(self, a, b, epsilon=0.01):
+    if len(a) != len(b) or np.any(np.abs(a - b) > epsilon):
+      self.fail("%s != %s" % (a, b))
+
+  def testFindZeroCrossings(self):
+    input = np.asarray([-1, 0, 1, 0.1, -0.1])
+    expected = [2, 4]
+    self.assertNearlyEqual(nputil.FindZeroCrossings(input), expected)
+
+  def testFindLocalExtemes(self):
+    input = np.asarray([-1, 0, 1, 0, -1, 0, -1])
+    expected = [2, 4, 5]
+    self.assertNearlyEqual(nputil.FindLocalExtremes(input), expected)
+
+  def testTruncate(self):
+    self.assertEqual(nputil.Truncate(0, -1, 1), 0)
+    self.assertEqual(nputil.Truncate(-2, -1, 1), -1)
+    self.assertEqual(nputil.Truncate(2, -1, 1), 1)
+
+    input = np.asarray([-2, -1, 0, 1, 2])
+    expected = np.asarray([-1, -1, 0, 1, 1])
+    self.assertNearlyEqual(nputil.Truncate(input, -1, 1), expected)
+
+  def testLowPass(self):
+    input = np.asarray([0, 0, 0, 1, 0, 0, 0])
+    expected = np.asarray([0, 0, 0.33, 0.33, 0.33, 0, 0])
+    self.assertNearlyEqual(nputil.LowPass(input, 3), expected)
+
+  def testBoxFilter(self):
+    input = np.asarray([0, 1, 0, 1, 10, 11, 10, 1, 0, 1])
+    expected = np.asarray([0, 0, 0, 0, 10, 10, 10, 1, 1, 1])
+    self.assertNearlyEqual(nputil.BoxFilter(input, 5), expected)
+
+  def testDeDuplicate(self):
+    input = np.asarray([0, 9, 10, 11, 20])
+    expected = [0, 11, 20]
+    self.assertEqual(list(nputil.DeDuplicate(input, 5)), expected)
+
+  def testSegment(self):
+    input = np.asarray([0, 1, 1, 1, 0, 1, 1, 0, 1], dtype=np.bool)
+    expected = [(1, 3), (5, 6), (8, 8)]
+    self.assertEqual(list(nputil.Segment(input)), expected)
+
+  def testEstimateShift(self):
+    static = np.asarray([0, 0, 0, 0.5, 1, 0.5, 0])
+    shifting = np.asarray([0, 0.5, 1, 0.5, 0])
+    for technique in ("mse", "mae"):
+      self.assertEqual(nputil.EstimateShift(static, shifting, technique), 2)
+
+  def testShift(self):
+    input = np.asarray([0, 1, 2, 3])
+    self.assertNearlyEqual(nputil.Shift(input, 1, "edge"), [0, 0, 1, 2])
+    self.assertNearlyEqual(nputil.Shift(input, -1, "edge"), [1, 2, 3, 3])
+    self.assertNearlyEqual(nputil.Shift(input, 1, "wrap"), [3, 0, 1, 2])
+    self.assertNearlyEqual(nputil.Shift(input, -1, "wrap"), [1, 2, 3, 0])
+
+  def testAlignArrays(self):
+    target = np.asarray([0, 0, 0, 0.5, 1, 0.5, 0])
+    def assertMatches(shifting, shift):
+      aligned = nputil.AlignArrays(target, shifting, shift)
+      self.assertNearlyEqual(aligned, target)
+    assertMatches([0, 0.5, 1, 0.5, 0, 0, 0], 2)
+
+  def testFindSettlingIndex(self):
+    input = [0, 0.1, 0.5, 0.8, 0.79, 0.8, 0.9, 1.0, 1.0, 1.0, 1.0]
+
+    def SettlingTest(params, expected):
+      self.assertEqual(nputil.FindSettlingIndex(input, 2, **params), expected)
+    SettlingTest(dict(min_value=1.0), 7)
+    SettlingTest(dict(min_value=1.0, max_distance=4), None)
+    SettlingTest(dict(max_slope=0.1), 3)
+
+  def testFindStateChanges(self):
+    input = np.asarray([0, 0, 0.1, 0.5, 0.7, 0.6, 0.9, 1.0, 1.0])
+    actual = nputil.FindStateChanges(input, dict(max_value=0.0),
+                                     dict(min_value=1.0))
+    expected = [(1, 7)]
+    self.assertEqual(list(actual), expected)
+
+
+  def testFindPeaks(self):
+    input = np.asarray([0, 0, 0.1, 0.5, 1.0, 1.0, 0.5, 0.1, 0, 0])
+    actual = nputil.FindPeaks(input, max_value=0.0)
+    expected = [(1, 8)]
+    self.assertEqual(list(actual), expected)
