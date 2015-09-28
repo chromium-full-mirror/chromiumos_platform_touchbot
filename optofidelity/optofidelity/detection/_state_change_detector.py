@@ -3,12 +3,14 @@
 # found in the LICENSE file.
 import logging
 
+from matplotlib import pyplot
 from safetynet import Optional
+import cv2
 import numpy as np
 import skimage.filters
 
 from optofidelity.util import nputil
-from optofidelity.videoproc import Canvas, Filter, Image, Shape
+from optofidelity.videoproc import Canvas, DebugView, Filter, Image, Shape
 
 from ._calibrated_frame import CalibratedFrame
 from ._detector import Detector
@@ -16,11 +18,17 @@ from .events import AnalogStateEvent, StateChangeEvent
 
 _log = logging.getLogger(__name__)
 
-
 class StateChangeDetector(Detector):
   """Detects screen switches between two different states."""
 
   NAME = "state_change"
+
+  SETTLED_THRESHOLDS = dict(max_mean_distance=2.0, window_size=20)
+  """Thresholds to identify when a state has settled.
+     (see nputil.FindSettlingIndex)"""
+
+  FINGER_SEARCH_AVERAGING_FILTER = 5
+  """Number of frames to average for search of finger."""
 
   def __init__(self, area_of_interest, reference_frame):
     """This detector requires an area of interest mask and a reference frame.
@@ -39,20 +47,37 @@ class StateChangeDetector(Detector):
     self.reference_frame = reference_frame
 
   @classmethod
-  def _FindFingerTouchdown(cls, video_reader, screen_calibration):
-    def GetFrame(frame_num):
-      return CalibratedFrame(video_reader.FrameAt(frame_num), None,
-                             screen_calibration, frame_num)
+  def _FindFingerTouchdown(cls, video_reader, screen_calibration, debug=False):
+    def debug_log(msg, *args):
+      if debug:
+        print msg % args
+      _log.debug(msg, *args)
 
-    def FindBottomMostShape(frame, frame0):
+    def GetFrame(frame_num, moving_average=False):
+      frame = video_reader.FrameAt(frame_num)
+      if moving_average:
+        length = cls.FINGER_SEARCH_AVERAGING_FILTER
+        for i in range(frame_num + 1, frame_num + length):
+          frame += video_reader.FrameAt(i)
+        frame /= length
+      return CalibratedFrame(frame, None, screen_calibration, frame_num)
+
+    def FindBottomMostShape(screen_space_normalized, frame0):
       """Locate the bottommost shape, which should be the robot finger."""
-      cleaned = 1.0 - (frame0.screen_space_normalized -
-                       frame.screen_space_normalized)
+      cleaned = (frame0.screen_space_normalized - screen_space_normalized)
       cleaned = skimage.filters.gaussian_filter(cleaned, 2.0)
-      cleaned = Filter.Truncate(cleaned)
+      cleaned = np.abs(cleaned)
 
-      binary = cleaned < 0.9
+      # Compensate PWM
+      pwm_image = frame0.MeasurePWM(cleaned)
+      cleaned = Filter.Truncate(cleaned - pwm_image)
+
+      if debug:
+        cv2.imshow("FindFingerTouchdown", cleaned)
+
+      binary = cleaned > 0.1
       shapes = list(Shape.Shapes(binary))
+
       if shapes:
         return max(shapes, key=lambda s: s.bottom)
       return None
@@ -68,9 +93,12 @@ class StateChangeDetector(Detector):
         step_size = 1
       for i in range(start_index + step_size, video_reader.num_frames,
                      step_size):
-        frame = GetFrame(i)
-        shape =  FindBottomMostShape(frame, frame0)
-        _log.debug("FindFirstFingerMovement %03d", i)
+        frame = GetFrame(i, moving_average=5)
+        shape =  FindBottomMostShape(frame.screen_space_normalized, frame0)
+        debug_log("FindFirstFingerMovement %03d", i)
+        if debug:
+          cv2.waitKey()
+
         if shape:
           if step_size == 1:
             return i - step_size
@@ -83,17 +111,34 @@ class StateChangeDetector(Detector):
       last_location = 0
       last_change_frame = start_index
       found = False
+      average_length = cls.FINGER_SEARCH_AVERAGING_FILTER
+
+      # Cache of previous images for averaging
+      images = {}
+      for i in range(start_index - average_length, start_index):
+        images[i] = GetFrame(i).screen_space_normalized
 
       for i in range(start_index, video_reader.num_frames):
-        frame = GetFrame(i)
+        frame = GetFrame(i).screen_space_normalized
+        images[i] = np.copy(frame)
+
+        # average previous images to reduce impact of PWM
+        for prev_i in range(i - average_length, i):
+          frame += images[prev_i]
+        frame = frame / average_length
+
+        # Find y-location of finger
         shape = FindBottomMostShape(frame, frame0)
         location = 0
         if shape:
           location = shape.bottom
 
         delta = location - last_location
-        _log.debug("FindFingerTouchdown %03d: location=%d, delta=%d", i,
+        debug_log("FindFingerTouchdown %03d: location=%d, delta=%d", i,
                    location, delta)
+        if debug:
+          cv2.waitKey()
+
         if delta > 1 or location == 0:
           last_location = location
           last_change_frame = i
@@ -106,27 +151,30 @@ class StateChangeDetector(Detector):
           break
       if not found:
         raise Exception("Cannot find minimum finger location")
+
       _log.info("Found finger touching at %03d", last_change_frame)
       return last_change_frame
 
-    frame0 = GetFrame(0)
+    frame0 = GetFrame(0, moving_average=True)
     first_movement_index = FindFirstFingerMovement(0, 100, frame0)
     touchdown_index = FindTouchdown(first_movement_index, frame0)
 
     touchdown_frame = GetFrame(touchdown_index)
-    finger_shape = FindBottomMostShape(touchdown_frame, frame0)
+    finger_shape = FindBottomMostShape(touchdown_frame.screen_space_normalized,
+                                       frame0)
     return finger_shape, touchdown_frame
 
   @classmethod
   def CreateKeyboardPressDetector(cls, video_reader, screen_calibration,
-                                  aoi_size=(50, 35), aoi_offset=(5, 5)):
+                                  aoi_size=(50, 35), aoi_offset=(5, 5),
+                                  debug=False):
     """Returns a StateChangeDetector tuned to detect keyboard state changes.
 
     This method will locate the touchdown of the finger and set up an area of
     interest adjacent to the finger, where the key popup will apprear.
     """
     finger_shape, reference_frame = cls._FindFingerTouchdown(video_reader,
-                                                             screen_calibration)
+        screen_calibration, debug=debug)
     finger_y = finger_shape.bottom + aoi_offset[1]
     finger_x = finger_shape.right + aoi_offset[0]
     (left, right) = (finger_x, finger_x + aoi_size[0])
@@ -141,6 +189,9 @@ class StateChangeDetector(Detector):
                               bottom = finger_y,
                               left = left,
                               right = right)
+    if debug:
+      DebugView(reference=reference_frame.screen_space_normalized, aoi=aoi.mask)
+
     return cls(aoi, reference_frame.screen_space_normalized)
 
   def Preprocess(self, calib_frame, debugger):
@@ -148,10 +199,12 @@ class StateChangeDetector(Detector):
 
     The state change level describes the deviation from the closed state.
     """
-
     cleaned = (self.reference_frame - calib_frame.screen_space_normalized)
     cleaned = skimage.filters.gaussian_filter(cleaned, 2.0)
-    cleaned = Filter.Truncate(cleaned)
+
+    # Compensate PWM
+    pwm_image = calib_frame.MeasurePWM(cleaned)
+    cleaned = Filter.Truncate(np.abs(cleaned - pwm_image))
 
     state_change_level = np.mean(cleaned[self.area_of_interest.mask])
     _log.info("%04d: state_change_level=%.4f", calib_frame.frame_index,
@@ -163,15 +216,32 @@ class StateChangeDetector(Detector):
                                             self.area_of_interest.contour)
     return state_change_level
 
-  def GenerateEvents(self, preprocessed_data):
+  def GenerateEvents(self, preprocessed_data, debug=False):
     """Segments the array of state change levels into discrete state changes."""
-    level = np.asarray(preprocessed_data, np.float)
-    normalized = level / np.max(level)
+    if debug:
+      for data in preprocessed_data:
+        print "%.4f" % data
 
-    for start, end in nputil.FindStateChanges(normalized, settled_threshold=0.1):
+    level = np.asarray(preprocessed_data, np.float)
+    normalized = nputil.NormalizeStates(level)
+    filtered = nputil.LowPass(normalized, 5)
+
+    if debug:
+      pyplot.figure()
+      pyplot.plot(normalized)
+      pyplot.plot(filtered)
+
+    for start, end in nputil.FindStateChanges(normalized,
+          self.SETTLED_THRESHOLDS, self.SETTLED_THRESHOLDS, debug=debug):
       state = (StateChangeEvent.STATE_OPEN if normalized[end] > 0.5
                                           else StateChangeEvent.STATE_CLOSED)
-      yield StateChangeEvent(end, start, state)
+      if debug:
+        pyplot.vlines(start, 0, 1)
+        pyplot.vlines(end, 0, 1)
+      yield StateChangeEvent(end, start + 1, state)
+
+    if debug:
+      pyplot.show()
 
     for i, data in enumerate(normalized):
       if np.isnan(data):

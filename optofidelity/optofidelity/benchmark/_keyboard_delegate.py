@@ -60,7 +60,9 @@ class KeyboardDelegate(BenchmarkDelegate):
     trace.RequireEventTypes(LEDEvent, StateChangeEvent)
 
     for segmented_trace in trace.SegmentedByLED():
-      segmented_trace.RequireEventTypes(LEDEvent, StateChangeEvent)
+      segmented_trace.RequireEventTypes(LEDEvent)
+      if not segmented_trace.HasEventTypes(StateChangeEvent):
+        continue
 
       finger_down = segmented_trace.FindStateSwitch(LEDEvent, LEDEvent.STATE_ON)
       finger_up = segmented_trace.FindStateSwitch(LEDEvent, LEDEvent.STATE_OFF)

@@ -61,6 +61,14 @@ def Normalize(array):
   return (array - min) / (max - min)
 
 
+def NormalizeStates(array, crossing_threshold=0.5):
+  """Normalize array to 0..1"""
+  pre_norm = Normalize(array)
+  min = np.mean(pre_norm[pre_norm < crossing_threshold])
+  max = np.mean(pre_norm[pre_norm > crossing_threshold])
+  return (pre_norm - min) / (max - min)
+
+
 def LowPass(array, kernel_size=5):
   """Returns low pass filtered array."""
   kernel = np.ones(kernel_size,) / kernel_size
