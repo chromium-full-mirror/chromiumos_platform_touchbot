@@ -145,6 +145,9 @@ class SpreadsheetDashboard(Dashboard):
 
   @classmethod
   def FromConfig(cls, parameters, children, subject_name):
+    report_as = parameters.get("report-as", "")
+    if len(report_as):
+      subject_name = report_as
     return cls(subject_name, parameters["sheet-key"],
                parameters["oauth-key-file"])
 

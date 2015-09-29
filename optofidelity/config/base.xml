@@ -83,7 +83,8 @@
     <updater type="android" adb="{adb}" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
-               oauth-key-file="file:oauth2key.json" />
+               oauth-key-file="file:oauth2key.json"
+               report-as="{report-as}" />
   </subject-type>
 
   <subject-type type-name="android_native" parent-type="android_native_base">
