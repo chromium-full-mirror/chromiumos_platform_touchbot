@@ -159,6 +159,7 @@ class BenchmarkRunner(object):
         self._progress.Info(subject.name, "Calibration video at: %s" %
                                            (unique_file,))
         video_reader.Save(unique_file)
+    video_reader = None
     try:
       self._progress.Info(subject.name, "Calibrating screen")
       if subject.camera.is_relative:
@@ -166,11 +167,12 @@ class BenchmarkRunner(object):
       video_reader = subject.RecordCalibrationVideo()
       screen_calibration = self.video_processor.CreateScreenCalibration(
           video_reader)
-      if save_video:
+      if save_video and video_reader:
         SaveVideo(video_reader)
       return screen_calibration
     except KeyboardInterrupt:
       raise
     except:
-      SaveVideo(video_reader)
+      if video_reader:
+        SaveVideo(video_reader)
       raise

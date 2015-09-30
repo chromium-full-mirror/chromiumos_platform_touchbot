@@ -293,7 +293,7 @@ class BaseADBNavigator(BaseNavigator):
     if self.HasActivity(self.NEUTRAL_ACTIVITY):
       intent_params = self._activity_intents[self.NEUTRAL_ACTIVITY]
       self._adb.StartActivity(**intent_params)
-      self._adb.PutSetting("system", "screen_brightness", "0")
+    self._adb.PutSetting("system", "screen_brightness", "0")
     if not self._stay_alive:
       self._adb.PowerOff()
 

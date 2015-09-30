@@ -3,7 +3,8 @@
 
   <dut-type type-name="android_phone">
     <subject name="native" type="android_native" />
-    <subject name="keyboard" type="android_keyboard" />
+    <subject name="keyboard" type="android_keyboard" report-as="dut_name/native" />
+    <subject name="clank" type="clank_stable" />
   </dut-type>
 
   <dut-type type-name="iphone">
@@ -12,24 +13,30 @@
 
   <!-- 1st row -->
   <dut name="s6edge" adb="05157df5896eca3b" port="1" type="android_phone"
-       stay-alive="true" exposure="2" report-as="s6edge/native" />
-  <dut name="m9" adb="FA53MYJ11555" port="2" type="android_phone"
-       stay-alive="true" report-as="m9/native" />
+       stay-alive="true" exposure="2" />
   <dut name="nexus4" adb="04f6cafb8c976e5a" port="3" type="android_phone"
-       stay-alive="true" report-as="nexus4/native"/>
+       stay-alive="true"/>
 
   <!-- 2nd row -->
   <dut name="iphone6" type="iphone" />
   <dut name="nexus5" adb="08a9896c255d540b" port="6" type="android_phone"
-       stay-alive="true" report-as="nexus5/native"/>
+       stay-alive="true"/>
   <dut name="s6" adb="03157df3ed181307" port="7" type="android_phone"
-       stay-alive="true" exposure="2" report-as="s6/native" />
+       stay-alive="true" exposure="2" />
 
   <!-- 3rd row -->
   <dut name="iphone6plus" type="iphone" />
   <dut name="nexus6" adb="NP5A340401" port="10" type="android_phone"
-       exposure="2" stay-alive="false" report-as="nexus6/native" />
+       exposure="2" stay-alive="false" />
 
-  <!-- 4th row
-  <dut name="bullhead" adb="00656e9429c02d0f" port="7" type="android_phone" />-->
+  <!-- 4th row -->
+  <dut name="angler" adb="84B0115625000526" port="13" type="android_phone" />
+  <dut name="bullhead" adb="00656e9429c02d0f" port="14" type="android_phone" />
+
+  <!-- 5th row -->
+  <dut name="z3" adb="CB5A27KCZZ" port="4" type="android_phone" />
+  <dut name="z4" backend-name="ryu" margin="(30, 30)" adb="CB5A25W4GE" port="12">
+    <subject name="native" test-plane="0.05" type="android_native" />
+  </dut>
+
 </optofidelity>

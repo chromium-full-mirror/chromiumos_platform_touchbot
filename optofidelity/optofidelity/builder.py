@@ -226,6 +226,8 @@ class SystemBuilder(object):
 
     context = dut_elem.attrib.copy()
     context.update(subject_elem.attrib)
+    context["dut_name"] = dut_name
+    context["subject_name"] = subject_name
 
     name = "%s/%s" % (dut_name, subject_name)
     navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
@@ -340,9 +342,12 @@ class SystemBuilder(object):
     if value.startswith("env:"):
       env_name = value[len("env:"):]
       return str(os.environ[env_name])
-    if value.startswith("{") and value.endswith("}"):
-      key = value[1:-1]
-      value = self.ParseValue(context.get(key))
+    if "{" in value and "}" in value:
+      try:
+        value = value.format(**context)
+        value = self.ParseValue(value)
+      except KeyError:
+        return None
     return value
 
   def _CreateComponent(self, interface_type, element, context, *extra_args):
