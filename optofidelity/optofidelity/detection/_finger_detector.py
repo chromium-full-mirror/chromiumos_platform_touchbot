@@ -39,6 +39,8 @@ class FingerDetector(Detector):
     profile = 1 - calib_frame.CompensatePWMProfile(profile)
 
     confidence = np.max(profile)
+    if confidence < 0.01:
+      return 0.0, 0.0
 
     profile = nputil.Normalize(profile)
     profile[profile < 0.5] = 0

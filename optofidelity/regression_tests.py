@@ -50,8 +50,12 @@ TEST_DEFINITIONS = {
   "screen_draw.draw_start_misdetected.s6edge":
       Test("20150925_1207_001", {}),
 
+  "keyboard.mask_misdetected.s6edge":
+      Test("20151002_0444_000", {}),
   "keyboard.missed_state_change.s6edge":
       Test("20150928_2234_000", {}),
+  "keyboard.mask_issues.s6edge":
+      Test("20151002_1417_000", {}),
 
   "baseline.tap.nexus4":
       Test("20150825_1908_000", {"DownLatency": 98, "UpLatency": 81}),
@@ -85,6 +89,8 @@ TEST_DEFINITIONS = {
   "baseline.keyboard.nexus5":
       Test("20150928_1443_000", {}),
 
+  "baseline.scroll.nexus4":
+      Test("20151001_1750_001", {}),
   "baseline.scroll.nexus5":
       Test("20150925_1428_000", {}),
   "baseline.scroll.s6edge":

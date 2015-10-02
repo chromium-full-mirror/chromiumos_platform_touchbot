@@ -1,10 +1,11 @@
 # Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+from matplotlib import pyplot
 import numpy as np
+import scipy.signal as signal
 
 from optofidelity.util import const_property
-import scipy.signal as signal
 
 from .events import (AnalogStateEvent, Event, FingerEvent, LEDEvent,
                      LineDrawEvent, ScreenDrawEvent)
@@ -258,7 +259,7 @@ class Trace(list):
     return Trace([e for e in self if isinstance(e, event_type)],
                  self.ms_per_frame)
 
-  def FindLinearFingerMotion(self):
+  def FindLinearFingerMotion(self, debug=False):
     """Return (start, end) event of range in which event shows linear motion.
 
     Searches for the fastest motion of the finger and returns a (start, end)
@@ -269,17 +270,17 @@ class Trace(list):
     finger_location = self.uncalib_finger
 
     # Allow 20% variation of the maximum speed in linear range.
-    speed = self.uncalib_finger_speed
-    speed[np.isnan(speed)] = 0
+    speeds = self.uncalib_finger_speed
+    speeds[np.isnan(speeds)] = 0
 
-    max_speed_idx = np.argmax(speed)
+    max_speed_idx = np.argmax(speeds)
     min_speed_factor = (1 - self.LINEAR_MOTION_MAX_SPEED_DEVIATION)
-    min_speed = speed[max_speed_idx] * min_speed_factor
+    min_speed = speeds[max_speed_idx] * min_speed_factor
 
     # Find area in which the robot continuously has this speed.
     start = 0
-    end = len(speed) - 1
-    for i, speed in enumerate(speed):
+    end = len(speeds) - 1
+    for i, speed in enumerate(speeds):
       if speed > min_speed:
         if not start:
           start = i
@@ -287,10 +288,19 @@ class Trace(list):
         if start:
           end = i - 1
           break
+
+    if debug:
+      print "max_speed_idx=%d, range=(%d, %d)" % (max_speed_idx, start, end)
+      pyplot.figure()
+      pyplot.plot(finger_location)
+      pyplot.figure()
+      pyplot.plot(speeds)
+      pyplot.show()
+
     return (FingerEvent(start, finger_location[start]),
             FingerEvent(end, finger_location[end]))
 
-  def FindStationaryFinger(self, start_time):
+  def FindStationaryFinger(self, start_time, debug=False):
     """Return (start, end) event of range in which event shows no motion.
 
     The stationary range has to be enclosed between motion.
@@ -300,6 +310,7 @@ class Trace(list):
     end = None
     finger_speed = self.uncalib_finger_speed
     finger_location = self.uncalib_finger
+    start = 0
     for i in range(start_time, 0, -1):
       speed = finger_speed[i]
       if np.isnan(speed):
@@ -311,6 +322,14 @@ class Trace(list):
         if end:
           start = i + 1
           break
+    if debug:
+      print "start_time=%d, range=(%s, %s)" % (start_time, start, end)
+      pyplot.figure()
+      pyplot.plot(finger_location)
+      pyplot.figure()
+      pyplot.plot(finger_speed)
+      pyplot.show()
+
     if start is None or end is None:
       raise Exception("Cannot find static motion range")
     return (FingerEvent(start, finger_location[start]),

@@ -147,6 +147,7 @@ class ADB(object):
     except:
       if retries > 0:
         _log.exception("Retrying command")
+        self.WaitForDevice(30)
         return self.Execute(sub_command, check_success, check_error, timeout,
                             retries - 1)
       raise

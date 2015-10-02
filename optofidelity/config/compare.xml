@@ -3,7 +3,7 @@
 
   <dut-type type-name="android_phone">
     <subject name="native" type="android_native" />
-    <subject name="keyboard" type="android_keyboard" report-as="dut_name/native" />
+    <subject name="keyboard" type="android_keyboard" />
     <subject name="clank" type="clank_stable" />
   </dut-type>
 

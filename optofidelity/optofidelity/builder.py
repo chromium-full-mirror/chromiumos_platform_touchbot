@@ -345,7 +345,7 @@ class SystemBuilder(object):
     if "{" in value and "}" in value:
       try:
         value = value.format(**context)
-        value = self.ParseValue(value)
+        value = self.ParseValue(value, context)
       except KeyError:
         return None
     return value

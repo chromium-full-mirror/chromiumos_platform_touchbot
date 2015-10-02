@@ -48,7 +48,6 @@
     <updater type="chrome" adb="{adb}"/>
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
-    <benchmark name="touch_move" type="line_draw" activity="touch_move" />
   </subject-type>
 
   <subject-type type-name="clank_stable" parent-type="clank_base">
@@ -92,7 +91,7 @@
   </subject-type>
 
   <subject-type type-name="android_keyboard" parent-type="android_native_base"
-                test-plane="0.5" margin="(0, 0)">
+                test-plane="0.5" margin="(0, 0)" report-as="{dut_name}/native">
     <benchmark name="keyboard" type="keyboard" activity="keyboard"
                key-location="20" />
   </subject-type>

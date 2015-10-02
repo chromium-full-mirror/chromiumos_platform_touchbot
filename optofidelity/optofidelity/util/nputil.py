@@ -58,6 +58,8 @@ def Normalize(array):
   """Normalize array to 0..1"""
   min = np.min(NonNan(array))
   max = np.max(NonNan(array))
+  if np.allclose(min, max):
+    return array
   return (array - min) / (max - min)
 
 

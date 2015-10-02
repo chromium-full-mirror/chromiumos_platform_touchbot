@@ -8,6 +8,7 @@ from safetynet import Optional
 import cv2
 import numpy as np
 import skimage.filters
+import skimage.color
 
 from optofidelity.util import nputil
 from optofidelity.videoproc import Canvas, DebugView, Filter, Image, Shape
@@ -18,6 +19,16 @@ from .events import AnalogStateEvent, StateChangeEvent
 
 _log = logging.getLogger(__name__)
 
+def MeasurePWMProfile(image, height=20):
+  top = image.shape[0] - height
+  measurement_area = Shape.FromRectangle(image.shape, top=top)
+  return measurement_area.CalculateProfile(image)
+
+def MeasurePWM(image, height=20):
+  pwm_profile = MeasurePWMProfile(image, height)
+  return np.tile(pwm_profile, (image.shape[0], 1))
+
+
 class StateChangeDetector(Detector):
   """Detects screen switches between two different states."""
 
@@ -27,7 +38,7 @@ class StateChangeDetector(Detector):
   """Thresholds to identify when a state has settled.
      (see nputil.FindSettlingIndex)"""
 
-  FINGER_SEARCH_AVERAGING_FILTER = 5
+  FINGER_SEARCH_AVERAGING_FILTER = 4
   """Number of frames to average for search of finger."""
 
   def __init__(self, area_of_interest, reference_frame):
@@ -53,34 +64,48 @@ class StateChangeDetector(Detector):
         print msg % args
       _log.debug(msg, *args)
 
-    def GetFrame(frame_num, moving_average=False):
-      frame = video_reader.FrameAt(frame_num)
-      if moving_average:
-        length = cls.FINGER_SEARCH_AVERAGING_FILTER
-        for i in range(frame_num + 1, frame_num + length):
-          frame += video_reader.FrameAt(i)
-        frame /= length
-      return CalibratedFrame(frame, None, screen_calibration, frame_num)
+    frame_cache = {}
+    def GetFrame(frame_num):
+      calib_frame = frame_cache.get(frame_num)
+      if calib_frame is None:
+        frame = video_reader.FrameAt(frame_num)
+        calib_frame = CalibratedFrame(frame, None, screen_calibration, frame_num)
+        frame_cache[frame_num] = calib_frame
+      return calib_frame
 
-    def FindBottomMostShape(screen_space_normalized, frame0):
+    def GetAveragedNormalizedFrame(frame_num, window_size):
+      accum = np.copy(GetFrame(frame_num).screen_space_normalized)
+      for i in range(frame_num + 1, frame_num + window_size):
+        accum += GetFrame(i).screen_space_normalized
+      return accum / window_size
+
+    def FindBottomMostShape(frame_num, frame0):
       """Locate the bottommost shape, which should be the robot finger."""
-      cleaned = (frame0.screen_space_normalized - screen_space_normalized)
-      cleaned = skimage.filters.gaussian_filter(cleaned, 2.0)
-      cleaned = np.abs(cleaned)
+      accum = np.zeros(frame0.shape)
+      for i in range(frame_num, frame_num + 5):
+        screen_space_normalized = GetFrame(i).screen_space_normalized
+        cleaned = (frame0 - screen_space_normalized)
 
-      # Compensate PWM
-      pwm_image = frame0.MeasurePWM(cleaned)
-      cleaned = Filter.Truncate(cleaned - pwm_image)
+        # Compensate PWM
+        pwm_image = MeasurePWM(cleaned)
+        accum += (cleaned - pwm_image)
+      accum = skimage.filters.gaussian_filter(accum, 3.0, mode="constant") / 5
+
+      binary = accum > 0.1
+      shapes = list(Shape.Shapes(binary))
+      shapes = [s for s in shapes if s.area > 100]
+      shape = None
+      if shapes:
+        shape = max(shapes, key=lambda s: s.bottom)
 
       if debug:
-        cv2.imshow("FindFingerTouchdown", cleaned)
+        canvas = Canvas.FromShape(accum.shape)
+        if shape:
+          canvas.DrawMask(Canvas.BLUE, shape.contour)
+        debug_view = canvas.BlendWithImage(skimage.color.gray2rgb(accum))
+        cv2.imshow("FindFingerTouchdown", debug_view)
 
-      binary = cleaned > 0.1
-      shapes = list(Shape.Shapes(binary))
-
-      if shapes:
-        return max(shapes, key=lambda s: s.bottom)
-      return None
+      return shape
 
     def FindFirstFingerMovement(start_index, step_size, frame0):
       """Find first significant motion of robot finger.
@@ -91,15 +116,23 @@ class StateChangeDetector(Detector):
       """
       if step_size < 1:
         step_size = 1
+
+      initial_shape = FindBottomMostShape(0, frame0)
+      initial_location = initial_shape.bottom if initial_shape else 0
+      debug_log("FindFirstFingerMovement 000: location=%d", initial_location)
+      if debug:
+        cv2.waitKey()
+
       for i in range(start_index + step_size, video_reader.num_frames,
                      step_size):
-        frame = GetFrame(i, moving_average=5)
-        shape =  FindBottomMostShape(frame.screen_space_normalized, frame0)
-        debug_log("FindFirstFingerMovement %03d", i)
+        shape =  FindBottomMostShape(i, frame0)
+        location = shape.bottom if shape else 0
+
+        debug_log("FindFirstFingerMovement %03d: location=%d", i, location)
         if debug:
           cv2.waitKey()
 
-        if shape:
+        if location > initial_location + 10:
           if step_size == 1:
             return i - step_size
           else:
@@ -111,24 +144,11 @@ class StateChangeDetector(Detector):
       last_location = 0
       last_change_frame = start_index
       found = False
-      average_length = cls.FINGER_SEARCH_AVERAGING_FILTER
 
-      # Cache of previous images for averaging
-      images = {}
-      for i in range(start_index - average_length, start_index):
-        images[i] = GetFrame(i).screen_space_normalized
-
+      finger_shape = None
       for i in range(start_index, video_reader.num_frames):
-        frame = GetFrame(i).screen_space_normalized
-        images[i] = np.copy(frame)
-
-        # average previous images to reduce impact of PWM
-        for prev_i in range(i - average_length, i):
-          frame += images[prev_i]
-        frame = frame / average_length
-
         # Find y-location of finger
-        shape = FindBottomMostShape(frame, frame0)
+        shape = FindBottomMostShape(i, frame0)
         location = 0
         if shape:
           location = shape.bottom
@@ -142,6 +162,7 @@ class StateChangeDetector(Detector):
         if delta > 1 or location == 0:
           last_location = location
           last_change_frame = i
+          finger_shape = shape
         elif delta >= -1:
           if i - last_change_frame > 5:
             found = True
@@ -149,20 +170,18 @@ class StateChangeDetector(Detector):
         else:
           found = True
           break
+
       if not found:
         raise Exception("Cannot find minimum finger location")
 
       _log.info("Found finger touching at %03d", last_change_frame)
-      return last_change_frame
+      return finger_shape, last_change_frame
 
-    frame0 = GetFrame(0, moving_average=True)
+    frame0 = GetAveragedNormalizedFrame(0, 5)
     first_movement_index = FindFirstFingerMovement(0, 100, frame0)
-    touchdown_index = FindTouchdown(first_movement_index, frame0)
-
-    touchdown_frame = GetFrame(touchdown_index)
-    finger_shape = FindBottomMostShape(touchdown_frame.screen_space_normalized,
-                                       frame0)
-    return finger_shape, touchdown_frame
+    finger_shape, touchdown_index =  FindTouchdown(first_movement_index,
+                                                   frame0)
+    return finger_shape, GetAveragedNormalizedFrame(touchdown_index, 5)
 
   @classmethod
   def CreateKeyboardPressDetector(cls, video_reader, screen_calibration,
@@ -180,19 +199,19 @@ class StateChangeDetector(Detector):
     (left, right) = (finger_x, finger_x + aoi_size[0])
 
     # Flip direction of aoi if the finger is on the right side of the screen.
-    if finger_x > reference_frame.screen_space_shape[1] / 2.0:
+    if finger_x > reference_frame.shape[1] / 2.0:
       finger_x = finger_shape.left - aoi_offset[0]
       (left, right) = (finger_x - aoi_size[0], finger_x)
 
-    aoi = Shape.FromRectangle(reference_frame.screen_space_shape,
+    aoi = Shape.FromRectangle(reference_frame.shape,
                               top = finger_y - aoi_size[1],
                               bottom = finger_y,
                               left = left,
                               right = right)
     if debug:
-      DebugView(reference=reference_frame.screen_space_normalized, aoi=aoi.mask)
+      DebugView(reference=reference_frame, aoi=aoi.mask)
 
-    return cls(aoi, reference_frame.screen_space_normalized)
+    return cls(aoi, reference_frame)
 
   def Preprocess(self, calib_frame, debugger):
     """Calculates the state change level for each frame.
