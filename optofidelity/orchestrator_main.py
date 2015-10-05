@@ -63,6 +63,8 @@ def RunBenchmarks(matches, options):
       builder.orchestrator.VerifySubjects(match)
     elif options.setup:
       builder.orchestrator.SetUpSubjects(match, options.versions)
+    elif options.dry_run:
+      builder.orchestrator.DryRunBenchmarks(match)
     else:
       builder.orchestrator.UpdateAndRunBenchmarks(match, options.versions,
                                                   options.skip_installed)
@@ -101,6 +103,9 @@ def Main():
   parser.add_option("--access",
                     dest="access", default=False, action="store_true",
                     help="Enable USB access to subject.")
+  parser.add_option("--dry-run",
+                    dest="dry_run", default=False, action="store_true",
+                    help="Only run robot interaction on selected benchmarks.")
   (options, args) = parser.parse_args()
   matches = args if len(args) > 0 else ["*"]
 

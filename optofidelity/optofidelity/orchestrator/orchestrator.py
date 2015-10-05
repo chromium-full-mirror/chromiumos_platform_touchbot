@@ -203,6 +203,22 @@ class Orchestrator(object):
         with subject.access:
           subject.Verify()
 
+  def DryRunBenchmarks(self, match="*"):
+    for subject, benchmark_defs in self._ListMatchingBenchmarks(match):
+      self._progress.Info(subject.name, "Access")
+      with subject.access:
+        try:
+          subject.navigator.Open()
+          for benchmark_def in benchmark_defs:
+            full_name = "%s/%s" % (subject.name, benchmark_def.name)
+            self._progress.Info(full_name, "Dry Run")
+            benchmark = self._runner.CreateBenchmark(full_name,
+                benchmark_def.benchmark_type, benchmark_def.activity,
+                benchmark_def.params, {})
+            benchmark.ExecuteOnSubject(subject)
+        finally:
+          subject.navigator.Cleanup()
+
   def UpdateAndRunBenchmarks(self, match, versions, skip_installed=False):
     """Runs updates and benchmarks on all bencharks matching 'match'
 
