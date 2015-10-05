@@ -100,7 +100,7 @@ dut_attrib_inheritance_config = """\
   <dut name="test_dut" version="42.0">
     <subject name="test_subject">
       <navigator type="fake" />
-      <updater type="manual" version="{version}" />
+      <updater type="manual" version="{dut.version}" />
     </subject>
   </dut>
 </config>

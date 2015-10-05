@@ -1,42 +1,50 @@
 <optofidelity>
   <include file="base.xml" />
 
-  <dut-type type-name="android_phone">
+  <dut-type type-name="android_phone" parent-type="base">
     <subject name="native" type="android_native" />
     <subject name="keyboard" type="android_keyboard" />
     <subject name="clank" type="clank_stable" />
   </dut-type>
 
-  <dut-type type-name="iphone">
+  <dut-type type-name="iphone" parent-type="base">
     <subject name="native" type="ios" />
   </dut-type>
 
   <!-- 1st row -->
-  <dut name="s6edge" adb="05157df5896eca3b" port="1" type="android_phone"
-       stay-alive="true" exposure="2" />
-  <dut name="nexus4" adb="04f6cafb8c976e5a" port="3" type="android_phone"
-       stay-alive="true"/>
+  <dut name="s6edge" type="android_phone"
+       adb="05157df5896eca3b" port="1" stayalive="true"
+       exposure="2" />
+  <dut name="nexus4" type="android_phone"
+       adb="04f6cafb8c976e5a" port="3" stayalive="true"/>
 
   <!-- 2nd row -->
   <dut name="iphone6" type="iphone" />
-  <dut name="nexus5" adb="08a9896c255d540b" port="6" type="android_phone"
-       stay-alive="true"/>
-  <dut name="s6" adb="03157df3ed181307" port="7" type="android_phone"
-       stay-alive="true" exposure="2" />
+  <dut name="nexus5" type="android_phone"
+       adb="08a9896c255d540b" port="6" stayalive="true" />
+  <dut name="s6" type="android_phone"
+       adb="03157df3ed181307" port="7" stayalive="true"
+       exposure="2" />
 
   <!-- 3rd row -->
   <dut name="iphone6plus" type="iphone" />
-  <dut name="nexus6" adb="NP5A340401" port="10" type="android_phone"
-       exposure="2" stay-alive="false" />
+  <dut name="nexus6" type="android_phone"
+       adb="NP5A340401" port="10"
+       exposure="2" />
 
   <!-- 4th row -->
-  <dut name="angler" adb="84B0115625000526" port="13" type="android_phone" />
-  <dut name="bullhead" adb="00656e9429c02d0f" port="14" type="android_phone" />
+  <dut name="angler" type="android_phone"
+       adb="84B0115625000526" port="13" />
+  <dut name="bullhead" type="android_phone"
+       adb="00656e9429c02d0f" port="14" />
 
   <!-- 5th row -->
-  <dut name="z3" adb="CB5A27KCZZ" port="4" type="android_phone" />
-  <dut name="z4" backend-name="ryu" margin="(30, 30)" adb="CB5A25W4GE" port="12">
-    <subject name="native" test-plane="0.05" type="android_native" />
+  <dut name="z3" type="android_phone"
+       adb="CB5A27KCZZ" port="4" />
+  <dut name="z4" type="base"
+       backend-name="ryu" margin="(30, 30)"
+       adb="CB5A25W4GE" port="12">
+    <subject name="native" type="android_native" test-plane="0.05" />
   </dut>
 
 </optofidelity>

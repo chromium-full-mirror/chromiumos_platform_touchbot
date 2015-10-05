@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 """Implementation of the BenchmarkSystem class."""
 
+from collections import namedtuple
 from copy import deepcopy
 import cPickle as pickle
 import json
@@ -24,6 +25,11 @@ from .system import (BenchmarkSubject, BenchmarkSystem, HighSpeedCamera,
                      Navigator, RobotBackend)
 from .system.system import FingerCalibDelay
 from .util import CreateComponent, const_property
+
+
+def Dict2Object(name, dictionary):
+  safe = {k: v for k, v in dictionary.items() if re.match("[0-9a-zA-Z_]+$", k)}
+  return namedtuple(name, safe.keys())(*safe.values())
 
 
 @typecheck
@@ -92,9 +98,14 @@ class SystemBuilder(object):
     self._dut_types = self._ReadTypes(config_element, "dut-type")
     self._config_element = config_element
     self._options = options
-    self.attrib = config_element.attrib
-    self._state_file = self.ParseValue(config_element.get("state-file"))
+    self._root_attrib = config_element.attrib
+    self._root_context = dict(root=Dict2Object("root", self._root_attrib))
+    self._state_file = self.ParseValue(config_element.get("state-file"),
+                                       self._root_context)
     self._SetupLogging()
+
+  def GetProperty(self, name):
+    return self._root_attrib[name]
 
   @const_property
   def benchmark_system(self):
@@ -104,19 +115,20 @@ class SystemBuilder(object):
   @const_property
   def video_processor(self):
     element = self._config_element.find("video-processor")
-    return self._CreateComponent(VideoProcessor, element, self.attrib)
+
+    return self._CreateComponent(VideoProcessor, element, self._root_context)
 
   @const_property
   def benchmark_runner(self):
     element = self._config_element.find("benchmark-runner")
-    return self._CreateComponent(BenchmarkRunner, element, self.attrib,
+    return self._CreateComponent(BenchmarkRunner, element, self._root_context,
                                  self.benchmark_system, self.video_processor)
 
   @const_property
   def orchestrator(self):
     element = self._config_element.find("orchestrator")
-    orchestrator = self._CreateComponent(Orchestrator, element, self.attrib,
-        self.benchmark_system, self.benchmark_runner)
+    orchestrator = self._CreateComponent(Orchestrator, element,
+        self._root_context, self.benchmark_system, self.benchmark_runner)
     for dut_elem in self._config_element.iter("dut"):
       for subject in self._BuildDUTSubjects(dut_elem, self.benchmark_system):
         orchestrator.AddSubject(subject)
@@ -156,7 +168,8 @@ class SystemBuilder(object):
       self.orchestrator.state = state["orchestrator"]
 
   def _SetupLogging(self):
-    log_config_file = self.ParseValue(self._config_element.get("log-config"))
+    log_config_file = self.ParseValue(self._config_element.get("log-config"),
+                                      self._root_context)
     if log_config_file:
       with open(log_config_file, "r") as file_obj:
         log_dir = os.path.join(self._root_dir, "..", "logs")
@@ -224,10 +237,9 @@ class SystemBuilder(object):
     subject_name = subject_elem.attrib["name"]
     dut_name = dut_elem.attrib["name"]
 
-    context = dut_elem.attrib.copy()
-    context.update(subject_elem.attrib)
-    context["dut_name"] = dut_name
-    context["subject_name"] = subject_name
+    context = self._root_context.copy()
+    context["dut"] = Dict2Object(dut_name, dut_elem.attrib)
+    context["subject"] = Dict2Object(subject_name, subject_elem.attrib)
 
     name = "%s/%s" % (dut_name, subject_name)
     navigator = self._CreateComponent(Navigator, subject_elem.find("navigator"),
@@ -254,17 +266,16 @@ class SystemBuilder(object):
 
     margin_attrib = subject_elem.get("margin")
     if margin_attrib:
-      margin_attrib = self.ParseValue(margin_attrib, dut_elem.attrib)
+      margin_attrib = self.ParseValue(margin_attrib, context)
       subject.margin = self._ParseCoord(margin_attrib)
 
-    exposure = self.ParseValue(subject_elem.get("exposure"), dut_elem.attrib)
+    exposure = self.ParseValue(subject_elem.get("exposure"), context)
     if exposure:
       subject.exposure = float(exposure)
 
-    subject.adb = self.ParseValue(dut_elem.get("adb"))
+    subject.adb = self.ParseValue(dut_elem.get("adb"), context)
 
-    test_plane = self.ParseValue(subject_elem.get("test-plane"),
-                                  dut_elem.attrib)
+    test_plane = self.ParseValue(subject_elem.get("test-plane"), context)
     if test_plane:
       subject.test_plane_location = float(test_plane)
 
@@ -274,7 +285,7 @@ class SystemBuilder(object):
       subject.margin = self._ParseCoord(margin_attrib)
 
     for benchmark_elem in subject_elem.iter("benchmark"):
-      attrib = {k: self.ParseValue(v)
+      attrib = {k: self.ParseValue(v, context)
                 for k, v in benchmark_elem.attrib.iteritems()}
       subject.DefineBenchmark(attrib["name"], attrib["type"],
                               attrib["activity"], attrib)
@@ -324,7 +335,7 @@ class SystemBuilder(object):
     element.attrib = dict((k, v) for k, v in element.attrib.items()
                                  if k not in remove_keys)
 
-  def ParseValue(self, value, context=dict()):
+  def ParseValue(self, value, context):
     if value is None:
       return value
 
@@ -343,11 +354,8 @@ class SystemBuilder(object):
       env_name = value[len("env:"):]
       return str(os.environ[env_name])
     if "{" in value and "}" in value:
-      try:
-        value = value.format(**context)
-        value = self.ParseValue(value, context)
-      except KeyError:
-        return None
+      value = value.format(**context)
+      value = self.ParseValue(value, context)
     return value
 
   def _CreateComponent(self, interface_type, element, context, *extra_args):
@@ -359,7 +367,7 @@ class SystemBuilder(object):
 
     :type interface_type: type
     :type element: Optional[ElementTree.Element]
-    :param Dict[str, str] context: Additional attributes
+    :param Dict[str, Any] context: Additional attributes
     :param List[Any] extra_args: Extra arguments passes to FromConfig.
     """
     if element is None:

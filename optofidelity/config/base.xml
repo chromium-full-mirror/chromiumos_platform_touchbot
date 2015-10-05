@@ -13,39 +13,45 @@
   <benchmark-runner led-calibration-down="-4" led-calibration-up="4"
                     calibration-video-path="file:failed_calibrations"/>
 
-  <orchestrator results="{results}" database="{database}" reports="{reports}"
+  <orchestrator results="{root.results}" reports="{root.reports}"
                 save-video="option:save_video" quick="option:quick" />
 
+  <subject-type type-name="base" exposure="{dut.exposure}" margin="(10, 10)" />
+
+  <dut-type type-name="base" exposure="3.3" stayalive="false" />
+
   <!-- ADB Base -->
-  <subject-type type-name="adb_base" margin="(15, 15)" exposure="{exposure}"
-                report-as="{dut_name}/{subject_name}">
-    <preparer type="adb_screen_off" adb="{adb}" />
-    <setup type="adb_settings" adb="{adb}">
+  <subject-type type-name="adb_base" parent-type="base"
+                report_as="{dut.name}/{subject.name}">
+    <preparer type="adb_screen_off" adb="{dut.adb}" />
+    <setup type="adb_settings" adb="{dut.adb}">
       <setting name="screen_brightness" value="255" />
       <setting name="screen_brightness_mode" value="0" />
       <setting name="screen_off_timeout" value="1800000" />
       <setting namespace="global"  name="airplane_mode_on" value="1" />
       <setting namespace="global"  name="stay_on_while_plugged_in" value="1" />
     </setup>
-    <collector type="systrace" adb="{adb}" sdk-path="env:ANDROID_SDK_ROOT" />
+    <collector type="systrace" adb="{dut.adb}" sdk-path="env:ANDROID_SDK_ROOT" />
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
                oauth-key-file="file:oauth2key.json"
-               report-as="{report-as}" />
+               report_as="{subject.report_as}" />
     <access type="cambrionix"
-            serial="/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN005XC0-if00-port0" port="{port}" adb="{adb}" />
+            serial="/dev/serial/by-id/usb-FTDI_FT230X_Basic_UART_DN005XC0-if00-port0"
+            port="{dut.port}" adb="{dut.adb}" />
   </subject-type>
 
   <!-- Clank -->
-  <subject-type type-name="clank_base" data="file:../apps/web" parent-type="adb_base">
-    <navigator type="web_adb" adb="{adb}">
-      <activity name="calibration" file="{data}/flash.html" />
-      <activity name="scroll" file="{data}/scroll.html" />
-      <activity name="touch_move" file="{data}/move.html" />
-      <activity name="tap" file="{data}/tap.html" />
-      <resource file="{data}/jquery.min.js" />
+  <subject-type type-name="clank_base" data="file:../apps/web"
+                parent-type="adb_base" margin="(30, 15)">
+    <navigator type="web_adb" adb="{dut.adb}">
+      <activity name="calibration" file="{subject.data}/flash.html" />
+      <activity name="scroll" file="{subject.data}/scroll.html" />
+      <activity name="touch_move" file="{subject.data}/move.html" />
+      <activity name="tap" file="{subject.data}/tap.html" />
+      <resource file="{subject.data}/jquery.min.js" />
     </navigator>
-    <updater type="chrome" adb="{adb}"/>
+    <updater type="chrome" adb="{dut.adb}"/>
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
@@ -69,11 +75,11 @@
   </subject-type>
 
   <!-- Android Native -->
-  <subject-type type-name="android_native_base" margin="(20, 15)"
-                parent-type="adb_base">
-    <navigator type="native_adb" adb="{adb}" package="org.chromium.touchlatency"
+  <subject-type type-name="android_native_base" parent-type="adb_base">
+    <navigator type="native_adb" adb="{dut.adb}"
+               package="org.chromium.touchlatency"
                apk="file:../apps/Android/app/app-release.apk"
-               stay-alive="{stay-alive}">
+               stay-alive="{dut.stayalive}">
       <activity name="calibration" class-name="FlashActivity" />
       <activity name="neutral" class-name="BlackoutActivity" />
       <activity name="scroll" class-name="ScrollActivity" />
@@ -82,22 +88,23 @@
       <activity name="home" action="android.intent.action.MAIN"
                 category="android.intent.category.HOME" />
     </navigator>
-    <updater type="android" adb="{adb}" />
+    <updater type="android" adb="{dut.adb}" />
   </subject-type>
 
-  <subject-type type-name="android_native" parent-type="android_native_base">
+  <subject-type type-name="android_native" parent-type="android_native_base"
+                margin="(20, 15)">
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
 
   <subject-type type-name="android_keyboard" parent-type="android_native_base"
-                test-plane="0.5" margin="(0, 0)" report-as="{dut_name}/native">
+                test-plane="0.5" margin="(0, 0)" report_as="{dut.name}/native">
     <benchmark name="keyboard" type="keyboard" activity="keyboard"
                key-location="20" />
   </subject-type>
 
   <!-- Manual -->
-  <subject-type type-name="manual" margin="(15, 15)" exposure="{exposure}">
+  <subject-type type-name="manual" parent-type="base">
     <navigator type="manual" />
     <updater type="manual" version="0.0" />
     <dashboard type="spreadsheet"
@@ -106,7 +113,7 @@
   </subject-type>
 
   <!-- iOS -->
-  <subject-type type-name="ios" margin="(15, 15)" exposure="{exposure}">
+  <subject-type type-name="ios" parent-type="base" margin="(15, 15)">
     <navigator type="robot">
       <activity name="neutral" icon="file:icons/neutral.shm" />
       <activity name="calibration" icon="file:icons/flash.shm" />

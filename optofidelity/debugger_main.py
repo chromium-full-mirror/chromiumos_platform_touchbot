@@ -32,7 +32,7 @@ def LoadBenchmarkFromURL(url_or_uid):
     uid = url_or_uid
     url = os.path.abspath(os.path.join(CACHE_DIR, uid))
     if not os.path.exists(url):
-      gs_url = os.path.join(builder.attrib["results"], uid)
+      gs_url = os.path.join(builder.GetProperty("results"), uid)
       with ProgressBar("Downloading %s" % gs_url):
         def CacheFile(filename):
           gs_path = os.path.join(gs_url, filename)
