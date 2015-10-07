@@ -66,9 +66,22 @@ def Normalize(array):
 def NormalizeStates(array, crossing_threshold=0.5):
   """Normalize array to 0..1"""
   pre_norm = Normalize(array)
-  min = np.mean(pre_norm[pre_norm < crossing_threshold])
-  max = np.mean(pre_norm[pre_norm > crossing_threshold])
+  min = np.median(pre_norm[pre_norm < crossing_threshold])
+  max = np.median(pre_norm[pre_norm > crossing_threshold])
   return (pre_norm - min) / (max - min)
+
+
+def HysteresisThreshold(array, t_low, t_high, initial=False):
+  """Hysteresis thresholding of array."""
+  result = np.empty(array.shape, dtype=np.bool)
+  current = initial
+  for index, value in enumerate(array):
+    if value > t_high:
+      current = True
+    elif value < t_low:
+      current = False
+    result[index] = current
+  return result
 
 
 def LowPass(array, kernel_size=5):
@@ -190,34 +203,58 @@ def AlignArrays(target, array, shift, mode="edge"):
 def FindSettlingIndex(profile, start, window_size=8,
                       min_value=None, max_value=None, max_mid_range=None,
                       max_slope=None, max_distance=None, max_mean_distance=None,
+                      max_rel_mean_distance=None, combination="and",
                       debug=False):
   """Returns index of first settled value."""
+  smoothed = LowPass(profile, 5)
+  increasing = smoothed[start] < smoothed[start + 1]
+
   for i in range(start, len(profile) - 1):
+    debug_values = []
+    conditions = []
+    def AddCondition(threshold, value, name, condition):
+      if threshold is None:
+        return
+      if debug:
+        debug_values.append(u"%s=%.2f%s" % (name, value, u"\u2713" if condition else ""))
+      conditions.append(condition)
+    def MinCondition(threshold, value, name):
+      AddCondition(threshold, value, name, value > threshold)
+    def MaxCondition(threshold, value, name):
+      AddCondition(threshold, value, name, value < threshold)
+
+    value = profile[i]
     window_end = Truncate(i + window_size, 0, len(profile))
     moving_window = profile[i:(window_end + 1)]
-    value = profile[i]
-    mid_range = np.max(moving_window) - np.min(moving_window)
-    slope = profile[i + 1] - profile[i]
-    distance = (i - start)
     window_mean = np.mean(moving_window[1:])
     window_std = np.std(moving_window[1:])
-    mean_distance = np.abs(value - window_mean) / window_std
+    mean_distance = window_mean - value
+    if not increasing:
+      mean_distance *= -1;
+
+    MinCondition(min_value, value, "v")
+    MaxCondition(max_value, value, "v")
+    MaxCondition(max_slope, np.abs(profile[i + 1] - profile[i]), "s")
+    MaxCondition(max_mid_range, np.max(moving_window) - np.min(moving_window), "mr")
+    MaxCondition(max_mean_distance, mean_distance, "md")
+    MaxCondition(max_rel_mean_distance, mean_distance / window_std, "rmd")
+
     if debug:
-      print "%03d: v=%.2f mr=%.2f s=%.2f d=%d md=%.2f" % (
-          i, value, mid_range, slope, distance, mean_distance)
-    if max_distance is not None and distance > max_distance:
+      separator = u" %s " % combination
+      print "%03d: d=%d" % (i, (i - start)), separator.join(debug_values)
+
+    if max_distance is not None and (i - start) > max_distance:
       return None
-    if min_value is not None and value < min_value:
-      continue
-    if max_value is not None and value > max_value:
-      continue
-    if max_slope is not None and np.abs(slope) > max_slope:
-      continue
-    if max_mid_range is not None and mid_range > max_mid_range:
-      continue
-    if max_mean_distance is not None and mean_distance > max_mean_distance:
-      continue
-    return i
+
+    if combination == "and":
+      if np.all(conditions):
+        return i
+    elif combination == "or":
+      if np.any(conditions):
+        return i
+    else:
+      raise ValueError("Combination has to be one of: (and, or)")
+
   return len(profile) - 1
 
 
@@ -242,7 +279,7 @@ def FindStateChanges(array, low_thresholds, high_thresholds,
   """
   # Find indices when the array is crossing the threshold, then find the start
   # and end for each crossing.
-  crossings = FindZeroCrossings(LowPass(array, 3) - crossing_threshold)
+  crossings = FindZeroCrossings(LowPass(array, 5) - crossing_threshold)
 
   for crossing in crossings:
     prev = array[max(crossing - 5, 0)]

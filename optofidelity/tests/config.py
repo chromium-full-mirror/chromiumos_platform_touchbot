@@ -41,7 +41,7 @@ class TestConfig(dict):
         raise AssertionError("User did not accept test result")
 
 CONFIG = TestConfig(
-  adb_device_id = None,
+  adb_device_id = "NP5A340401",
   robot_ip = None,
   phantom_ip = None,
   dut_name = None,
@@ -50,6 +50,7 @@ CONFIG = TestConfig(
   chromeperf_endpoint = None,
   gs_folder_url = None,
   android_sdk_path = None,
+  chromium_path = "/usr/local/google/home/denniskempin/workspace/chromium/src",
 
   cambrionix_serial_device = None,
   cambrionix_dut_port_id = None,

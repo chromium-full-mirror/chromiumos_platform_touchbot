@@ -103,3 +103,44 @@ class SystraceCollector(Collector):
   @property
   def report_links(self):
     return [("Systrace", "systrace.html")]
+
+
+class ChromeProfileCollector(Collector):
+  """Collection of Chrome profile traces."""
+
+  def __init__(self, adb_device, chromium_path, browser):
+    profile_script = os.path.join(chromium_path, "build", "android",
+                                  "adb_profile_chrome")
+    self.base_cmd = [profile_script,
+                     "-d", adb_device,
+                     "--browser", browser,
+                     "--systrace", "gfx,view,input,freq,sched"]
+    self.process = None
+    self.tempfile = NamedTemporaryFile()
+
+  @classmethod
+  def FromConfig(cls, parameters, children):
+    return cls(parameters["adb"], parameters["chromium-path"],
+               parameters["browser"])
+
+  def Start(self, duration):
+    seconds = int(math.ceil(float(duration) / 1000.0))
+    cmd = self.base_cmd + ["-t", str(seconds), "-o", self.tempfile.name]
+    _log.info("Starting: %s", " ".join(cmd))
+    self.process = subprocess.Popen(cmd, shell=False, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT)
+
+  def Stop(self):
+    stdout, stderr = self.process.communicate()
+    if self.process.returncode > 0:
+      _log.error(stdout)
+      _log.error("Systrace failed to collect")
+    else:
+      _log.debug(stdout)
+
+  def Save(self, folder):
+    shutil.copy(self.tempfile.name, os.path.join(folder, "chrome_profile.html"))
+
+  @property
+  def report_links(self):
+    return [("ChromeProfile", "chrome_profile.html")]

@@ -31,7 +31,7 @@
       <setting namespace="global"  name="airplane_mode_on" value="1" />
       <setting namespace="global"  name="stay_on_while_plugged_in" value="1" />
     </setup>
-    <collector type="systrace" adb="{dut.adb}" sdk-path="env:ANDROID_SDK_ROOT" />
+    <!--collector type="systrace" adb="{dut.adb}" sdk-path="env:ANDROID_SDK_ROOT" /-->
     <dashboard type="spreadsheet"
                sheet-key="1VmhTaavuPt4ZRgwC_ZBL6CddqpdgC9-04pgy28TvO0I"
                oauth-key-file="file:oauth2key.json"
@@ -43,7 +43,7 @@
 
   <!-- Clank -->
   <subject-type type-name="clank_base" data="file:../apps/web"
-                parent-type="adb_base" margin="(30, 15)">
+                parent-type="adb_base" margin="(30, 15)" channel="">
     <navigator type="web_adb" adb="{dut.adb}">
       <activity name="calibration" file="{subject.data}/flash.html" />
       <activity name="scroll" file="{subject.data}/scroll.html" />
@@ -51,27 +51,29 @@
       <activity name="tap" file="{subject.data}/tap.html" />
       <resource file="{subject.data}/jquery.min.js" />
     </navigator>
-    <updater type="chrome" adb="{dut.adb}"/>
+    <collector type="chrome_profile" adb="{dut.adb}"
+               chromium-path="env:CHROMIUM_SRC" browser="{subject.channel}" />
+    <updater type="chrome" adb="{dut.adb}" channel="{subject.channel}" />
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
 
-  <subject-type type-name="clank_stable" parent-type="clank_base">
+  <subject-type type-name="clank_stable" parent-type="clank_base"
+                channel="stable">
     <navigator type="web_adb"
                component="com.android.chrome/com.google.android.apps.chrome.Main" />
-    <updater type="chrome" channel="stable"/>
   </subject-type>
 
-  <subject-type type-name="clank_beta" parent-type="clank_base">
+  <subject-type type-name="clank_beta" parent-type="clank_base"
+                channel="beta">
     <navigator type="web_adb"
                component="com.chrome.beta/com.google.android.apps.chrome.Main" />
-    <updater type="chrome" channel="beta"/>
   </subject-type>
 
-  <subject-type type-name="clank_dev" parent-type="clank_base">
+  <subject-type type-name="clank_dev" parent-type="clank_base"
+                channel="dev">
     <navigator type="web_adb"
                component="com.chrome.dev/com.google.android.apps.chrome.Main" />
-    <updater type="chrome" channel="dev"/>
   </subject-type>
 
   <!-- Android Native -->
@@ -92,7 +94,7 @@
   </subject-type>
 
   <subject-type type-name="android_native" parent-type="android_native_base"
-                margin="(20, 15)">
+                margin="(10, 15)">
     <benchmark name="tap" type="tap" activity="tap" />
     <benchmark name="scroll" type="line_draw" activity="scroll" />
   </subject-type>
@@ -113,7 +115,7 @@
   </subject-type>
 
   <!-- iOS -->
-  <subject-type type-name="ios" parent-type="base" margin="(15, 15)">
+  <subject-type type-name="ios" parent-type="base" margin="(5, 20)">
     <navigator type="robot">
       <activity name="neutral" icon="file:icons/neutral.shm" />
       <activity name="calibration" icon="file:icons/flash.shm" />

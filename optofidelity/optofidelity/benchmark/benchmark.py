@@ -63,8 +63,10 @@ class Benchmark(object):
     """
     self.results.metadata["subject_name"] = subject.name
     subject.navigator.OpenActivity(self._delegate.activity)
-    self.video = self._delegate.ExecuteOnSubject(subject)
-    subject.navigator.CloseActivity()
+    try:
+      self.video = self._delegate.ExecuteOnSubject(subject)
+    finally:
+      subject.navigator.CloseActivity()
     self.framerate = self.video.framerate
     self.trace = None
     self.results.measurements = None

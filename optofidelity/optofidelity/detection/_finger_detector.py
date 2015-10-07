@@ -26,7 +26,7 @@ class FingerDetector(Detector):
   LOW_PASS_KERNEL_SIZE = 3
   """Kernel size of time-series low pass for smoothing finger location."""
 
-  MIN_FINGER_WEIGHT = 0.3
+  MIN_FINGER_WEIGHT = 0.5
 
   def Preprocess(self, calib_frame, debugger):
     def log(msg, *params):

@@ -58,6 +58,8 @@ TEST_DEFINITIONS = {
       Test("20150928_2234_000", {}),
   "keyboard.mask_issues.s6edge":
       Test("20151002_1417_000", {}),
+  "keyboard.segmentation_error.s6edge":
+      Test("20151008_0437_000", {}),
 
   "baseline.tap.nexus4":
       Test("20150825_1908_000", {"DownLatency": 98, "UpLatency": 81}),

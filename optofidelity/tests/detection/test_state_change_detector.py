@@ -102,6 +102,20 @@ change_sequence_noisy = [
   0.0109, 0.0149, 0.0137, 0.0097, 0.0099, 0.0112, 0.0144, 0.0122, 0.0087,
 ]
 
+change_sequence_noisy2 = [
+  0.0688, 0.0682, 0.0693, 0.0479, 0.0645, 0.0631, 0.0608, 0.0628, 0.0486,
+  0.0648, 0.0589, 0.0667, 0.0621, 0.0528, 0.0607, 0.0598, 0.0700, 0.0601,
+  0.0611, 0.0655, 0.0652, 0.0700, 0.0559, 0.0609, 0.0660, 0.0667, 0.0719,
+  0.0511, 0.0671, 0.0644, 0.0680, 0.0717, 0.0490, 0.0635, 0.0680, 0.0638,
+  0.0703, 0.0469, 0.0644, 0.0644, 0.0821, 0.0795, 0.0949, 0.1106, 0.1189,
+  0.1014, 0.0852, 0.1063, 0.0946, 0.1146, 0.0967, 0.0859, 0.1100, 0.1015,
+  0.1096, 0.0909, 0.0856, 0.1122, 0.0986, 0.1055, 0.0895, 0.0869, 0.1121,
+  0.0997, 0.1053, 0.0865, 0.0896, 0.1171, 0.1019, 0.1032, 0.0838, 0.0921,
+  0.1175, 0.1134, 0.0978, 0.0807, 0.0973, 0.1193, 0.1171, 0.0970, 0.0808,
+  0.1035, 0.1216, 0.1177, 0.0966, 0.0800, 0.1112, 0.1028, 0.1120, 0.0915,
+  0.0805, 0.1153, 0.1011, 0.1096, 0.0896, 0.0822, 0.1207, 0.1001, 0.1064,
+]
+
 change_sequence_multilevel = [
   0.0106, 0.0119, 0.0149, 0.0138, 0.0132, 0.0115, 0.0141, 0.0152, 0.0136,
   0.0129, 0.0116, 0.0142, 0.0152, 0.0136, 0.0121, 0.0113, 0.0134, 0.0132,
@@ -158,11 +172,12 @@ change_sequence_multilevel = [
   0.0119, 0.0141, 0.0129, 0.0133, 0.0142, 0.0122, 0.0140, 0.0136, 0.0124,
 ]
 
+
 class StateChangeDetectorTest(DetectorTest):
   def testEventGeneration(self):
     expected_events = [
       StateChangeEvent(95, 90, StateChangeEvent.STATE_OPEN),
-      StateChangeEvent(156, 150, StateChangeEvent.STATE_CLOSED),
+      StateChangeEvent(153, 150, StateChangeEvent.STATE_CLOSED),
     ]
     self.assertExpectedEventsGenerated(StateChangeDetector(None, None),
                                        change_sequence_1, expected_events,
@@ -170,7 +185,7 @@ class StateChangeDetectorTest(DetectorTest):
 
   def testPWMProofEvents(self):
     expected_events = [
-      StateChangeEvent(140, 138, StateChangeEvent.STATE_OPEN),
+      StateChangeEvent(140, 139, StateChangeEvent.STATE_OPEN),
       StateChangeEvent(216, 215, StateChangeEvent.STATE_CLOSED),
     ]
     self.assertExpectedEventsGenerated(StateChangeDetector(None, None),
@@ -180,16 +195,24 @@ class StateChangeDetectorTest(DetectorTest):
   def testNoisyEventGeneration(self):
     expected_events = [
       StateChangeEvent(115, 115, StateChangeEvent.STATE_OPEN),
-      StateChangeEvent(195, 193, StateChangeEvent.STATE_CLOSED),
+      StateChangeEvent(195, 190, StateChangeEvent.STATE_CLOSED),
     ]
     self.assertExpectedEventsGenerated(StateChangeDetector(None, None),
                                        change_sequence_noisy, expected_events,
                                        ignore=AnalogStateEvent)
 
+  def testNoisyEventGeneration2(self):
+    expected_events = [
+      StateChangeEvent(42, 40, StateChangeEvent.STATE_OPEN),
+    ]
+    self.assertExpectedEventsGenerated(StateChangeDetector(None, None),
+                                       change_sequence_noisy2, expected_events,
+                                       ignore=AnalogStateEvent)
+
   def testMultilevelEventGeneration(self):
     expected_events = [
       StateChangeEvent(193, 192, StateChangeEvent.STATE_OPEN),
-      StateChangeEvent(268, 268, StateChangeEvent.STATE_CLOSED),
+      StateChangeEvent(269, 268, StateChangeEvent.STATE_CLOSED),
       StateChangeEvent(346, 344, StateChangeEvent.STATE_OPEN),
       StateChangeEvent(420, 420, StateChangeEvent.STATE_CLOSED),
     ]

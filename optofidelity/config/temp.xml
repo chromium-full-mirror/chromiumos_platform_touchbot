@@ -1,13 +1,13 @@
 <optofidelity>
   <include file="base.xml" />
 
-  <dut name="bullhead" backend-name="temp3" margin="(15, 15)" exposure="2" adb="00656e9429c02d0f">
+  <dut name="shamrock" type="base" backend-name="angler" margin="(15, 15)"
+       exposure="2" adb="bbabca4c" port="13">
     <subject name="native" type="android_native" />
   </dut>
-  <dut name="ryu" backend-name="nexus9" adb="usb:9-1.1.3.3" exposure="2">
+
+  <dut name="seed" type="base" backend-name="bullhead" margin="(20, 20)"
+       exposure="2" adb="552cfc20" port="12">
     <subject name="native" type="android_native" />
-  </dut>
-  <dut name="iphone6plus" backend-name="temp2" exposure="2.5">
-    <subject name="native" type="ios" />
   </dut>
 </optofidelity>

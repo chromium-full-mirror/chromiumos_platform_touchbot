@@ -34,7 +34,8 @@ class StateChangeDetector(Detector):
 
   NAME = "state_change"
 
-  SETTLED_THRESHOLDS = dict(max_mean_distance=2.0, window_size=20)
+  SETTLED_THRESHOLDS = dict(max_rel_mean_distance=1.0, max_mean_distance=0.1,
+                            window_size=20, combination="or")
   """Thresholds to identify when a state has settled.
      (see nputil.FindSettlingIndex)"""
 
@@ -238,16 +239,17 @@ class StateChangeDetector(Detector):
   def GenerateEvents(self, preprocessed_data, debug=False):
     """Segments the array of state change levels into discrete state changes."""
     if debug:
-      for data in preprocessed_data:
-        print "%.4f" % data
+      for i, data in enumerate(preprocessed_data):
+        print "%04d: %.4f" % (i, data)
 
     level = np.asarray(preprocessed_data, np.float)
     normalized = nputil.NormalizeStates(level)
+
     filtered = nputil.LowPass(normalized, 5)
 
     if debug:
       pyplot.figure()
-      pyplot.plot(normalized)
+      pyplot.plot(normalized, "-x")
       pyplot.plot(filtered)
 
     for start, end in nputil.FindStateChanges(normalized,

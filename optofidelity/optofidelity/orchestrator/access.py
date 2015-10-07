@@ -37,7 +37,8 @@ class FakeAccess(Access):
 
 
 class CambrionixAccess(Access):
-  ADB_TIMEOUT = 10
+  ADB_TIMEOUT = 2 * 60
+  """Wait for device to connect for 2 minutes."""
 
   def __init__(self, serial_device, port_id, adb_serial):
     super(CambrionixAccess, self).__init__()

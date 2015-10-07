@@ -89,16 +89,16 @@ class BaseNavigator(Navigator):
     return cls()
 
   def Open(self):
-    if self._is_open:
-      raise Exception("Subject already open.")
+    # if self._is_open:
+    #   raise Exception("Subject already open.")
     self._Open()
     self._is_open = True
 
   def Close(self):
-    if not self._is_open:
-      raise Exception("Subject has not been opened.")
-    if self._current_activity:
-      raise Exception("Activity still open.")
+    # if not self._is_open:
+    #   raise Exception("Subject has not been opened.")
+    # if self._current_activity:
+    #   raise Exception("Activity still open.")
     self._Close()
     self._is_open = False
 
@@ -114,10 +114,10 @@ class BaseNavigator(Navigator):
       self.Close()
 
   def OpenActivity(self, activity_name):
-    if not self._is_open:
-      raise Exception("Can't open activity if subject has not been opened.")
-    if self._current_activity:
-      raise Exception("Another activity is already open.")
+    # if not self._is_open:
+    #   raise Exception("Can't open activity if subject has not been opened.")
+    # if self._current_activity:
+    #   raise Exception("Another activity is already open.")
     if not self.HasActivity(activity_name):
       raise ValueError("Unknown activity name '%s'" % activity_name)
 
@@ -126,8 +126,8 @@ class BaseNavigator(Navigator):
 
   def CloseActivity(self):
     """Close previously opened activity."""
-    if not self._current_activity:
-      raise Exception("No activity open.")
+    # if not self._current_activity:
+    #   raise Exception("No activity open.")
     self._CloseActivity()
     self._current_activity = None
 

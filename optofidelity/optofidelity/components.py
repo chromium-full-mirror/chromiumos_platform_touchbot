@@ -9,7 +9,8 @@ from .detection import (MultithreadedVideoProcessor,
 from .detection.fake import FakeVideoProcessor
 from .orchestrator import Orchestrator
 from .orchestrator.access import Access, CambrionixAccess, FakeAccess
-from .orchestrator.collector import Collector, FakeCollector, SystraceCollector
+from .orchestrator.collector import (ChromeProfileCollector, Collector,
+                                     FakeCollector, SystraceCollector)
 from .orchestrator.dashboard import (ChromePerfDashboard, Dashboard,
                                      FakeDashboard, SpreadsheetDashboard)
 from .orchestrator.subject_setup import (ADBSettingsSetup, FakeSubjectSetup,
@@ -77,6 +78,7 @@ COMPONENTS = {
   },
   Collector: {
     "fake": FakeCollector,
-    "systrace": SystraceCollector
+    "systrace": SystraceCollector,
+    "chrome_profile": ChromeProfileCollector
   }
 }
