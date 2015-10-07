@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 import skimage.morphology as morphology
 import skimage.transform as transform
+import skimage.filters as filters
 
 from optofidelity.util import nputil
 from optofidelity.videoproc import DebugView, Filter, Shape
@@ -29,11 +30,11 @@ class ScreenCalibration(object):
   """The test area is reduced in size by this margin to account for potential
      camera shake."""
 
-  DIFF_THRESHOLD = 0.2
+  DIFF_THRESHOLD = 0.4
   """Threshold used on the difference between the on and off image to find
      the test area."""
 
-  CLOSING_KERNEL = morphology.disk(2)
+  CLOSING_KERNEL = morphology.disk(8)
   """Size of the disk shaped kernel used for the closing operation to close
      any holes in the detected shapes that might be caused by noise."""
 
@@ -480,6 +481,7 @@ class ScreenCalibration(object):
     :returns Shape: shape object of the detected screen
     """
     delta = Filter.Truncate(white_frame - black_frame)
+    delta = filters.gaussian_filter(delta, 5)
     margin_kernel = morphology.disk(self.SHAPE_MARGIN)
     binary = delta > self.DIFF_THRESHOLD
     binary = morphology.binary_closing(binary, self.CLOSING_KERNEL)

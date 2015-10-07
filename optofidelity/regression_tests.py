@@ -39,6 +39,8 @@ TEST_DEFINITIONS = {
       Test("20150915_2230_003", {}),
   "led.inconsistent.s6edge":
       Test("20150928_1805_000", {}),
+  "led.poor_calibration.s6edge":
+      Test("20151003_0456_001", {}),
 
   "line.brightness_changed.nexus6":
       Test("20150908_1624_000", {}),

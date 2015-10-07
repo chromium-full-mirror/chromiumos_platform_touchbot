@@ -82,7 +82,7 @@ class Shape(object):
 
     # First pass of approximation, this will calculate a simplified polygon
     # with an undefined number of verticies.
-    verticies = measure.approximate_polygon(contour, tolerance=10)
+    verticies = measure.approximate_polygon(contour, tolerance=50)
 
     # The last coordinate is often a duplicate of the first.
     if (np.abs(np.linalg.norm(verticies[0, :] - verticies[-1, :]))
