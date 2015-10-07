@@ -355,7 +355,8 @@ class Orchestrator(object):
         benchmark = self._runner.CreateBenchmark(full_name,
             benchmark_def.benchmark_type, benchmark_def.activity,
             benchmark_def.params, metadata)
-        self._runner.RunBenchmark(benchmark)
+
+        subject.AccessRetryCall(lambda: self._runner.RunBenchmark(benchmark))
 
         self.PublishBenchmarkRepetition(benchmark, subject, benchmark_time)
         if (len(benchmark.results.error) or
@@ -376,10 +377,10 @@ class Orchestrator(object):
     :type subject: OrchestratorSubject
     :returns bool: True if successful.
     """
-    with self._progress.CaptureFailures(subject.name, "Subject calibration"):
+    def _OpenAndCalibrateSubject():
       self._runner.OpenAndCalibrateSubject(subject, self._save_video)
-      return True
-    return False
+    return subject.AccessSafeCall(_OpenAndCalibrateSubject,
+                                  "Subject calibration")
 
   def PublishAggregateResults(self, subject, aggregate, version):
     """Publishes AggregateResults of a benchmark.

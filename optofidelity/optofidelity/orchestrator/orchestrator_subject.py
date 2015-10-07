@@ -8,7 +8,7 @@ import logging
 from safetynet import List
 
 from optofidelity.system import BenchmarkSubject
-from optofidelity.util import ProgressPrinter
+from optofidelity.util import ProgressPrinter, ConnectionLostException
 
 from .subject_setup import SubjectSetup
 
@@ -47,24 +47,22 @@ class OrchestratorSubject(BenchmarkSubject):
 
     :returns bool: True if verification was successful.
     """
-    self._RequireAccess()
-    with self._progress.CaptureFailures(self.name, "Subject verification"):
+    def _Verify():
       self.updater.Verify()
       self.navigator.Verify()
-      return True
-    return False
+    return self.AccessSafeCall(_Verify, "Subject verification")
 
   def SetUp(self):
-    self._RequireAccess()
-    with self._progress.LogExceptions(self.name, "Setting up subject"):
+    def _SetUp():
       self.navigator.SetUp()
       for setup in self.setups:
         setup.SetUp()
+    return self.AccessSafeCall(_SetUp, "Setting up subject")
 
   def Prepare(self):
-    self._RequireAccess()
-    with self._progress.LogExceptions(self.name, "Preparing subject"):
+    def _Prepare():
       self.navigator.Prepare()
+    return self.AccessSafeCall(_Prepare, "Preparing subject")
 
   def Update(self, version):
     """Update subject to a specific version.
@@ -73,12 +71,10 @@ class OrchestratorSubject(BenchmarkSubject):
 
     :returns bool: True if the update was successful.
     """
-    self._RequireAccess()
-    with self._progress.CaptureFailures(self.name, "Subject update"):
+    def _Update():
       if version != self.updater.installed_version:
         self.updater.Install(version)
-      return True
-    return False
+    return self.AccessSafeCall(_Update, "Updating Subject")
 
   def GetMatchingVersions(self, versions, skip_installed):
     """Generate list of versions matching the versions string.
@@ -88,18 +84,36 @@ class OrchestratorSubject(BenchmarkSubject):
     :returns List[str]: List of matching versions
     :raises Exception: If the updater cannot access the device.
     """
+    def _GetMatchingVersions():
+      available_versions = self.updater.available_versions
+      installed_version = self.updater.installed_version
+      if available_versions:
+        versions_to_test = self._ParseVersionRange(versions, installed_version,
+                                                   available_versions)
+        if skip_installed and versions_to_test[0] == installed_version:
+            versions_to_test = versions_to_test[1:]
+        return versions_to_test
+      elif not skip_installed:
+        return [installed_version]
+      return []
+    return self.AccessRetryCall(_GetMatchingVersions)
+
+  def AccessRetryCall(self, function):
     self._RequireAccess()
-    available_versions = self.updater.available_versions
-    installed_version = self.updater.installed_version
-    if available_versions:
-      versions_to_test = self._ParseVersionRange(versions, installed_version,
-                                                 available_versions)
-      if skip_installed and versions_to_test[0] == installed_version:
-          versions_to_test = versions_to_test[1:]
-      return versions_to_test
-    elif not skip_installed:
-      return [installed_version]
-    return []
+    try:
+      return function()
+    except ConnectionLostException:
+      self._progress.Error(self.name, "Lost ADB connection. Reconnecting.")
+      if self.access:
+        self.access.Deactivate()
+        self.access.Activate()
+      return function()
+
+  def AccessSafeCall(self, function, tag):
+    with self._progress.CaptureFailures(self.name, tag):
+      self.AccessRetryCall(function)
+      return True
+    return False
 
   @classmethod
   def _ParseVersion(cls, string, installed_version, available_versions):

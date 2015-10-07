@@ -9,6 +9,8 @@ from .tools import TimeoutCommunicate
 
 _log = logging.getLogger(__name__)
 
+class ConnectionLostException(Exception):
+  pass
 
 class ADB(object):
   """Wrapper around the adb command line tool."""
@@ -147,7 +149,10 @@ class ADB(object):
     except:
       if retries > 0:
         _log.exception("Retrying command")
-        self.WaitForDevice(30)
+        try:
+          self.WaitForDevice(30)
+        except:
+          raise ConnectionLostException()
         return self.Execute(sub_command, check_success, check_error, timeout,
                             retries - 1)
       raise
