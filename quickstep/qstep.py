@@ -221,5 +221,4 @@ if __name__ == '__main__':
     evtest.terminate()
 
     print "\nProcessing data, may take a minute or two..."
-    minimization.minimize(evtest_file_name, laser_file_name)
     lm.main(evtest_file_name, laser_file_name)

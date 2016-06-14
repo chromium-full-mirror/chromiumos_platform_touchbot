@@ -282,6 +282,8 @@ def main(evtest_log_filename, quickstep_log_filename):
     # Display the results
     print 'Average', 'Maximum', 'Minimum'
     print np.average(latencies), max(latencies), min(latencies)
+    print
+    print 'Latency result: %f ms' % (np.average(latencies) * 1000.0)
 
 
 if __name__ == '__main__':
