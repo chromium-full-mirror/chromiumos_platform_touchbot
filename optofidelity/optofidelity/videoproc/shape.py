@@ -73,7 +73,7 @@ class Shape(object):
     that all inner angles in the polygon are approximately the same (i.e. we are
     looking for a rectangle, not a trapezoid, etc).
     This method returns the coordinates of each vertex in clockwise order,
-    starting with he top-left-most vertex.
+    starting with the top-left-most vertex.
 
     :type num_verticies: int
     :rtype np.ndarray
