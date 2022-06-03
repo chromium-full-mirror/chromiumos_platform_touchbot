@@ -27,14 +27,14 @@
 #   5.) Crunch the numbers by passing both file names to this script
 #           python latency_measurement.py evtest_log.txt quickstep_log.txt
 
-import commands
+import subprocess
 import json
 import numpy as np
 import re
 import sys
 from collections import namedtuple
 
-import ppm
+from . import ppm
 
 
 FingerPosition = namedtuple('FingerPosition', ['timestamp', 'x', 'y'])
@@ -88,7 +88,7 @@ def get_laser_crossings(filename):
     """
     QUICKSTEP_LOG_REGEX = '^\s*([\d.]+)\s+(\d)\s*$'
 
-    status, raw_log = commands.getstatusoutput('cat %s' % filename)
+    status, raw_log = subprocess.getstatusoutput('cat %s' % filename)
     if status:
         return None
 
@@ -211,7 +211,7 @@ def measure_latencies(finger_positions, laser_crossings, filename=None):
     positions, laser_crossings = \
                         clip_timeframes(finger_positions, laser_crossings)
     if not positions or not laser_crossings:
-        print 'ERROR: There are no overlapping events in the input'
+        print('ERROR: There are no overlapping events in the input')
         return []
 
     # Find the points where the laser was crossed
@@ -276,19 +276,19 @@ def main(evtest_log_filename, quickstep_log_filename):
 
     latencies = measure_latencies(positions, laser_crossings, 'out.ppm')
     if not latencies:
-        print 'ERROR: Unable to compute any latencies'
+        print('ERROR: Unable to compute any latencies')
         return
 
     # Display the results
-    print 'Average', 'Maximum', 'Minimum'
-    print np.average(latencies), max(latencies), min(latencies)
-    print
-    print 'Latency result: %f ms' % (np.average(latencies) * 1000.0)
+    print('Average', 'Maximum', 'Minimum')
+    print(np.average(latencies), max(latencies), min(latencies))
+    print()
+    print('Latency result: %f ms' % (np.average(latencies) * 1000.0))
 
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-        print 'Usage: %s evtest_log.txt quickstep_log.txt' % sys.argv[0]
+        print('Usage: %s evtest_log.txt quickstep_log.txt' % sys.argv[0])
         sys.exit(1)
     evtest_log_filename = sys.argv[1]
     quickstep_log_filename = sys.argv[2]

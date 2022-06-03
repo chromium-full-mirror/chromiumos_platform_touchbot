@@ -29,8 +29,8 @@ import time
 import serial
 import numpy
 
-import latency_measurement as lm
-import minimization
+from . import latency_measurement as lm
+from . import minimization
 
 
 # Teensy commands (always singe char). Defined in QuickStep.ino
@@ -56,8 +56,8 @@ def sndrcv(ser, data):
 
     """
     t0 = time.time()
-    ser.write(data)
-    reply = ser.readline()
+    ser.write(data.encode())
+    reply = ser.readline().decode()
     t1 = time.time()
     dt = (t1 - t0) * 1000
     log('sndrcv(): round trip %.3fms, reply=%s' % (dt, reply.strip()))
@@ -202,7 +202,7 @@ if __name__ == '__main__':
         trigger_count = 0
         while trigger_count < args.n:
             # The following line blocks until a message from QuickStep arrives
-            trigger_line = ser.readline()
+            trigger_line = ser.readline().decode()
             trigger_count += 1
             log('#%d/%d - ' % (trigger_count, args.n) +
                 trigger_line.strip())
@@ -220,5 +220,5 @@ if __name__ == '__main__':
     # Send SIGTERM to evtest process
     evtest.terminate()
 
-    print "\nProcessing data, may take a minute or two..."
+    print("\nProcessing data, may take a minute or two...")
     lm.main(evtest_file_name, laser_file_name)

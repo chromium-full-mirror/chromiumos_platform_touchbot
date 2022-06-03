@@ -6,7 +6,7 @@
 # QuickStep laser crossing timestamps
 
 import numpy
-import latency_measurement as lm
+from . import latency_measurement as lm
 
 
 debug_mode = False
